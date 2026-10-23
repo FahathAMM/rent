@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class BookingPricing extends Model
 {
-    public const UPDATED_AT = null;
+    // The table has neither created_at nor updated_at - only computed_at,
+    // set explicitly at creation.
+    public $timestamps = false;
 
     protected $table = 'booking_pricing';
 

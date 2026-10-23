@@ -2,6 +2,7 @@
 
 namespace App\Models\Scopes;
 
+use App\Models\SystemAdmin;
 use App\Services\AuthUser;
 use App\Support\VendorContext;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,10 +17,17 @@ use Illuminate\Database\Eloquent\Scope;
  * another shop's row (it 404s instead).
  *
  * Four branches, checked in order:
- *   1. platform guard        -> unrestricted (cross-shop visibility is the
- *                                point of platform admin endpoints)
- *   2. shop context resolved -> WHERE shop_id = <that shop>, or fail closed
+ *   1. shop context resolved -> WHERE shop_id = <that shop>, or fail closed
  *                                if the context was explicitly set to null
+ *   2. platform admin guard   -> unrestricted (cross-shop visibility is the
+ *                                point of platform admin endpoints).
+ *                                Deliberately checks the resolved user's
+ *                                MODEL TYPE, not just auth('platform')
+ *                                ->check() - a bare guard check can return
+ *                                true for a request authenticated on a
+ *                                different guard under some auth-resolution
+ *                                paths, and this is the one check standing
+ *                                between that and a cross-shop data leak.
  *   3. authenticated (users guard) but NO shop context resolved
  *                             -> fail closed (WHERE 1 = 0) - a bug in
  *                                middleware wiring must never leak rows
@@ -31,10 +39,6 @@ class ShopScope implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
-        if (auth('platform')->check()) {
-            return;
-        }
-
         if (VendorContext::hasContext()) {
             $shopId = VendorContext::shopId();
 
@@ -44,6 +48,10 @@ class ShopScope implements Scope
             }
 
             $builder->where($model->getTable() . '.shop_id', $shopId);
+            return;
+        }
+
+        if (auth('platform')->user() instanceof SystemAdmin) {
             return;
         }
 

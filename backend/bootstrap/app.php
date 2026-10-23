@@ -50,6 +50,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'shop.context'       => \App\Http\Middleware\ResolveShopContext::class,
         ]);
 
+        // Critical ordering: SubstituteBindings is where Laravel resolves a
+        // {vehicle}/{expense}/... route parameter via implicit model
+        // binding — which runs the model's global scopes (ShopScope)
+        // immediately. If that happens before ResolveShopContext has
+        // called VendorContext::set(), ShopScope sees "authenticated, no
+        // context" and fails closed, 404ing a legitimate owner's own
+        // record. shop.context must run first.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            prepend: \App\Http\Middleware\ResolveShopContext::class,
+        );
+
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions) {

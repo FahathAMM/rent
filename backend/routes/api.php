@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\PlatformDetailController;
+use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\VisitLogController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,9 +27,9 @@ Route::get('platform-details', [PlatformDetailController::class, 'show']);
 // file only, no database table.
 Route::post('visits', [VisitLogController::class, 'track']);
 
-// NOTE: the public marketplace catalogue (search, vehicle detail, shop
-// profile, categories, ...) lives in routes/public.php, added in Phase 3
-// once vehicle listings exist — see app-doc/marketplace/05-ui-and-api-map.md.
+// The public marketplace catalogue (search, vehicle detail, shop profile,
+// categories, reviews) — see routes/public.php.
+require __DIR__.'/public.php';
 
 // ─── Protected — every marketplace account (customer / owner / staff) ───────
 
@@ -58,6 +59,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // rows and pins it for ShopScope/BelongsToShop — see
     // app-doc/marketplace/03-permissions-model.md "Layer 2".
     Route::middleware('shop.context')->group(function () {
+        Route::apiResource('vehicles', VendorVehicleController::class);
+        Route::post('vehicles/{vehicle}/publish', [VendorVehicleController::class, 'publish']);
+        Route::post('vehicles/{vehicle}/unpublish', [VendorVehicleController::class, 'unpublish']);
+        Route::post('vehicles/{vehicle}/archive', [VendorVehicleController::class, 'archive']);
+        Route::put('vehicles/{vehicle}/pricing', [VendorVehicleController::class, 'updatePricing']);
+
         Route::apiResource('expense-categories', ExpenseCategoryController::class)->parameters(['expense-categories' => 'expenseCategory']);
         Route::apiResource('expenses', ExpenseController::class);
 
@@ -75,7 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // shop context — see Administration\AuditLogController.
         Route::get('audit-logs', [AuditLogController::class, 'index']);
 
-        // NOTE: vehicles, availability, bookings, finance, staff and
+        // NOTE: availability calendars, bookings, finance, staff and
         // settings endpoints land in Phases 3–6 once their controllers
         // exist.
     });

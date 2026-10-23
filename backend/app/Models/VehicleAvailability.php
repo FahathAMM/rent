@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class VehicleAvailability extends Model
 {
+    protected $table = 'vehicle_availability';
+
     public const STATUS_AVAILABLE = 'available';
     public const STATUS_BLOCKED = 'blocked';
     public const STATUS_BOOKED = 'booked';
