@@ -1,0 +1,25 @@
+/backend/vendor/
+
+/frontend/node_modules/
+/frontend/.next
+/bk
+backend/storage/logs/laravel.log
+backend/_serve_restore.log
+dev.bat
+dev.ps1
+dev.sh
+frontend/src/.next/
+backend/setup.md
+backend/.phpunit.result.cache
+backend/.env
+backend/.env.backup
+backend/.env.production
+.claude/scheduled_tasks.lock
+frontend/.dockerignore
+backend/.dockerignore
+frontend/.env.local
+Build a Production-Ready Multi-Tenant SME CRM & Invoicing SaaS.md
+backend/storage/logs/visits.log
+
+backend/public/storage
+backend/storage/app/public/company-logos/
