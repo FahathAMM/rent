@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Location;
 
-use App\Support\Tenant;
+use App\Support\VendorContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,12 +16,14 @@ class UpdateLocationRequest extends FormRequest
             'name' => [
                 'required', 'string', 'max:255',
                 Rule::unique('locations', 'name')
-                    ->where(fn ($q) => $q->where('company_id', Tenant::id()))
+                    ->where(fn ($q) => $q->where('shop_id', VendorContext::shopId()))
                     ->ignore($this->route('location')),
             ],
+            'type'            => 'nullable|in:branch,pickup_point,airport,hotel,custom',
+            'branch_code'     => 'nullable|string|max:50',
             'address'         => 'nullable|string',
             'city'            => 'nullable|string|max:255',
-            'state'           => 'nullable|string|max:255',
+            'district'        => 'nullable|string|max:255',
             'country'         => 'nullable|string|max:255',
             'latitude'        => 'nullable|numeric|between:-90,90',
             'longitude'       => 'nullable|numeric|between:-180,180',

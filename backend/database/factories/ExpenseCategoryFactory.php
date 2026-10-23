@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Company;
 use App\Models\ExpenseCategory;
+use App\Models\RentalShop;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ExpenseCategoryFactory extends Factory
@@ -13,8 +13,11 @@ class ExpenseCategoryFactory extends Factory
     public function definition(): array
     {
         return [
-            'company_id' => Company::factory(),
-            'name'       => fake()->unique()->randomElement(['Office Rent', 'Fuel', 'Salary', 'Internet', 'Marketing', 'Transport', 'Utilities', 'Other']),
+            'shop_id' => RentalShop::factory(),
+            'name'    => fake()->unique()->randomElement([
+                'Fuel', 'Service & Maintenance', 'Insurance', 'Revenue Licence',
+                'Emission Test', 'Tyres', 'Cleaning', 'Parking', 'Fines', 'Other',
+            ]),
         ];
     }
 }

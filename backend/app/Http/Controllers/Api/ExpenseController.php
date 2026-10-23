@@ -18,10 +18,10 @@ class ExpenseController extends Controller
 
     public function __construct(private ExpenseRepo $repo)
     {
-        $this->middleware('can:expense-expenses-view')->only(['index', 'show']);
-        $this->middleware('can:expense-expenses-create')->only('store');
-        $this->middleware('can:expense-expenses-edit')->only('update');
-        $this->middleware('can:expense-expenses-delete')->only('destroy');
+        $this->middleware('can:vendor-expense-expenses-view')->only(['index', 'show']);
+        $this->middleware('can:vendor-expense-expenses-create')->only('store');
+        $this->middleware('can:vendor-expense-expenses-edit')->only('update');
+        $this->middleware('can:vendor-expense-expenses-delete')->only('destroy');
     }
 
     public function index(Request $request): JsonResponse

@@ -109,10 +109,10 @@ export default function ExpenseCategoriesPage() {
       header: "Actions",
       cell: (row) => (
         <div className="flex gap-1">
-          {can("expense-categories-edit") && (
+          {can("vendor-expense-categories-edit") && (
             <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit category" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
           )}
-          {can("expense-categories-delete") && (
+          {can("vendor-expense-categories-delete") && (
             <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete category" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
@@ -137,7 +137,7 @@ export default function ExpenseCategoriesPage() {
           breadcrumb={[]}
           defualtSortField="name"
           defaultSortOrder="asc"
-          isSheet={can("expense-categories-create")}
+          isSheet={can("vendor-expense-categories-create")}
           openSheet={openCreate}
           model="Category"
         />

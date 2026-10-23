@@ -3,7 +3,8 @@
 namespace Database\Factories\Administration;
 
 use App\Models\Administration\User;
-use App\Models\Company;
+use App\Models\RentalShop;
+use App\Models\ShopMember;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Spatie\Permission\Models\Role;
 
@@ -12,20 +13,15 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'      => fake()->name(),
-            'email'     => fake()->unique()->safeEmail(),
-            'password'  => 'password',
-            'is_active' => true,
-            'phone'     => fake()->phoneNumber(),
+            'name'     => fake()->name(),
+            'email'    => fake()->unique()->safeEmail(),
+            'password' => 'password',
+            'status'   => User::STATUS_ACTIVE,
+            'phone'    => fake()->numerify('07########'),
         ];
     }
 
-    public function admin(): static
-    {
-        return $this->role('admin');
-    }
-
-    /** Assign an arbitrary tenant/system role (owner, admin, sales, accountant, staff, super-admin). */
+    /** Assign a marketplace role (customer, vehicle-owner, shop-owner, shop-staff). */
     public function role(string $name): static
     {
         return $this->afterCreating(function (User $user) use ($name) {
@@ -34,14 +30,22 @@ class UserFactory extends Factory
         });
     }
 
-    /** Attach the user to a specific company (or create a new one if none given). */
-    public function forCompany(?Company $company = null): static
+    /** Create (or attach to) a shop membership for this user. */
+    public function memberOf(?RentalShop $shop = null, string $role = ShopMember::ROLE_OWNER): static
     {
-        return $this->state(fn () => ['company_id' => ($company ?? Company::factory()->create())->id]);
+        return $this->afterCreating(function (User $user) use ($shop, $role) {
+            ShopMember::create([
+                'shop_id' => ($shop ?? RentalShop::factory()->create())->id,
+                'user_id' => $user->id,
+                'role'    => $role,
+                'status'  => ShopMember::STATUS_ACTIVE,
+                'accepted_at' => now(),
+            ]);
+        });
     }
 
-    public function inactive(): static
+    public function suspended(): static
     {
-        return $this->state(['is_active' => false]);
+        return $this->state(['status' => User::STATUS_SUSPENDED]);
     }
 }

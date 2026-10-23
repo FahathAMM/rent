@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Menu;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMenuRequest extends FormRequest
 {
@@ -11,8 +12,12 @@ class StoreMenuRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'audience'    => 'required|in:customer,vendor,platform',
             'name'        => 'required|string|max:100',
-            'slug'        => 'required|string|max:100|unique:menus,slug|regex:/^[a-z0-9_]+$/',
+            'slug'        => [
+                'required', 'string', 'max:100', 'regex:/^[a-z0-9_]+$/',
+                Rule::unique('menus', 'slug')->where('audience', $this->input('audience')),
+            ],
             'route_name'  => 'nullable|string|max:200',
             'icon'        => 'nullable|string|max:100',
             'parent_id'   => 'nullable|exists:menus,id',

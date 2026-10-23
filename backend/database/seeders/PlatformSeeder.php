@@ -28,10 +28,10 @@ class PlatformSeeder extends Seeder
         SystemAdmin::firstOrCreate(
             ['email' => env('PLATFORM_ADMIN_EMAIL', 'admin@example.com')],
             [
-                'name'     => 'fahathammex90@gmail.com',
-                'password' => Hash::make(env('PLATFORM_ADMIN_PASSWORD', 'Fahath@321')),
-                'role'     => 'platform_owner',
-                'status'   => 'active',
+                'name'       => 'fahathammex90@gmail.com',
+                'password'   => Hash::make(env('PLATFORM_ADMIN_PASSWORD', 'Fahath@321')),
+                'admin_role' => 'platform_owner',
+                'is_active'  => true,
             ]
         );
     }
@@ -39,8 +39,8 @@ class PlatformSeeder extends Seeder
     private function seedPlatformDetail(): void
     {
         PlatformDetail::firstOrCreate([], [
-            'name'    => 'MyBiz2Flow',
-            'tagline' => 'One Flow. One Business.',
+            'name'    => 'RentLanka',
+            'tagline' => 'Rent any vehicle, anywhere in Sri Lanka.',
         ]);
     }
 }

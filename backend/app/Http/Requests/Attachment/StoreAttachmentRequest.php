@@ -13,7 +13,7 @@ class StoreAttachmentRequest extends FormRequest
     {
         return [
             // Short morph-map aliases only (see AppServiceProvider::boot) — never a raw class name.
-            'attachable_type' => ['required', Rule::in(['expense', 'purchase', 'sale'])],
+            'attachable_type' => ['required', Rule::in(['expense'])],
             'attachable_id'   => 'required|integer',
             'file'            => 'required|file|max:10240',
             'document_type'   => 'nullable|string|max:100',

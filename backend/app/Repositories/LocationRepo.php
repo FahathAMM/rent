@@ -6,7 +6,7 @@ use App\Http\Requests\Location\StoreLocationRequest;
 use App\Http\Requests\Location\UpdateLocationRequest;
 use App\Models\Location;
 use App\Support\NumberGenerator;
-use App\Support\Tenant;
+use App\Support\VendorContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,7 @@ class LocationRepo extends BaseRepository
         $dir  = $request->sort_direction === 'desc' ? 'desc' : 'asc';
 
         return $this->model
-            ->withCount(['employees', 'assets'])
+            ->withCount('vehiclePickupLocations')
             ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
             ->orderBy($sort, $dir)
             ->paginate(min($request->perPage ?? 50, 100));
@@ -37,7 +37,7 @@ class LocationRepo extends BaseRepository
     {
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
-            $data['branch_code'] = NumberGenerator::next(Tenant::id(), 'branch');
+            $data['branch_code'] ??= NumberGenerator::next(VendorContext::shopId(), 'branch');
 
             return $this->model->create($data);
         });
@@ -52,8 +52,8 @@ class LocationRepo extends BaseRepository
 
     public function destroy(Location $location): void
     {
-        if ($location->employees()->exists() || $location->assets()->exists()) {
-            throw new \RuntimeException('Cannot delete a location that still has employees or assets assigned to it.');
+        if ($location->vehiclePickupLocations()->exists()) {
+            throw new \RuntimeException('Cannot delete a location that still has vehicles assigned to it.');
         }
 
         $location->delete();

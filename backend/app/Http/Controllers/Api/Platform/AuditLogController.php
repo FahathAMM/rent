@@ -11,20 +11,19 @@ use Illuminate\Http\Request;
 class AuditLogController extends Controller
 {
     /**
-     * The full system/security audit trail across every company — separate
-     * from the CRM Activity feed (ActivityController). Supports the same
-     * filter set the platform UI exposes: company, user, event, model, date
+     * The full platform-wide system/security audit trail. Supports the
+     * filter set the platform UI exposes: shop, user, event, model, date
      * range and search, all paginated.
      *
-     * Shape matches Administration\AuditLogController@index: the raw
-     * paginator under "record", read by ServerDataTable as res.data.record.
+     * Shape matches other admin index endpoints: the raw paginator under
+     * "record", read by ServerDataTable as res.data.record.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = AuditLog::query()->with(['company:id,name', 'user:id,name,email', 'systemAdmin:id,name']);
+        $query = AuditLog::query()->with(['shop:id,name', 'user:id,name,email', 'systemAdmin:id,name']);
 
-        if ($companyId = $request->get('company_id')) {
-            $query->where('company_id', $companyId);
+        if ($shopId = $request->get('shop_id')) {
+            $query->where('shop_id', $shopId);
         }
 
         if ($userId = $request->get('user_id')) {
@@ -39,6 +38,10 @@ class AuditLogController extends Controller
             $query->where('form', $model);
         }
 
+        if ($severity = $request->get('severity')) {
+            $query->where('severity', $severity);
+        }
+
         if ($from = $request->get('date_from')) {
             $query->whereDate('created_at', '>=', $from);
         }
@@ -51,7 +54,7 @@ class AuditLogController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('record', 'like', "%{$search}%")
                   ->orWhere('form', 'like', "%{$search}%")
-                  ->orWhereHas('company', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('shop', fn ($s) => $s->where('name', 'like', "%{$search}%"))
                   ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
             });
         }

@@ -15,7 +15,7 @@ class StoreSystemAdminRequest extends FormRequest
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:system_admins,email',
             'password' => ['required', 'string', Password::min(8)],
-            'role'     => 'required|in:platform_owner,platform_admin',
+            'admin_role' => 'required|in:platform_owner,admin,finance,moderator,support',
         ];
     }
 }

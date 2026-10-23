@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Platform;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\ImpersonationStartRequest;
 use App\Http\Requests\Platform\ImpersonationStopRequest;
-use App\Http\Resources\CompanyResource;
 use App\Http\Resources\UserResource;
 use App\Models\Administration\User;
 use App\Models\SystemAdmin;
@@ -21,7 +20,7 @@ class ImpersonationController extends Controller
         /** @var SystemAdmin $admin */
         $admin = auth('platform')->user();
 
-        $targetUser = User::withoutGlobalScopes()->findOrFail($request->validated('user_id'));
+        $targetUser = User::findOrFail($request->validated('user_id'));
 
         $result = $this->impersonation->start($admin, $targetUser, $request);
 
@@ -31,7 +30,6 @@ class ImpersonationController extends Controller
                 'token'      => $result['token'],
                 'session_id' => $result['session']->id,
                 'user'       => new UserResource($targetUser->load('roles', 'permissions')),
-                'company'    => new CompanyResource($targetUser->company),
             ],
         ]);
     }

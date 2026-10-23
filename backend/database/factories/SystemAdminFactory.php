@@ -12,21 +12,31 @@ class SystemAdminFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'     => fake()->name(),
-            'email'    => fake()->unique()->safeEmail(),
-            'password' => 'password',
-            'role'     => 'platform_admin',
-            'status'   => 'active',
+            'name'       => fake()->name(),
+            'email'      => fake()->unique()->safeEmail(),
+            'password'   => 'password',
+            'admin_role' => SystemAdmin::ROLE_ADMIN,
+            'is_active'  => true,
         ];
     }
 
     public function owner(): static
     {
-        return $this->state(['role' => 'platform_owner']);
+        return $this->state(['admin_role' => SystemAdmin::ROLE_PLATFORM_OWNER]);
+    }
+
+    public function finance(): static
+    {
+        return $this->state(['admin_role' => SystemAdmin::ROLE_FINANCE]);
+    }
+
+    public function moderator(): static
+    {
+        return $this->state(['admin_role' => SystemAdmin::ROLE_MODERATOR]);
     }
 
     public function inactive(): static
     {
-        return $this->state(['status' => 'inactive']);
+        return $this->state(['is_active' => false]);
     }
 }

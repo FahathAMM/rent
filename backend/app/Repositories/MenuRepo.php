@@ -4,14 +4,11 @@ namespace App\Repositories;
 
 use App\Models\Administration\Menu;
 use App\Models\Administration\User;
-use App\Services\SubscriptionService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 class MenuRepo
 {
@@ -36,11 +33,12 @@ class MenuRepo
         return $this->model->active()->orderBy('sort_order')->get();
     }
 
-    public function getTree(): Collection
+    public function getTree(string $audience): Collection
     {
         return $this->model
             ->with('children.children') // two levels deep
             ->active()
+            ->forAudience($audience)
             ->roots()
             ->orderBy('sort_order')
             ->get();
@@ -48,17 +46,7 @@ class MenuRepo
 
     public function store(array $data): Menu
     {
-        return DB::transaction(function () use ($data) {
-            $menu = $this->model->create($data);
-
-            // Platform super-admin always has every permission (including newly created ones).
-            // Tenant roles (owner/admin/...) are curated explicitly in MenuSeeder, not auto-granted.
-            $superAdmin = Role::findByName('super-admin', 'web');
-            $superAdmin->syncPermissions(Permission::where('guard_name', 'web')->get());
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-            return $menu;
-        });
+        return DB::transaction(fn () => $this->model->create($data));
     }
 
     public function update(Menu $menu, array $data): Menu
@@ -79,32 +67,31 @@ class MenuRepo
     }
 
     /**
-     * Return ordered menu tree filtered to items the given user can view.
+     * Ordered menu tree for one audience ('customer' | 'vendor' |
+     * 'platform'), filtered to items the given user can view. Called for
+     * marketplace users (customer/vendor audience) only - the platform
+     * admin app does not use spatie permissions at all, see
+     * app-doc/marketplace/03-permissions-model.md "Platform admin roles".
      */
-    public function getNavigation(User $user): Collection
+    public function getNavigation(User $user, string $audience): Collection
     {
-        // Load all active menus ordered by sort_order
         $all = $this->model
             ->active()
+            ->forAudience($audience)
             ->orderBy('sort_order')
             ->get();
 
-        // A whole module can also be off for this company's plan (see
-        // SubscriptionService::hasModule) — checked once up front so every
-        // menu under that module's root slug (e.g. "accounting",
-        // "accounting-accounts", ...) is dropped regardless of permissions.
-        $accountingEnabled = !$user->company || app(SubscriptionService::class)->hasModule($user->company, 'accounting');
-
-        // Section headers (no route_name) have no permissions — always include them.
-        // Navigable menus require "view {slug}" permission if that permission exists.
-        $accessible = $all->filter(function (Menu $menu) use ($user, $accountingEnabled) {
-            if (!$accountingEnabled && ($menu->slug === 'accounting' || str_starts_with($menu->slug, 'accounting-'))) {
-                return false;
+        // Section headers (no route_name) have no permissions — always keep.
+        // Navigable menus require "{audience}-{slug}-view" permission if it
+        // exists — audience-qualified so a customer's "dashboard-view"
+        // can never also satisfy the vendor dashboard's check (see
+        // generatePermissions() in MenuSeeder).
+        $accessible = $all->filter(function (Menu $menu) use ($user) {
+            if (empty($menu->route_name)) {
+                return true;
             }
 
-            if (empty($menu->route_name)) return true; // section header: always keep for now
-
-            $permName = "{$menu->slug}-view";
+            $permName = "{$menu->audience}-{$menu->slug}-view";
             $exists   = Permission::where('name', $permName)->exists();
             return !$exists || $user->can($permName);
         });
@@ -112,9 +99,8 @@ class MenuRepo
         $tree = $this->buildTree($accessible);
 
         // Drop section headers whose children are all hidden (empty sections look broken)
-        return $tree->filter(function (Menu $menu) {
-            return !empty($menu->route_name) || $menu->children->count() > 0;
-        })->values();
+        return $tree->filter(fn (Menu $menu) => !empty($menu->route_name) || $menu->children->count() > 0)
+            ->values();
     }
 
     // ── Private ───────────────────────────────────────────────────────────────

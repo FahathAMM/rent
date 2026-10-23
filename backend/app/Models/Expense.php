@@ -3,20 +3,27 @@
 namespace App\Models;
 
 use App\Models\Administration\User;
-use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Repurposed from a general business expense ledger into per-vehicle
+ * running costs (fuel, service, insurance, licence, ...) so owner profit
+ * reporting is real - see
+ * app-doc/marketplace/01-phase1-architecture.md section 1.1.
+ */
 class Expense extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToCompany;
+    use HasFactory, SoftDeletes, BelongsToShop;
 
     protected $fillable = [
-        'company_id', 'expense_number', 'expense_category_id', 'expense_date', 'vendor_name',
-        'description', 'subtotal', 'tax_rate', 'tax_amount', 'total',
+        'shop_id', 'vehicle_id', 'expense_number', 'expense_category_id', 'expense_date',
+        'expense_type', 'odometer_reading', 'vendor_name', 'description',
+        'subtotal', 'tax_rate', 'tax_amount', 'total',
         'payment_method', 'reference_no', 'notes', 'created_by',
     ];
 
@@ -27,6 +34,11 @@ class Expense extends Model
         'tax_amount'   => 'decimal:2',
         'total'        => 'decimal:2',
     ];
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
+    }
 
     public function category(): BelongsTo
     {

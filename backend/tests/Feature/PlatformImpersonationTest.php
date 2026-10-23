@@ -3,10 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Administration\User;
-use App\Models\Company;
 use App\Models\ImpersonationSession;
 use App\Models\SystemAdmin;
-use Database\Seeders\MenuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,7 +12,7 @@ use Tests\TestCase;
  * Every request here authenticates via a real bearer token (never
  * actingAs()) so the full Sanctum provider-matching path is exercised end
  * to end — this is the mechanism that keeps a platform admin token and a
- * company user token from ever being interchangeable.
+ * marketplace user token from ever being interchangeable.
  */
 class PlatformImpersonationTest extends TestCase
 {
@@ -22,18 +20,15 @@ class PlatformImpersonationTest extends TestCase
 
     protected SystemAdmin $admin;
     protected string $adminToken;
-    protected Company $company;
     protected User $targetUser;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(MenuSeeder::class);
 
         $this->admin = SystemAdmin::factory()->create();
         $this->adminToken = $this->admin->createToken('t')->plainTextToken;
-        $this->company = Company::factory()->create();
-        $this->targetUser = User::factory()->forCompany($this->company)->role('staff')->create();
+        $this->targetUser = User::factory()->create();
     }
 
     private function asAdmin()
@@ -47,11 +42,10 @@ class PlatformImpersonationTest extends TestCase
             ->postJson('/api/platform/impersonation/start', ['user_id' => $this->targetUser->id])
             ->assertOk();
 
-        $response->assertJsonStructure(['message', 'data' => ['token', 'session_id', 'user', 'company']]);
+        $response->assertJsonStructure(['message', 'data' => ['token', 'session_id', 'user']]);
 
         $this->assertDatabaseHas('impersonation_sessions', [
             'system_admin_id' => $this->admin->id,
-            'company_id'      => $this->company->id,
             'user_id'         => $this->targetUser->id,
             'ended_at'        => null,
         ]);
@@ -63,7 +57,7 @@ class PlatformImpersonationTest extends TestCase
         ]);
     }
 
-    public function test_impersonation_token_authenticates_as_the_target_company_user(): void
+    public function test_impersonation_token_authenticates_as_the_target_user(): void
     {
         $start = $this->asAdmin()
             ->postJson('/api/platform/impersonation/start', ['user_id' => $this->targetUser->id])
@@ -103,12 +97,12 @@ class PlatformImpersonationTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_cannot_impersonate_an_inactive_user(): void
+    public function test_cannot_impersonate_a_suspended_user(): void
     {
-        $inactiveUser = User::factory()->forCompany($this->company)->inactive()->create();
+        $suspendedUser = User::factory()->suspended()->create();
 
         $this->asAdmin()
-            ->postJson('/api/platform/impersonation/start', ['user_id' => $inactiveUser->id])
+            ->postJson('/api/platform/impersonation/start', ['user_id' => $suspendedUser->id])
             ->assertUnprocessable();
     }
 }

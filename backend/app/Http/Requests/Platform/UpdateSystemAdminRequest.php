@@ -17,8 +17,8 @@ class UpdateSystemAdminRequest extends FormRequest
             'name'     => 'sometimes|required|string|max:255',
             'email'    => "sometimes|required|email|unique:system_admins,email,{$id}",
             'password' => ['sometimes', 'nullable', 'string', Password::min(8)],
-            'role'     => 'sometimes|required|in:platform_owner,platform_admin',
-            'status'   => 'sometimes|required|in:active,inactive',
+            'admin_role' => 'sometimes|required|in:platform_owner,admin,finance,moderator,support',
+            'is_active' => 'sometimes|required|boolean',
         ];
     }
 }

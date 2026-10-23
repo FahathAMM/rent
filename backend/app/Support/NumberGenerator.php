@@ -2,29 +2,30 @@
 
 namespace App\Support;
 
-use App\Models\CompanySetting;
+use App\Models\ShopSettings;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * Generates sequential document numbers (customer codes, quotation/invoice/
- * payment/expense numbers) safely under concurrent requests by locking the
- * company's settings row for the duration of the increment.
+ * Generates sequential document numbers (bookings, payouts, agreements,
+ * expenses) safely under concurrent requests by locking the shop's
+ * settings row for the duration of the increment.
  *
- * Never generate numbers on the frontend — always call this from the
+ * Never generate numbers on the frontend - always call this from the
  * server-side action/service that creates the record, inside the same
  * DB::transaction() as the insert.
  */
 final class NumberGenerator
 {
     private const TYPES = [
-        'invoice'   => ['invoice_prefix', 'next_invoice_number', true, 5],
+        'booking'   => ['booking_prefix', 'next_booking_number', true, 5],
+        'payout'    => ['payout_prefix', 'next_payout_number', true, 5],
+        'agreement' => ['agreement_prefix', 'next_agreement_number', true, 5],
         'expense'   => ['expense_prefix', 'next_expense_number', true, 5],
         'branch'    => ['branch_prefix', 'next_branch_number', false, 3],
-        'purchase'  => ['purchase_prefix', 'next_purchase_number', true, 5],
     ];
 
-    public static function next(int $companyId, string $type): string
+    public static function next(int $shopId, string $type): string
     {
         if (!isset(self::TYPES[$type])) {
             throw new InvalidArgumentException("Unknown document type [{$type}].");
@@ -32,8 +33,8 @@ final class NumberGenerator
 
         [$prefixField, $counterField, $withYear, $padLength] = self::TYPES[$type];
 
-        return DB::transaction(function () use ($companyId, $prefixField, $counterField, $withYear, $padLength) {
-            $settings = CompanySetting::where('company_id', $companyId)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($shopId, $prefixField, $counterField, $withYear, $padLength) {
+            $settings = ShopSettings::where('shop_id', $shopId)->lockForUpdate()->firstOrFail();
 
             $number = $settings->{$counterField};
             $prefix = $settings->{$prefixField};

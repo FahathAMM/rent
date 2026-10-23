@@ -20,7 +20,7 @@ class AuthController extends Controller
     {
         $result = $this->authService->login($request->validated());
 
-        $user = $result['user']->load('roles', 'permissions', 'company');
+        $user = $result['user']->load('roles', 'permissions', 'activeShopMemberships');
 
         return response()->json([
             'message' => 'Login successful',
@@ -35,10 +35,10 @@ class AuthController extends Controller
     {
         $result = $this->authService->register($request->validated());
 
-        $user = $result['user']->load('roles', 'permissions', 'company');
+        $user = $result['user']->load('roles', 'permissions');
 
         return response()->json([
-            'message' => 'Company registered successfully',
+            'message' => 'Registered successfully',
             'data' => [
                 'user' => new UserResource($user),
                 'token' => $result['token'],
@@ -55,7 +55,7 @@ class AuthController extends Controller
 
     public function me(): JsonResponse
     {
-        $user = AuthUser::user()->load('roles', 'permissions', 'company');
+        $user = AuthUser::user()->load('roles', 'permissions', 'activeShopMemberships');
 
         return response()->json(['data' => new UserResource($user)]);
     }

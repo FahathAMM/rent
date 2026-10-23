@@ -4,7 +4,7 @@ namespace App\Http\Resources\Platform;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** A system/security audit trail entry (create/update/delete/login/impersonation/...) — never a CRM activity. */
+/** A system/security audit trail entry (create/update/delete/approve/suspend/impersonation/...). */
 class PlatformAuditLogResource extends JsonResource
 {
     public function toArray($request): array
@@ -15,14 +15,15 @@ class PlatformAuditLogResource extends JsonResource
             'form'        => $this->form,
             'record_id'   => $this->record_id,
             'record'      => $this->record,
-            'old_values'  => $this->old_values,
-            'new_values'  => $this->new_values,
+            'before'      => $this->before,
+            'after'       => $this->after,
+            'severity'    => $this->severity,
             'ip'          => $this->ip,
             'browser'     => $this->browser,
             'created_at'  => $this->created_at?->toISOString(),
-            'company'     => $this->whenLoaded('company', fn () => $this->company ? [
-                'id'   => $this->company->id,
-                'name' => $this->company->name,
+            'shop'        => $this->whenLoaded('shop', fn () => $this->shop ? [
+                'id'   => $this->shop->id,
+                'name' => $this->shop->name,
             ] : null),
             'user'        => $this->whenLoaded('user', fn () => $this->user ? [
                 'id'    => $this->user->id,

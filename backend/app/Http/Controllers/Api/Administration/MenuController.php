@@ -46,11 +46,18 @@ class MenuController extends Controller
     }
 
     /**
-     * Returns the navigation tree for the authenticated user (filtered by permissions).
+     * Returns the navigation tree for the authenticated user (filtered by
+     * permissions), for the requested audience - 'vendor' (default) or
+     * 'customer'. The frontend's (account) and (vendor) layouts each pass
+     * their own audience.
      */
-    public function navigation(): JsonResponse
+    public function navigation(Request $request): JsonResponse
     {
-        $tree = $this->repo->getNavigation(AuthUser::user());
+        $audience = in_array($request->query('audience'), ['customer', 'vendor'], true)
+            ? $request->query('audience')
+            : 'vendor';
+
+        $tree = $this->repo->getNavigation(AuthUser::user(), $audience);
 
         return response()->json([
             'data' => MenuResource::collection($tree),

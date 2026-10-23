@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\ExpenseCategory;
 
-use App\Support\Tenant;
+use App\Support\VendorContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +15,7 @@ class StoreExpenseCategoryRequest extends FormRequest
         return [
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('expense_categories', 'name')->where(fn ($q) => $q->where('company_id', Tenant::id())),
+                Rule::unique('expense_categories', 'name')->where(fn ($q) => $q->where('shop_id', VendorContext::shopId())),
             ],
             'description' => 'nullable|string',
             'is_active'   => 'boolean',

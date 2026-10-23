@@ -11,7 +11,7 @@ use Spatie\Permission\PermissionRegistrar;
 class Menu extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'route_name', 'icon',
+        'audience', 'name', 'slug', 'route_name', 'icon',
         'parent_id', 'sort_order', 'is_active',
     ];
 
@@ -69,5 +69,10 @@ class Menu extends Model
     public function scopeRoots($query)
     {
         return $query->whereNull('parent_id');
+    }
+
+    public function scopeForAudience($query, string $audience)
+    {
+        return $query->where('audience', $audience);
     }
 }

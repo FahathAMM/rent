@@ -21,8 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
 
-        // Runs across every tenant — console context is intentionally
-        // unrestricted by CompanyScope (see App\Support\Tenant).
+        // Runs across every shop — console context is intentionally
+        // unrestricted by ShopScope (see App\Support\VendorContext).
         //
         // Database Backup is driven by the `automations` table (editable at
         // /platform/settings) rather than hardcoded here — see
@@ -47,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform.admin'     => \App\Http\Middleware\EnsurePlatformAdmin::class,
             'platform.owner'     => \App\Http\Middleware\EnsurePlatformOwner::class,
             'can'                => \App\Http\Middleware\CheckPermission::class,
+            'shop.context'       => \App\Http\Middleware\ResolveShopContext::class,
         ]);
 
         $middleware->statefulApi();

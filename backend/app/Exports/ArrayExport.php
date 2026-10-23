@@ -6,10 +6,10 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
 /**
- * One reusable export for every report in ReportService — each report
- * already shapes its data as {columns, rows}, so a single generic export
- * (used for both CSV and XLSX) covers all of them instead of one class per
- * report type.
+ * One reusable export for every report — a report (built against a
+ * service-layer report builder in a later phase) shapes its data as
+ * {columns, rows}, so a single generic export (used for both CSV and
+ * XLSX) covers all of them instead of one class per report type.
  */
 class ArrayExport implements FromArray, WithHeadings
 {

@@ -2,23 +2,30 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/** A shop's branches and vehicle pickup/return points. */
 class Location extends Model
 {
-    use HasFactory, BelongsToCompany;
+    use HasFactory, BelongsToShop;
 
     protected $fillable = [
-        'company_id', 'name', 'branch_code', 'address', 'city', 'state', 'country',
+        'shop_id', 'name', 'type', 'branch_code', 'address', 'city', 'district', 'country',
         'latitude', 'longitude', 'phone', 'email', 'contact_person', 'working_hours',
-        'is_active', 'notes',
+        'notes', 'is_active',
     ];
 
     protected $casts = [
-        'latitude'  => 'decimal:7',
+        'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'is_active' => 'boolean',
     ];
+
+    public function vehiclePickupLocations(): HasMany
+    {
+        return $this->hasMany(VehiclePickupLocation::class);
+    }
 }

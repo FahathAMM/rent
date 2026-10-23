@@ -156,10 +156,10 @@ export default function ExpensesPage() {
       header: "Actions",
       cell: (row) => (
         <div className="flex gap-1">
-          {can("expense-expenses-edit") && (
+          {can("vendor-expense-expenses-edit") && (
             <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit expense" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
           )}
-          {can("expense-expenses-delete") && (
+          {can("vendor-expense-expenses-delete") && (
             <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete expense" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
@@ -184,7 +184,7 @@ export default function ExpensesPage() {
           breadcrumb={[]}
           defualtSortField="expense_date"
           defaultSortOrder="desc"
-          isSheet={can("expense-expenses-create")}
+          isSheet={can("vendor-expense-expenses-create")}
           openSheet={openCreate}
           model="Expense"
         />

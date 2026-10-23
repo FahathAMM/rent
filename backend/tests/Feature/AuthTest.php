@@ -36,12 +36,12 @@ class AuthTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
-    public function test_inactive_user_cannot_login(): void
+    public function test_suspended_user_cannot_login(): void
     {
-        User::factory()->inactive()->create(['email' => 'inactive@pos.com', 'password' => 'password']);
+        User::factory()->suspended()->create(['email' => 'suspended@pos.com', 'password' => 'password']);
 
         $this->postJson('/api/auth/login', [
-            'email' => 'inactive@pos.com',
+            'email' => 'suspended@pos.com',
             'password' => 'password',
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Menu;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateMenuRequest extends FormRequest
 {
@@ -10,11 +11,17 @@ class UpdateMenuRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('menu')?->id;
+        $menu = $this->route('menu');
+        $id = $menu?->id;
+        $audience = $this->input('audience', $menu?->audience);
 
         return [
+            'audience'   => 'sometimes|required|in:customer,vendor,platform',
             'name'       => 'sometimes|required|string|max:100',
-            'slug'       => "sometimes|required|string|max:100|unique:menus,slug,{$id}|regex:/^[a-z0-9_]+$/",
+            'slug'       => [
+                'sometimes', 'required', 'string', 'max:100', 'regex:/^[a-z0-9_]+$/',
+                Rule::unique('menus', 'slug')->where('audience', $audience)->ignore($id),
+            ],
             'route_name' => 'nullable|string|max:200',
             'icon'       => 'nullable|string|max:100',
             'parent_id'  => "nullable|exists:menus,id|not_in:{$id}",

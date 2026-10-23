@@ -29,15 +29,15 @@ class AuditService
     private static function log(string $action, string $form, ?int $recordId, string $record, ?array $old = null, ?array $new = null): AuditLog
     {
         return AuditLog::create([
-            'user_id'    => AuthUser::id(),
-            'action'     => $action,
-            'form'       => $form,
-            'record_id'  => $recordId,
-            'record'     => $record,
-            'old_values' => $old,
-            'new_values' => $new,
-            'ip'         => request()->ip(),
-            'browser'    => self::detectBrowser(request()->header('User-Agent')),
+            'user_id'   => AuthUser::id(),
+            'action'    => $action,
+            'form'      => $form,
+            'record_id' => $recordId,
+            'record'    => $record,
+            'before'    => $old,
+            'after'     => $new,
+            'ip'        => request()->ip(),
+            'browser'   => self::detectBrowser(request()->header('User-Agent')),
         ]);
     }
 

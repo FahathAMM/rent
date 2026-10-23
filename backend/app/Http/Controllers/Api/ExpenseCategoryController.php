@@ -18,10 +18,10 @@ class ExpenseCategoryController extends Controller
 
     public function __construct(private ExpenseCategoryRepo $repo)
     {
-        $this->middleware('can:expense-categories-view')->only(['index', 'show']);
-        $this->middleware('can:expense-categories-create')->only('store');
-        $this->middleware('can:expense-categories-edit')->only('update');
-        $this->middleware('can:expense-categories-delete')->only('destroy');
+        $this->middleware('can:vendor-expense-categories-view')->only(['index', 'show']);
+        $this->middleware('can:vendor-expense-categories-create')->only('store');
+        $this->middleware('can:vendor-expense-categories-edit')->only('update');
+        $this->middleware('can:vendor-expense-categories-delete')->only('destroy');
     }
 
     public function index(Request $request): JsonResponse

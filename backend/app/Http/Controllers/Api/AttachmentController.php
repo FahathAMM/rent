@@ -18,17 +18,23 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Cross-cutting — the required permission depends on which model the
  * attachment belongs to, so it's checked per-request here rather than via
- * a fixed `can:` middleware (see PERMISSIONS below, extended as new
- * attachable types are added to AppServiceProvider's morphMap).
+ * a fixed `can:` middleware (see PERMISSIONS below).
+ *
+ * This simple "permission-slug per type" pattern only fits attachable
+ * types with uniform, permission-gated visibility (expenses today).
+ * Vehicle images (public), owner/shop verification documents (private,
+ * signed download only) and dispute evidence (restricted) each need
+ * their own visibility rules and get dedicated upload/download endpoints
+ * in a later phase instead of being added here - see
+ * app-doc/marketplace/02-data-model.md "attachments" and
+ * app-doc/marketplace/05-ui-and-api-map.md.
  */
 class AttachmentController extends Controller
 {
     use JsonResponseTrait;
 
     private const PERMISSIONS = [
-        'expense'  => 'expense-expenses',
-        'purchase' => 'purchasing-purchases',
-        'sale'     => 'sales-orders',
+        'expense' => 'vendor-expense-expenses',
     ];
 
     public function __construct(private AttachmentRepo $repo) {}
@@ -36,7 +42,7 @@ class AttachmentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'attachable_type' => 'required|in:expense,purchase,sale',
+            'attachable_type' => 'required|in:expense',
             'attachable_id'   => 'required|integer',
         ]);
 

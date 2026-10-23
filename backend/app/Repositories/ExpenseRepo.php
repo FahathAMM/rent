@@ -6,9 +6,8 @@ use App\Http\Requests\Expense\StoreExpenseRequest;
 use App\Http\Requests\Expense\UpdateExpenseRequest;
 use App\Models\Expense;
 use App\Services\AuthUser;
-use App\Support\DocumentTotals;
 use App\Support\NumberGenerator;
-use App\Support\Tenant;
+use App\Support\VendorContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 
@@ -28,11 +27,12 @@ class ExpenseRepo extends BaseRepository
         $dir  = $request->sort_direction === 'desc' ? 'desc' : 'asc';
 
         return $this->model
-            ->with('category')
+            ->with('category', 'vehicle')
             ->when($request->search, fn ($q) =>
                 $q->where('expense_number', 'like', "%{$request->search}%")
                   ->orWhere('vendor_name', 'like', "%{$request->search}%")
                   ->orWhere('reference_no', 'like', "%{$request->search}%"))
+            ->when($request->vehicle_id, fn ($q) => $q->where('vehicle_id', $request->vehicle_id))
             ->when($request->category_id, fn ($q) => $q->where('expense_category_id', $request->category_id))
             ->when($request->date_from, fn ($q) => $q->whereDate('expense_date', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->whereDate('expense_date', '<=', $request->date_to))
@@ -43,12 +43,12 @@ class ExpenseRepo extends BaseRepository
     public function store(StoreExpenseRequest $request): Expense
     {
         $data = $request->validated();
-        $totals = DocumentTotals::line((float) $data['subtotal'], 1, null, 0, (float) ($data['tax_rate'] ?? 0));
+        [$taxAmount, $total] = $this->lineTotals((float) $data['subtotal'], (float) ($data['tax_rate'] ?? 0));
 
         return $this->model->create($data + [
-            'expense_number' => NumberGenerator::next(Tenant::id(), 'expense'),
-            'tax_amount'     => $totals['tax_amount'],
-            'total'          => $totals['total'],
+            'expense_number' => NumberGenerator::next(VendorContext::shopId(), 'expense'),
+            'tax_amount'     => $taxAmount,
+            'total'          => $total,
             'created_by'     => AuthUser::id(),
         ]);
     }
@@ -56,11 +56,11 @@ class ExpenseRepo extends BaseRepository
     public function update(Expense $expense, UpdateExpenseRequest $request): Expense
     {
         $data = $request->validated();
-        $totals = DocumentTotals::line((float) $data['subtotal'], 1, null, 0, (float) ($data['tax_rate'] ?? 0));
+        [$taxAmount, $total] = $this->lineTotals((float) $data['subtotal'], (float) ($data['tax_rate'] ?? 0));
 
         $expense->update($data + [
-            'tax_amount' => $totals['tax_amount'],
-            'total'      => $totals['total'],
+            'tax_amount' => $taxAmount,
+            'total'      => $total,
         ]);
 
         return $expense->fresh();
@@ -69,5 +69,13 @@ class ExpenseRepo extends BaseRepository
     public function destroy(Expense $expense): void
     {
         $expense->delete();
+    }
+
+    /** @return array{0: float, 1: float} [tax_amount, total] */
+    private function lineTotals(float $subtotal, float $taxRate): array
+    {
+        $taxAmount = round($subtotal * $taxRate / 100, 2);
+
+        return [$taxAmount, round($subtotal + $taxAmount, 2)];
     }
 }

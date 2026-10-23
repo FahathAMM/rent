@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ImpersonationSession extends Model
 {
     protected $fillable = [
-        'system_admin_id', 'company_id', 'user_id', 'personal_access_token_id',
+        'system_admin_id', 'user_id', 'personal_access_token_id',
         'started_at', 'ended_at', 'ip_address', 'user_agent',
     ];
 
@@ -21,11 +21,6 @@ class ImpersonationSession extends Model
     public function systemAdmin(): BelongsTo
     {
         return $this->belongsTo(SystemAdmin::class);
-    }
-
-    public function company(): BelongsTo
-    {
-        return $this->belongsTo(Company::class);
     }
 
     public function user(): BelongsTo

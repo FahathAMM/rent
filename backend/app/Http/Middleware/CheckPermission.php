@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Registered per-action in a controller's constructor (the authorizeResource
  * replacement) — e.g. $this->middleware('can:crm-leads-edit,lead')->only('update').
  * The optional second argument is a route parameter name; when given, its
- * resolved model is passed to User::can() for the company_id scoping check.
+ * resolved model is passed to User::can() for the shop_id scoping check.
  */
 class CheckPermission
 {

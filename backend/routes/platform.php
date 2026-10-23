@@ -1,22 +1,22 @@
 <?php
 
+use App\Http\Controllers\Api\Administration\MenuController;
+use App\Http\Controllers\Api\Administration\PermissionController;
+use App\Http\Controllers\Api\Administration\RoleController;
 use App\Http\Controllers\Api\Platform\AuditLogController as PlatformAuditLogController;
 use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
-use App\Http\Controllers\Api\Platform\CompanyController as PlatformCompanyController;
-use App\Http\Controllers\Api\Platform\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
-use App\Http\Controllers\Api\Platform\PlanController as PlatformPlanController;
-use App\Http\Controllers\Api\Platform\SubscriptionController as PlatformSubscriptionController;
 use App\Http\Controllers\Api\Platform\SystemAdminController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Platform (SaaS Admin) — entirely separate identity/guard from the ───────
-// company auth block in api.php. Never nested inside `auth:sanctum`; a
-// company user's token is rejected by the `platform` guard (see config/auth.php).
+// account/vendor routes in api.php. Never nested inside `auth:sanctum`; a
+// marketplace user's token is rejected by the `platform` guard (see
+// config/auth.php).
 Route::prefix('platform')->group(function () {
     Route::post('login', [PlatformAuthController::class, 'login']);
 
@@ -24,27 +24,24 @@ Route::prefix('platform')->group(function () {
         Route::post('logout', [PlatformAuthController::class, 'logout']);
         Route::get('me',      [PlatformAuthController::class, 'me']);
 
-        Route::get('dashboard', [PlatformDashboardController::class, 'index']);
-
-        Route::get('companies',                    [PlatformCompanyController::class, 'index']);
-        Route::post('companies',                   [PlatformCompanyController::class, 'store']);
-        Route::get('companies/{company}',           [PlatformCompanyController::class, 'show']);
-        Route::get('companies/{company}/users',      [PlatformCompanyController::class, 'users']);
-        Route::post('companies/{company}/suspend',   [PlatformCompanyController::class, 'suspend']);
-        Route::post('companies/{company}/activate',  [PlatformCompanyController::class, 'activate']);
-
         Route::get('audit-logs',  [PlatformAuditLogController::class, 'index']);
-        Route::get('subscriptions', [PlatformSubscriptionController::class, 'index']);
 
-        Route::get('plans',              [PlatformPlanController::class, 'index']);
-        Route::post('plans',             [PlatformPlanController::class, 'store']);
-        Route::put('plans/{plan}',       [PlatformPlanController::class, 'update']);
-        Route::delete('plans/{plan}',    [PlatformPlanController::class, 'destroy']);
-
-        // Platform branding shown in every tenant's app sidebar
+        // Platform branding shown on the public site and every account/vendor sidebar
         Route::get('details',  [PlatformDetailController::class, 'show']);
         Route::put('details',  [PlatformDetailController::class, 'update']);
         Route::post('details', [PlatformDetailController::class, 'update']); // multipart + _method=PUT (logo upload)
+
+        // Roles, permissions and the two marketplace-facing nav trees are
+        // shared across every shop, so only a platform admin may change
+        // them (a shop owner editing "roles" or "menus" would otherwise
+        // affect every other shop on the platform) — reuses the
+        // Administration controllers as-is.
+        Route::apiResource('roles', RoleController::class)->except(['show']);
+        Route::get('permissions', [PermissionController::class, 'index']);
+        Route::get('menus',           [MenuController::class, 'index']);
+        Route::post('menus',          [MenuController::class, 'store']);
+        Route::put('menus/{menu}',    [MenuController::class, 'update']);
+        Route::delete('menus/{menu}', [MenuController::class, 'destroy']);
 
         // Managing other platform admin accounts — Platform Owner only.
         Route::get('users', [SystemAdminController::class, 'index']);
@@ -79,5 +76,12 @@ Route::prefix('platform')->group(function () {
 
         Route::post('impersonation/start', [ImpersonationController::class, 'start']);
         Route::post('impersonation/stop',  [ImpersonationController::class, 'stop']);
+
+        // NOTE: dashboard, customers, owner/shop verification, listing
+        // moderation, categories, booking oversight, payments, commissions,
+        // payouts, reconciliation, disputes, abuse reports, review
+        // moderation and platform settings land in Phases 2–8 once their
+        // controllers and models' business logic exist — see
+        // app-doc/marketplace/05-ui-and-api-map.md and 06-plan-and-risks.md.
     });
 });

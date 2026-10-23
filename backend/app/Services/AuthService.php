@@ -4,14 +4,17 @@ namespace App\Services;
 
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\Administration\User;
-use App\Models\Company;
-use App\Models\CompanySetting;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
+/**
+ * Every account starts as a plain customer - see
+ * app-doc/marketplace/01-phase1-architecture.md "Identity & ownership
+ * model". Becoming a vehicle owner or shop owner is a separate onboarding
+ * flow (owner_profiles / rental_shops), not part of registration.
+ */
 class AuthService
 {
     public function login(array $credentials): array
@@ -24,63 +27,35 @@ class AuthService
             ]);
         }
 
-        if (!$user->is_active) {
+        if (!$user->isActive()) {
             throw ValidationException::withMessages([
-                'email' => ['Your account has been deactivated.'],
+                'email' => ['Your account is ' . $user->status . '.'],
             ]);
         }
 
-        // `initiate` (awaiting Platform Admin activation) can still log in —
-        // they land on the account-pending page instead of the dashboard
-        // (see EnsureCompanyActivated). Only a company an admin has actually
-        // suspended/deactivated blocks login outright.
-        if ($user->company_id && in_array($user->company?->status, ['inactive', 'suspended'], true)) {
-            throw ValidationException::withMessages([
-                'email' => ['Your company account is currently ' . $user->company->status . '.'],
-            ]);
-        }
+        $user->forceFill(['last_login_at' => now()])->save();
 
-        $token = $user->createToken('pos-token', ['*'], now()->addDays(7))->plainTextToken;
+        $token = $user->createToken('marketplace-token', ['*'], now()->addDays(7))->plainTextToken;
 
         return ['user' => $user, 'token' => $token];
     }
 
-    /**
-     * Registration flow: company → owner account → login. Public sign-up
-     * starts locked out of the app until a Platform Admin activates it (see
-     * EnsureCompanyActivated) — no subscription/plan is created here.
-     *
-     * Inline on purpose: this project avoids Action classes; the previous
-     * App\Actions\CreateCompanyAction this used to delegate to never
-     * actually existed in the repo.
-     */
     public function register(array $data): array
     {
-        [$user, $company] = DB::transaction(function () use ($data) {
-            $company = Company::create([
-                'name'   => $data['company_name'],
-                'status' => 'initiate',
-            ]);
+        $user = User::create([
+            'name'                => $data['name'],
+            'email'               => $data['email'],
+            'phone'               => $data['phone'] ?? null,
+            'password'            => Hash::make($data['password']),
+            'status'              => User::STATUS_ACTIVE,
+            'registration_source' => 'web',
+        ]);
 
-            CompanySetting::create(['company_id' => $company->id]);
+        $user->assignRole('customer');
 
-            $user = User::create([
-                'company_id' => $company->id,
-                'name'       => $data['name'],
-                'email'      => $data['email'],
-                'phone'      => $data['phone'] ?? null,
-                'password'   => Hash::make($data['password']),
-                'is_active'  => true,
-            ]);
+        $token = $user->createToken('marketplace-token', ['*'], now()->addDays(7))->plainTextToken;
 
-            $user->syncRoles(['owner']);
-
-            return [$user, $company];
-        });
-
-        $token = $user->createToken('pos-token', ['*'], now()->addDays(7))->plainTextToken;
-
-        return ['user' => $user, 'token' => $token, 'company' => $company];
+        return ['user' => $user, 'token' => $token];
     }
 
     public function logout(User $user): void
