@@ -21,8 +21,9 @@ class UserResource extends JsonResource
             'roles'       => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')->values()->all()),
             'permissions' => $this->whenLoaded('permissions', fn () => $this->getAllPermissions()->pluck('name')->values()->all()),
             'shops'       => $this->whenLoaded('activeShopMemberships', fn () => $this->activeShopMemberships->map(fn ($m) => [
-                'shop_id' => $m->shop_id,
-                'role'    => $m->role,
+                'shop_id'   => $m->shop_id,
+                'shop_name' => $m->shop?->name,
+                'role'      => $m->role,
             ])->values()->all()),
             'created_at'  => $this->created_at->toISOString(),
         ];

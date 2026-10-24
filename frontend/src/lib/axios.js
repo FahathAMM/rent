@@ -14,6 +14,15 @@ api.interceptors.request.use((config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // The active shop for vendor-side requests — see
+    // ResolveShopContext/VendorContext on the backend and
+    // app-doc/marketplace/03-permissions-model.md "Layer 2". Only ever
+    // read here; nothing else should attach this header directly.
+    const shopId = localStorage.getItem("active_shop_id");
+    if (shopId) {
+      config.headers["X-Shop-Id"] = shopId;
+    }
   }
   return config;
 });
@@ -29,13 +38,6 @@ api.interceptors.response.use(
       localStorage.removeItem("pos_token");
       localStorage.removeItem("pos_user");
       window.location.href = "/login";
-    }
-    // Company still `initiate` (self-registered, not yet activated by a
-    // Platform Admin) — EnsureCompanyActivated blocks everything except the
-    // account-pending page's own reads. Redirect there instead of leaving
-    // whatever form/list was mid-request looking silently broken.
-    if (error.response?.data?.company_pending && typeof window !== "undefined") {
-      window.location.href = "/account-pending";
     }
     return Promise.reject(error);
   }

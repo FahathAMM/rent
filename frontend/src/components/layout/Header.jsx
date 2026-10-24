@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Building2, Check, ChevronDownIcon, ChevronLeft, ChevronRight, CreditCardIcon, LogOutIcon, Menu, SettingsIcon, UserIcon, UsersIcon } from "lucide-react";
+import { Check, ChevronDownIcon, ChevronLeft, ChevronRight, LogOutIcon, Menu, SettingsIcon, UserIcon, UsersIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/iconMap";
 import { TILE_COLORS } from "@/lib/tileColors";
@@ -122,29 +122,6 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
           <Menu className="h-5 w-5" />
         </Button>
 
-        {user?.company?.name && (
-          <>
-            <Link
-              href="/settings/company"
-              className="group hidden items-center gap-2.5 rounded-xl border bg-card px-2.5 py-1.5 min-w-0 max-w-[200px] shrink-0 shadow-sm transition-colors hover:bg-accent sm:flex"
-            >
-              {user.company.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.company.logo} alt={user.company.name} className="size-8 rounded-lg object-contain shrink-0 ring-1 ring-border bg-background shadow-sm" />
-              ) : (
-                <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
-                  <Building2 className="h-4 w-4" />
-                </div>
-              )}
-              <div className="min-w-0 leading-tight">
-                <p className="text-sm font-semibold tracking-tight truncate">{user.company.name}</p>
-                <p className="text-[10px] text-muted-foreground">Workspace</p>
-              </div>
-            </Link>
-            <div className="hidden h-8 w-px bg-border shrink-0 sm:block" aria-hidden="true" />
-          </>
-        )}
-
         <div className="group relative flex-1 min-w-0">
           {canScrollLeft && (
             <Button
@@ -198,9 +175,6 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
               </div>
               <div className="hidden sm:flex flex-col items-start leading-tight min-w-0">
                 <span className="text-sm font-medium truncate">{user?.name}</span>
-                {user?.company?.name && (
-                  <span className="text-[11px] text-muted-foreground font-normal truncate">{user.company.name}</span>
-                )}
               </div>
               <ChevronDownIcon className="size-4 opacity-60" aria-hidden="true" />
             </Button>
@@ -220,30 +194,24 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/profile">
+                <Link href="/vendor/profile">
                   <UserIcon aria-hidden="true" />
                   Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/subscription">
-                  <CreditCardIcon aria-hidden="true" />
-                  Billing
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings/company">
+                <Link href="/vendor/settings/shop">
                   <SettingsIcon aria-hidden="true" />
-                  Settings
+                  Shop Settings
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/users">
+                <Link href="/vendor/staff">
                   <UsersIcon aria-hidden="true" />
-                  Team
+                  Staff
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

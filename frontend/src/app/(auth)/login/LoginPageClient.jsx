@@ -36,15 +36,15 @@ export default function LoginPageClient({ initialBrand, initialView = "login" })
     initialData: initialBrand,
   });
   const brand = data ?? {};
-  const brandName = brand.name || "MyBiz2Flow";
-  const tagline = brand.tagline || "One Flow. One Business.";
+  const brandName = brand.name || "RentLanka";
+  const tagline = brand.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
   const logoUrl = brand.login_logo || brand.logo || null;
-  const eyebrow = brand.login_eyebrow || "Built for growing sales & finance teams";
-  const headingText = (brand.login_heading || "One flow to run your business.").replace(/\.$/, "");
+  const eyebrow = brand.login_eyebrow || "Cars, vans and more from trusted local owners";
+  const headingText = (brand.login_heading || "Rent any vehicle, anywhere.").replace(/\.$/, "");
   const headingWords = headingText.split(" ");
   const headingHighlight = headingWords.pop();
   const headingPrefix = headingWords.join(" ");
-  const description = brand.login_description || `${tagline} — CRM, quotations, invoicing, expenses and accounting in one place. Sign in to pick up right where you left off.`;
+  const description = brand.login_description || `${tagline} Browse vehicles from verified owners and shops, book in minutes, and pick up right where you left off.`;
 
   return (
     <div className="bg-background relative isolate h-svh w-full overflow-hidden">

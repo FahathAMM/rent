@@ -14,6 +14,7 @@ import {
   Scale, Waves, GitCompareArrows, FileMinus, FilePlus, FileStack, HandCoins,
   Laptop, MapPin, Inbox, AlertTriangle, FileBarChart, Recycle,
   Monitor, Smartphone, Keyboard, Printer, Armchair, Router,
+  Car, CalendarCheck, Heart, User, Bike, Bus, CarFront, Sparkles,
 } from "lucide-react";
 
 export const iconMap = {
@@ -114,6 +115,14 @@ export const iconMap = {
   Printer,
   Armchair,
   Router,
+  Car,
+  CalendarCheck,
+  Heart,
+  User,
+  Bike,
+  Bus,
+  CarFront,
+  Sparkles,
 };
 
 export const iconNames = Object.keys(iconMap).sort();

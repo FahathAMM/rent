@@ -5,6 +5,8 @@ export function StatusBadge({ status, className }) {
   const variants = {
     active: "success",
     inactive: "secondary",
+    suspended: "warning",
+    banned: "destructive",
     completed: "success",
     cancelled: "destructive",
     true: "success",
@@ -21,6 +23,8 @@ export function StatusBadge({ status, className }) {
   const labels = {
     active: "Active",
     inactive: "Inactive",
+    suspended: "Suspended",
+    banned: "Banned",
     completed: "Completed",
     cancelled: "Cancelled",
     true: "Active",

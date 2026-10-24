@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +66,21 @@ export function TextareaInput({ label, error, required, className, ...props }) {
     <FormField label={label} error={error} required={required} className={className}>
       <Textarea className={cn(error && "border-destructive")} {...props} />
     </FormField>
+  );
+}
+
+export function CheckboxInput({ label, error, checked, onChange, className, id }) {
+  const inputId = id ?? label?.replace(/\s+/g, "-").toLowerCase();
+  return (
+    <div className={cn("flex items-center gap-2 pt-5", className)}>
+      <Checkbox id={inputId} checked={checked} onCheckedChange={onChange} />
+      {label && (
+        <Label htmlFor={inputId} className="text-sm font-normal cursor-pointer">
+          {label}
+        </Label>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
   );
 }
 

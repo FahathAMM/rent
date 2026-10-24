@@ -28,25 +28,20 @@ export const useAuthStore = create(
 
       updateUser: (user) => set({ user }),
 
-      isAdmin: () => (get().user?.roles ?? []).includes("admin"),
-
-      // Check a Spatie permission string e.g. "create products". Mirrors
-      // App\Models\Administration\User::can() on the backend — super-admin
-      // bypasses the check entirely rather than relying on the permissions
-      // array actually listing every permission.
-      can: (permission) => {
-        if (get().hasRole("super-admin")) return true;
-
-        const perms = get().user?.permissions ?? [];
-        return perms.includes(permission);
-      },
-
-      // Check a Spatie role name. Mirrors the backend's User::hasRole() —
-      // super-admin passes as any role, not just its own name.
-      hasRole: (role) => {
+      // Every account is at minimum a customer; vehicle-owner/shop-owner/
+      // shop-staff are additive on top — see app-doc/marketplace/03-
+      // permissions-model.md "Layer 1". There is no bypass-everything role
+      // on this guard (that's exclusively SystemAdmin on the platform
+      // guard, a completely different login).
+      isVendor: () => {
         const roles = get().user?.roles ?? [];
-        return roles.includes("super-admin") || roles.includes(role);
+        return ["vehicle-owner", "shop-owner", "shop-staff"].some((r) => roles.includes(r));
       },
+
+      // Check a Spatie permission string, e.g. "vendor-vehicles-list-view".
+      can: (permission) => (get().user?.permissions ?? []).includes(permission),
+
+      hasRole: (role) => (get().user?.roles ?? []).includes(role),
     }),
     {
       name: "pos-auth",

@@ -138,7 +138,7 @@ function NavLink({ item, pathname, depth, onNavigate }) {
 }
 
 // ── Sidebar — Start-menu-style tile grid for the active module's pages ───────
-export function Sidebar({ activeModule, navigation, open = false, onClose }) {
+export function Sidebar({ activeModule, navigation, open = false, onClose, topSlot, brandHref = "/vendor/dashboard" }) {
   const pathname = usePathname();
   const standaloneItems = navigation?.filter((item) => item.route_name) ?? [];
 
@@ -147,8 +147,8 @@ export function Sidebar({ activeModule, navigation, open = false, onClose }) {
     queryFn: () => platformDetailService.get().then((r) => r.data.data),
     staleTime: 60_000,
   });
-  const brandName = brand.name || "MyBiz2Flow";
-  const tagline   = brand.tagline || "One Flow. One Business.";
+  const brandName = brand.name || "RentLanka";
+  const tagline   = brand.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
   const logoUrl   = brand.logo || null;
 
   return (
@@ -173,7 +173,7 @@ export function Sidebar({ activeModule, navigation, open = false, onClose }) {
         {/* Brand */}
         <div className="flex items-center justify-between gap-2 border-b border-sidebar-border p-3">
           <Link
-            href="/dashboard"
+            href={brandHref}
             onClick={onClose}
             className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 shadow-sm transition-colors hover:bg-sidebar-accent/50"
           >
@@ -194,6 +194,8 @@ export function Sidebar({ activeModule, navigation, open = false, onClose }) {
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {topSlot}
 
         {/* Tile grid — Dashboard + the active module's pages, two per row */}
         <nav className="flex-1 px-3 py-3 overflow-y-auto thin-scrollbar">

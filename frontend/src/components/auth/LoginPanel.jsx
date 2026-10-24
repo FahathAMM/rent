@@ -7,8 +7,12 @@ import { BrandLogo } from "@/components/auth/BrandLogo";
 import { LoginFormFields } from "@/components/auth/LoginFormFields";
 import { DevCredit } from "@/components/auth/DevCredit";
 
-const DEMO_CREDENTIALS = { email: "demo@chickenshop.com", password: "password" };
-
+/**
+ * A vehicle-owner/shop-owner/shop-staff lands on the vendor dashboard;
+ * every other account (plain customer) lands on their account overview —
+ * see app-doc/marketplace/01-phase1-architecture.md "Identity & ownership
+ * model" for why a single login can mean either.
+ */
 export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
   const { login } = useAuth();
   const router = useRouter();
@@ -16,30 +20,21 @@ export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
-
-  const signIn = async (credentials) => {
-    setErrors({});
-    try {
-      const user = await login(credentials);
-      router.push(user.company?.status === "initiate" ? "/account-pending" : "/dashboard");
-    } catch (err) {
-      const message = err.networkError ?? err.response?.data?.message ?? "Login failed";
-      setErrors(err.response?.data?.errors ?? { email: [message] });
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
     setLoading(true);
-    await signIn(form);
-    setLoading(false);
-  };
-
-  const handleDemoLogin = async () => {
-    setDemoLoading(true);
-    await signIn(DEMO_CREDENTIALS);
-    setDemoLoading(false);
+    try {
+      const user = await login(form);
+      const isVendor = (user.roles ?? []).some((r) => ["vehicle-owner", "shop-owner", "shop-staff"].includes(r));
+      router.push(isVendor ? "/vendor/dashboard" : "/account");
+    } catch (err) {
+      const message = err.networkError ?? err.response?.data?.message ?? "Login failed";
+      setErrors(err.response?.data?.errors ?? { email: [message] });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,11 +59,8 @@ export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
         setForm={setForm}
         errors={errors}
         loading={loading}
-        demoLoading={demoLoading}
         onSubmit={handleSubmit}
-        onDemoLogin={handleDemoLogin}
         onSwitchToRegister={onSwitchToRegister}
-        dividerBg="bg-card"
       />
 
       <DevCredit className="mt-4 pt-3 border-t" />

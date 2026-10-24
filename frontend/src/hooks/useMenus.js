@@ -19,12 +19,12 @@ export function useMenusFlat() {
   });
 }
 
-export function useNavigationMenu() {
+export function useNavigationMenu(audience = "vendor") {
   // Only run when a token exists (avoids 401 on login page transition)
   const hasToken = typeof window !== "undefined" && !!localStorage.getItem("pos_token");
   return useQuery({
-    queryKey: ["menus", "navigation"],
-    queryFn: () => menuService.navigation().then((r) => r.data.data),
+    queryKey: ["menus", "navigation", audience],
+    queryFn: () => menuService.navigation(audience).then((r) => r.data.data),
     staleTime: 30_000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,

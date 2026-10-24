@@ -1,0 +1,164 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { publicService } from "@/services/publicService";
+import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Car, Users, Fuel, Gauge, Briefcase, ShieldCheck, MapPin, Loader2, ArrowLeft,
+} from "lucide-react";
+
+function Spec({ icon: Icon, label, value }) {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium capitalize">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function VehicleDetailPage() {
+  const { slug } = useParams();
+  const { format } = useCurrencyFormat();
+
+  const { data: vehicle, isLoading } = useQuery({
+    queryKey: ["public-vehicle", slug],
+    queryFn: () => publicService.vehicle(slug).then((r) => r.data.data),
+  });
+
+  const { data: reviews } = useQuery({
+    queryKey: ["public-vehicle-reviews", slug],
+    queryFn: () => publicService.vehicleReviews(slug).then((r) => r.data.data),
+    enabled: !!vehicle,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-center">
+        <p className="text-lg font-semibold">Vehicle not found</p>
+        <Button asChild variant="outline"><Link href="/search">Back to search</Link></Button>
+      </div>
+    );
+  }
+
+  const image = vehicle.images?.find((i) => i.is_primary)?.url ?? vehicle.images?.[0]?.url;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3">
+          <Link href="/search" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to search
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5">
+          <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl border bg-muted">
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt={vehicle.title} className="h-full w-full object-cover" />
+            ) : (
+              <Car className="h-16 w-16 text-muted-foreground/30" />
+            )}
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-bold">{vehicle.title}</h1>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+              Offered by <span className="font-medium text-foreground">{vehicle.shop?.name}</span>
+              {vehicle.shop?.is_verified && <ShieldCheck className="h-4 w-4 text-emerald-600" />}
+              {vehicle.shop?.city && <><MapPin className="ml-1 h-3.5 w-3.5" />{vehicle.shop.city}</>}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Spec icon={Users} label="Seats" value={vehicle.seating_capacity} />
+            <Spec icon={Fuel} label="Fuel" value={vehicle.fuel_type} />
+            <Spec icon={Gauge} label="Transmission" value={vehicle.transmission} />
+            <Spec icon={Briefcase} label="Luggage" value={vehicle.luggage_capacity} />
+          </div>
+
+          {vehicle.description && (
+            <div>
+              <h2 className="mb-2 font-semibold">About this vehicle</h2>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{vehicle.description}</p>
+            </div>
+          )}
+
+          {vehicle.features?.length > 0 && (
+            <div>
+              <h2 className="mb-2 font-semibold">Features</h2>
+              <div className="flex flex-wrap gap-2">
+                {vehicle.features.map((feat) => (
+                  <span key={feat} className="rounded-full border bg-muted px-3 py-1 text-xs">{feat}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h2 className="mb-2 font-semibold">Reviews {vehicle.rating_count > 0 && `(${vehicle.rating_count})`}</h2>
+            {reviews?.length ? (
+              <div className="space-y-3">
+                {reviews.map((r) => (
+                  <Card key={r.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{r.reviewer_name ?? "Verified renter"}</p>
+                        <p className="text-sm">★ {r.rating}/5</p>
+                      </div>
+                      {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No reviews yet.</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <Card className="sticky top-6">
+            <CardContent className="space-y-4 p-5">
+              <div>
+                <p className="text-2xl font-bold">{format(vehicle.pricing?.daily_rate)}<span className="text-sm font-normal text-muted-foreground">/day</span></p>
+                {vehicle.pricing?.weekly_rate && (
+                  <p className="text-sm text-muted-foreground">{format(vehicle.pricing.weekly_rate)}/week</p>
+                )}
+              </div>
+              {vehicle.pricing?.security_deposit > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Security deposit: {format(vehicle.pricing.security_deposit)} ({vehicle.pricing.deposit_method === "cash_on_pickup" ? "collected at pickup" : "prepaid"})
+                </p>
+              )}
+              <Button className="w-full" size="lg" disabled>
+                Request to book
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Booking requests land in a later phase — see app-doc/marketplace/04-lifecycles.md.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -7,7 +7,12 @@ import {
 } from "@/components/forms/FormField";
 import { Loader2 } from "lucide-react";
 
-/** Company/owner/password fields + submit + sign-in link — the counterpart to LoginFormFields. */
+/**
+ * Every account starts as a plain customer — see
+ * app-doc/marketplace/01-phase1-architecture.md "Identity & ownership
+ * model". Becoming a vehicle owner or shop owner is a separate
+ * onboarding flow, not part of sign-up.
+ */
 export function RegisterFormFields({
   form,
   setForm,
@@ -25,38 +30,30 @@ export function RegisterFormFields({
 
         <div className="grid grid-cols-2 gap-3">
           <TextInput
-            label="Company name"
-            placeholder="Acme Trading LLC"
-            value={form.company_name}
-            onChange={set("company_name")}
-            required
-            error={errors.company_name?.[0]}
-            inputClassName="h-9 text-sm"
-            className="col-span-2"
-          />
-          <TextInput
             label="Your name"
-            placeholder="John Doe"
+            placeholder="Nimal Perera"
             value={form.name}
             onChange={set("name")}
             required
             error={errors.name?.[0]}
             inputClassName="h-9 text-sm"
+            className="col-span-2"
           />
           <TextInput
             label="Email"
             type="email"
-            placeholder="you@company.com"
+            placeholder="you@example.com"
             value={form.email}
             onChange={set("email")}
             required
             error={errors.email?.[0]}
             inputClassName="h-9 text-sm"
+            className="col-span-2"
           />
           <TextInput
             label="Phone"
             type="tel"
-            placeholder="+971 50 000 0000"
+            placeholder="07X XXX XXXX"
             value={form.phone}
             onChange={set("phone")}
             error={errors.phone?.[0]}
@@ -83,7 +80,7 @@ export function RegisterFormFields({
         </div>
         <Button type="submit" className="w-full" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Create company
+          Create account
         </Button>
       </form>
 

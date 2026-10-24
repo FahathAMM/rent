@@ -8,7 +8,6 @@ import { RegisterFormFields } from "@/components/auth/RegisterFormFields";
 import { DevCredit } from "@/components/auth/DevCredit";
 
 const EMPTY_FORM = {
-  company_name: "",
   name: "",
   email: "",
   phone: "",
@@ -29,11 +28,11 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
     setErrors({});
     setLoading(true);
     try {
-      const user = await register(form);
-      router.push(user.company?.status === "initiate" ? "/account-pending" : "/dashboard");
+      await register(form);
+      router.push("/account");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Registration failed";
-      setErrors(err.response?.data?.errors ?? { company_name: [message] });
+      setErrors(err.response?.data?.errors ?? { email: [message] });
     } finally {
       setLoading(false);
     }
@@ -52,8 +51,8 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
       </div>
 
       <div className="mb-4 space-y-1 text-center lg:text-left">
-        <h2 className="text-lg font-semibold tracking-tight">Create your company</h2>
-        <p className="text-muted-foreground text-xs">Start your free trial — no credit card required</p>
+        <h2 className="text-lg font-semibold tracking-tight">Create your account</h2>
+        <p className="text-muted-foreground text-xs">Rent any vehicle, anywhere in Sri Lanka</p>
       </div>
 
       <RegisterFormFields
