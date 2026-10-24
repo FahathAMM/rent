@@ -8,11 +8,13 @@ use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\DashboardController as PlatformDashboardController;
+use App\Http\Controllers\Api\Platform\DisputeController as PlatformDisputeController;
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
 use App\Http\Controllers\Api\Platform\OwnerVerificationController;
 use App\Http\Controllers\Api\Platform\PayoutController as PlatformPayoutController;
+use App\Http\Controllers\Api\Platform\ReportController as PlatformReportController;
 use App\Http\Controllers\Api\Platform\ReviewController as PlatformReviewController;
 use App\Http\Controllers\Api\Platform\ShopVerificationController;
 use App\Http\Controllers\Api\Platform\SystemAdminController;
@@ -134,9 +136,23 @@ Route::prefix('platform')->group(function () {
         Route::post('reviews/{review}/reject',  [PlatformReviewController::class, 'reject']);
         Route::post('reviews/{review}/hide',    [PlatformReviewController::class, 'hide']);
 
+        // Disputes — see app-doc/marketplace/05-ui-and-api-map.md
+        // "/platform/disputes". No shop-scope bypass is needed to read
+        // across shops here: ShopScope's platform-admin branch already
+        // leaves this guard unrestricted (see ShopScope's docblock).
+        Route::get('disputes',                   [PlatformDisputeController::class, 'index']);
+        Route::get('disputes/{reference}',        [PlatformDisputeController::class, 'show']);
+        Route::post('disputes/{dispute}/assign',  [PlatformDisputeController::class, 'assign']);
+        Route::post('disputes/{dispute}/resolve', [PlatformDisputeController::class, 'resolve']);
+        Route::post('disputes/{dispute}/messages', [PlatformDisputeController::class, 'addMessage']);
+
+        // Abuse / fraud reports — see "/platform/abuse-reports".
+        Route::get('abuse-reports',               [PlatformReportController::class, 'index']);
+        Route::post('abuse-reports/{report}/action', [PlatformReportController::class, 'action']);
+
         // NOTE: customers, categories, booking oversight, payments,
-        // commissions, reconciliation, disputes and abuse reports land
-        // in Phases 7–8 once their controllers exist — see
-        // app-doc/marketplace/05-ui-and-api-map.md and 06-plan-and-risks.md.
+        // commissions and reconciliation land in Phase 8 once their
+        // controllers exist — see app-doc/marketplace/05-ui-and-api-map.md
+        // and 06-plan-and-risks.md.
     });
 });

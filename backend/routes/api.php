@@ -5,16 +5,20 @@ use App\Http\Controllers\Api\Administration\MenuController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\DisputeController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
 use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
+use App\Http\Controllers\Api\Vendor\InquiryController as VendorInquiryController;
 use App\Http\Controllers\Api\Vendor\PayoutController as VendorPayoutController;
 use App\Http\Controllers\Api\Vendor\ReviewController as VendorReviewController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
@@ -101,14 +105,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('reviews', [ReviewController::class, 'index']);
     Route::post('reviews', [ReviewController::class, 'store']);
 
+    // Favorites — ownership by user_id, same reasoning as reviews. A
+    // favorited vehicle may belong to any shop, so the lookup goes
+    // through CustomerFavoriteQuery (the sanctioned bypass) rather than
+    // a bare Vehicle::find(); {vehicle} below is always a plain id,
+    // never Eloquent-bound, so ShopScope never gets a chance to fail
+    // this closed for a customer with no shop context.
+    Route::get('favorites', [FavoriteController::class, 'index']);
+    Route::post('favorites/{vehicle}', [FavoriteController::class, 'store']);
+    Route::delete('favorites/{vehicle}', [FavoriteController::class, 'destroy']);
+
+    // Disputes — raised by either side of a booking (customer or the
+    // shop's owner/staff); every account holds the customer role, so
+    // both sides reach these same routes. See CustomerDisputeQuery and
+    // DisputeController's docblocks.
+    Route::get('disputes', [DisputeController::class, 'index']);
+    Route::post('disputes', [DisputeController::class, 'store']);
+    Route::get('disputes/{reference}', [DisputeController::class, 'show']);
+    Route::post('disputes/{reference}/messages', [DisputeController::class, 'addMessage']);
+
+    // Abuse / fraud reporting against a vehicle, review, shop or user.
+    Route::post('reports', [ReportController::class, 'store']);
+
     // Shared by both the customer and vendor apps — a notification
     // belongs to the User model itself, never to a shop.
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/{id}/read', [NotificationController::class, 'markRead']);
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
-
-    // NOTE: favorites, disputes land in a later phase once their
-    // controllers exist — see app-doc/marketplace/05-ui-and-api-map.md.
 
     // ─── Vendor-side — requires an active shop context ───────────────────────
     // shop.context validates X-Shop-Id against the caller's shop_members
@@ -170,6 +193,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('payouts/{payout}', [VendorPayoutController::class, 'show']);
             Route::get('reviews', [VendorReviewController::class, 'index']);
             Route::post('reviews/{review}/reply', [VendorReviewController::class, 'reply']);
+            Route::get('inquiries', [VendorInquiryController::class, 'index']);
+            Route::post('inquiries/{inquiry}/reply', [VendorInquiryController::class, 'reply']);
         });
 
         // NOTE: availability calendars, staff and settings endpoints

@@ -37,6 +37,20 @@ export function StatusBadge({ status, className }) {
     cancelled_by_customer: "secondary",
     cancelled_by_owner: "secondary",
     cancelled_by_admin: "destructive",
+    open: "warning",
+    under_review: "info",
+    awaiting_info: "warning",
+    escalated: "destructive",
+    resolved: "success",
+    closed: "secondary",
+    new: "warning",
+    reviewing: "info",
+    actioned: "success",
+    dismissed: "secondary",
+    hidden: "secondary",
+    replied: "success",
+    read: "info",
+    spam: "destructive",
   };
 
   const labels = {
@@ -74,6 +88,20 @@ export function StatusBadge({ status, className }) {
     cancelled_by_customer: "Cancelled (customer)",
     cancelled_by_owner: "Cancelled (owner)",
     cancelled_by_admin: "Cancelled (admin)",
+    open: "Open",
+    under_review: "Under Review",
+    awaiting_info: "Awaiting Info",
+    escalated: "Escalated",
+    resolved: "Resolved",
+    closed: "Closed",
+    new: "New",
+    reviewing: "Reviewing",
+    actioned: "Actioned",
+    dismissed: "Dismissed",
+    hidden: "Hidden",
+    replied: "Replied",
+    read: "Read",
+    spam: "Spam",
   };
 
   const key = String(status === true ? "true" : status === false ? "false" : status);

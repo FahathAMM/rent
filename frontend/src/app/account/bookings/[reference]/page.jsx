@@ -1,20 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { bookingService } from "@/services/bookingService";
 import { reviewService } from "@/services/reviewService";
+import { disputeService } from "@/services/disputeService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { WriteReviewDialog } from "@/components/account/WriteReviewDialog";
+import { RaiseDisputeDialog } from "@/components/account/RaiseDisputeDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Phone, MapPin, Star } from "lucide-react";
+import { ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
+
+const AGAINST_SIDE_OPTIONS = [
+  { value: "owner", label: "The shop / owner" },
+  { value: "platform", label: "The platform" },
+];
 
 const CANCELLABLE = ["pending", "accepted"];
 
@@ -37,10 +44,12 @@ function submitToGateway(url, fields) {
 
 export default function BookingDetailPage() {
   const { reference } = useParams();
+  const router = useRouter();
   const qc = useQueryClient();
   const { format } = useCurrencyFormat();
   const [cancelling, setCancelling] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [disputing, setDisputing] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["my-booking", reference],
@@ -81,6 +90,19 @@ export default function BookingDetailPage() {
     submitReview.mutate(data, { onError: (err) => setErrors(err.response?.data?.errors ?? {}) });
   };
 
+  const raiseDispute = useMutation({
+    mutationFn: (data) => disputeService.create({ booking_reference: reference, ...data }),
+    onSuccess: (res) => {
+      toast.success("Dispute submitted");
+      setDisputing(false);
+      router.push(`/account/disputes/${res.data.data.dispute_reference}`);
+    },
+  });
+
+  const handleDisputeSubmit = (data, setErrors) => {
+    raiseDispute.mutate(data, { onError: (err) => setErrors(err.response?.data?.errors ?? {}) });
+  };
+
   if (isLoading) {
     return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -98,6 +120,7 @@ export default function BookingDetailPage() {
   const canPay = booking.status === "accepted" && ["unpaid", "failed"].includes(booking.payment_status);
   const canReview = booking.status === "completed" && !booking.review
     && (!booking.review_eligible_until || new Date(booking.review_eligible_until) > new Date());
+  const canDispute = ["confirmed", "active", "completed"].includes(booking.status) && !booking.has_open_dispute;
   const pricing = booking.pricing ?? {};
 
   return (
@@ -129,6 +152,13 @@ export default function BookingDetailPage() {
       )}
       {booking.cancellation_reason && (
         <Card><CardContent className="py-4 text-sm text-muted-foreground">Cancellation note: {booking.cancellation_reason}</CardContent></Card>
+      )}
+      {booking.has_open_dispute && (
+        <Card className="border-amber-400/60"><CardContent className="flex items-center gap-2 py-4 text-sm text-amber-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          A dispute is open on this booking.{" "}
+          <Link href="/account/disputes" className="font-medium underline">View it</Link>
+        </CardContent></Card>
       )}
 
       <Card>
@@ -172,11 +202,16 @@ export default function BookingDetailPage() {
         </CardContent></Card>
       )}
 
-      {(canCancel || canPay || canReview) && (
+      {(canCancel || canPay || canReview || canDispute) && (
         <div className="flex justify-end gap-2">
           {canCancel && (
             <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
               Cancel Booking
+            </Button>
+          )}
+          {canDispute && (
+            <Button variant="outline" className="gap-1.5" onClick={() => setDisputing(true)}>
+              <AlertTriangle className="h-4 w-4" /> Raise a Dispute
             </Button>
           )}
           {canReview && (
@@ -208,6 +243,14 @@ export default function BookingDetailPage() {
         onOpenChange={setReviewing}
         onSubmit={handleReviewSubmit}
         loading={submitReview.isPending}
+      />
+
+      <RaiseDisputeDialog
+        open={disputing}
+        onOpenChange={setDisputing}
+        onSubmit={handleDisputeSubmit}
+        loading={raiseDispute.isPending}
+        againstSideOptions={AGAINST_SIDE_OPTIONS}
       />
     </div>
   );

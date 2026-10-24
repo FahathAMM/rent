@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 /** Abuse / fraud reporting against any reportable entity. */
 class Report extends Model
 {
+    public const STATUS_NEW = 'new';
+    public const STATUS_REVIEWING = 'reviewing';
+    public const STATUS_ACTIONED = 'actioned';
+    public const STATUS_DISMISSED = 'dismissed';
+
     protected $table = 'reports';
 
     protected $fillable = [

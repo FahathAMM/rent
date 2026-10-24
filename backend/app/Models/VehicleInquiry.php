@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VehicleInquiry extends Model
 {
+    public const STATUS_NEW = 'new';
+    public const STATUS_READ = 'read';
+    public const STATUS_REPLIED = 'replied';
+    public const STATUS_CLOSED = 'closed';
+    public const STATUS_SPAM = 'spam';
+
     protected $fillable = [
         'vehicle_id', 'shop_id', 'user_id', 'name', 'phone', 'email', 'message',
         'status', 'replied_at', 'replied_by', 'reply_message', 'ip',

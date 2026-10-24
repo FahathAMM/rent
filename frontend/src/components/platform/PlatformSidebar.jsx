@@ -7,7 +7,7 @@ import { usePlatformAuth } from "@/hooks/usePlatformAuth";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
-  FileSearch, ExternalLink,
+  FileSearch, ExternalLink, AlertTriangle, Flag,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -20,6 +20,8 @@ const NAV_ITEMS = [
   { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/listings", label: "Listing Moderation", icon: Car },
   { href: "/platform/payouts", label: "Payouts", icon: Banknote },
+  { href: "/platform/disputes", label: "Disputes", icon: AlertTriangle },
+  { href: "/platform/abuse-reports", label: "Abuse Reports", icon: Flag },
   { href: "/platform/reviews", label: "Reviews", icon: Star },
   { href: "/platform/users", label: "Users", icon: Users },
   { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
