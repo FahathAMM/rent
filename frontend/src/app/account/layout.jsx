@@ -1,40 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useNavigationMenu } from "@/hooks/useMenus";
 import { useAuth } from "@/hooks/useAuth";
-import { getIcon } from "@/lib/iconMap";
-import { cn } from "@/lib/utils";
-import { Loader2, LogOut, User as UserIcon } from "lucide-react";
-import { BrandLogo } from "@/components/auth/BrandLogo";
+import { AccountSidebar } from "@/components/account/AccountSidebar";
 import { NotificationBell } from "@/components/shared/NotificationBell";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-function isRouteActive(pathname, route) {
-  return !!route && (pathname === route || pathname.startsWith(route + "/"));
-}
+import { Button } from "@/components/ui/button";
+import { Loader2, Menu } from "lucide-react";
 
 /**
- * The customer-facing account app - a flat, 4-item nav (dashboard,
- * bookings, favorites, profile), unlike the vendor app's module-tab/tile
- * sidebar. Much simpler chrome is appropriate: a plain top bar, no
- * ShopSwitcher (a customer has no shop context at all).
+ * The customer-facing account app — a sidebar (AccountSidebar) instead
+ * of the old flat top-bar nav, carrying the same gradient accent the
+ * public marketplace pages use so a renter never feels like they left
+ * the site's theme when they log in.
  */
 export default function AccountLayout({ children }) {
-  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
+  const { user, isAuthenticated, isVendor, _hasHydrated } = useAuthStore();
   const { logout } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const { data: navigation, isLoading: navLoading } = useNavigationMenu("customer");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!_hasHydrated) return;
@@ -49,67 +36,33 @@ export default function AccountLayout({ children }) {
     );
   }
 
-  const items = navigation ?? [];
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-30 border-b bg-background">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
-          <Link href="/account" className="flex items-center gap-2 shrink-0">
-            <BrandLogo
-              fallbackClassName="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg"
-              iconClassName="size-4"
-            />
-            <span className="hidden sm:inline text-sm font-semibold tracking-tight">RentLanka</span>
-          </Link>
+    <div className="flex min-h-screen bg-muted/30">
+      <AccountSidebar
+        navigation={navigation ?? []}
+        user={user}
+        onLogout={logout}
+        isVendor={isVendor()}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-          <nav className="flex flex-1 items-center gap-1 overflow-x-auto no-scrollbar">
-            {items.map((item) => {
-              const Icon = getIcon(item.icon);
-              const active = isRouteActive(pathname, item.route_name);
-              return (
-                <Link
-                  key={item.id}
-                  href={item.route_name}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-
+      <div className="flex min-h-screen flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b bg-background px-4 py-3 lg:hidden">
+          <Button variant="outline" size="icon" onClick={() => setSidebarOpen(true)}>
+            <Menu className="h-4 w-4" />
+          </Button>
           <NotificationBell />
+        </header>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-full border px-2 py-1.5 hover:bg-muted transition-colors shrink-0">
-                <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <UserIcon className="size-3.5" />
-                </span>
-                <span className="hidden sm:inline text-sm font-medium">{user?.name}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/account/profile">
-                  <UserIcon className="mr-2 h-4 w-4" /> Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} variant="destructive">
-                <LogOut className="mr-2 h-4 w-4" /> Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="hidden justify-end border-b bg-background px-6 py-3 lg:flex">
+          <NotificationBell />
         </div>
-      </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }
