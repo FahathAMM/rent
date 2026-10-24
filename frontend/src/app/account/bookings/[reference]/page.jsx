@@ -9,12 +9,16 @@ import { reviewService } from "@/services/reviewService";
 import { disputeService } from "@/services/disputeService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { StatusBanner } from "@/components/shared/StatusBanner";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { WriteReviewDialog } from "@/components/account/WriteReviewDialog";
 import { RaiseDisputeDialog } from "@/components/account/RaiseDisputeDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle,
+  Car, CalendarRange, Receipt, CheckCircle2, XCircle, Ban,
+} from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -24,6 +28,15 @@ const AGAINST_SIDE_OPTIONS = [
 ];
 
 const CANCELLABLE = ["pending", "accepted"];
+
+function SectionHeader({ icon: Icon, title }) {
+  return (
+    <CardHeader className="flex-row items-center gap-3 space-y-0">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4 w-4" /></div>
+      <CardTitle className="text-base">{title}</CardTitle>
+    </CardHeader>
+  );
+}
 
 /** Hosted-checkout redirect: PayHere needs a real browser form POST, not a fetch/XHR. */
 function submitToGateway(url, fields) {
@@ -129,40 +142,42 @@ export default function BookingDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back to bookings
       </Link>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-bold">{booking.vehicle?.title}</h1>
-          <p className="text-sm text-muted-foreground">{booking.booking_reference}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
+            <Car className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">{booking.vehicle?.title}</h1>
+            <p className="text-sm text-muted-foreground">{booking.booking_reference}</p>
+          </div>
         </div>
         <StatusBadge status={booking.status} />
       </div>
 
       {booking.status === "accepted" && booking.payment_status === "failed" && (
-        <Card className="border-destructive/40"><CardContent className="py-4 text-sm text-destructive">
-          Your last payment attempt didn&apos;t go through. You can try again below.
-        </CardContent></Card>
+        <StatusBanner icon={XCircle} tone="destructive" title="Payment didn't go through" body="Your last payment attempt failed — you can try again below." />
       )}
       {booking.status === "confirmed" && (
-        <Card className="border-emerald-400/60"><CardContent className="py-4 text-sm text-emerald-700">
-          Payment received — your booking is confirmed. See you at pickup!
-        </CardContent></Card>
+        <StatusBanner icon={CheckCircle2} tone="success" title="Booking confirmed" body="Payment received — see you at pickup!" />
       )}
       {booking.status === "rejected" && booking.rejection_reason && (
-        <Card className="border-destructive/40"><CardContent className="py-4 text-sm text-destructive">{booking.rejection_reason}</CardContent></Card>
+        <StatusBanner icon={XCircle} tone="destructive" title="Booking rejected" body={booking.rejection_reason} />
       )}
       {booking.cancellation_reason && (
-        <Card><CardContent className="py-4 text-sm text-muted-foreground">Cancellation note: {booking.cancellation_reason}</CardContent></Card>
+        <StatusBanner icon={Ban} tone="info" title="Cancelled" body={booking.cancellation_reason} />
       )}
       {booking.has_open_dispute && (
-        <Card className="border-amber-400/60"><CardContent className="flex items-center gap-2 py-4 text-sm text-amber-700">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          A dispute is open on this booking.{" "}
-          <Link href="/account/disputes" className="font-medium underline">View it</Link>
-        </CardContent></Card>
+        <StatusBanner
+          icon={AlertTriangle}
+          tone="warning"
+          title="A dispute is open on this booking"
+          action={<Button asChild size="sm" variant="outline"><Link href="/account/disputes">View it</Link></Button>}
+        />
       )}
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Rental Details</CardTitle></CardHeader>
+      <Card className="rounded-2xl shadow-sm">
+        <SectionHeader icon={CalendarRange} title="Rental Details" />
         <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div><p className="text-muted-foreground">Pickup</p><p className="font-medium">{formatDateTime(booking.pickup_at)}</p></div>
           <div><p className="text-muted-foreground">Return</p><p className="font-medium">{formatDateTime(booking.return_at)}</p></div>
@@ -171,8 +186,8 @@ export default function BookingDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Shop Contact</CardTitle></CardHeader>
+      <Card className="rounded-2xl shadow-sm">
+        <SectionHeader icon={MapPin} title="Shop Contact" />
         <CardContent className="space-y-1 text-sm">
           <p className="font-medium">{booking.shop?.name}</p>
           {booking.shop?.phone && <p className="flex items-center gap-1.5 text-muted-foreground"><Phone className="h-3.5 w-3.5" /> {booking.shop.phone}</p>}
@@ -180,8 +195,8 @@ export default function BookingDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Price Breakdown</CardTitle></CardHeader>
+      <Card className="rounded-2xl shadow-sm">
+        <SectionHeader icon={Receipt} title="Price Breakdown" />
         <CardContent className="space-y-1 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Base rental</span><span>{format(pricing.base_amount)}</span></div>
           {Number(pricing.driver_amount) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span>{format(pricing.driver_amount)}</span></div>}
@@ -193,17 +208,18 @@ export default function BookingDetailPage() {
       </Card>
 
       {booking.customer_note && (
-        <Card><CardHeader><CardTitle className="text-base">Your Note</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{booking.customer_note}</CardContent></Card>
+        <Card className="rounded-2xl shadow-sm"><CardHeader><CardTitle className="text-base">Your Note</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{booking.customer_note}</CardContent></Card>
       )}
 
       {booking.review && (
-        <Card><CardContent className="py-4 text-sm text-muted-foreground">
-          You rated this rental {booking.review.rating}/5 — <StatusBadge status={booking.review.status} className="ml-1" />
-        </CardContent></Card>
+        <div className="flex items-center gap-2 rounded-2xl border bg-card p-4 text-sm text-muted-foreground shadow-sm">
+          <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
+          You rated this rental {booking.review.rating}/5 — <StatusBadge status={booking.review.status} />
+        </div>
       )}
 
       {(canCancel || canPay || canReview || canDispute) && (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {canCancel && (
             <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
               Cancel Booking
@@ -220,7 +236,7 @@ export default function BookingDetailPage() {
             </Button>
           )}
           {canPay && (
-            <Button size="lg" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
+            <Button size="lg" className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
               {checkout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Pay {format(pricing.total_payable)}
             </Button>

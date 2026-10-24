@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { StatusBanner } from "@/components/shared/StatusBanner";
 import { OnboardingStepper } from "@/components/account/OnboardingStepper";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
 import { Fieldset } from "@/components/forms/Fieldset";
@@ -27,23 +28,6 @@ const REQUIRED_DOCS = [
 
 const EDITABLE_STATUSES = ["draft", "info_requested"];
 const STEPS = ["Details", "Documents", "Review"];
-
-function StatusBanner({ icon: Icon, tone, title, body }) {
-  const tones = {
-    info: "bg-muted/60 text-foreground [&_svg]:text-muted-foreground",
-    destructive: "bg-destructive/10 text-destructive [&_svg]:text-destructive",
-    warning: "bg-amber-50 text-amber-800 [&_svg]:text-amber-600",
-  };
-  return (
-    <div className={`flex items-start gap-3 rounded-2xl p-4 ${tones[tone]}`}>
-      <Icon className="mt-0.5 h-5 w-5 shrink-0" />
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        {body && <p className="mt-0.5 text-sm opacity-90">{body}</p>}
-      </div>
-    </div>
-  );
-}
 
 export default function BecomeOwnerPage() {
   const qc = useQueryClient();

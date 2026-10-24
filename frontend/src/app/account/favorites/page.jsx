@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { favoriteService } from "@/services/favoriteService";
 import { VehicleCard } from "@/components/marketplace/VehicleCard";
+import { AccountPageHeader } from "@/components/account/AccountPageHeader";
 import { Button } from "@/components/ui/button";
 import { Heart, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -26,14 +27,14 @@ export default function FavoritesPage() {
   const favorites = data?.data ?? [];
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">Favorites</h1>
+    <div className="space-y-4">
+      <AccountPageHeader icon={Heart} title="Favorites" description="Vehicles you've saved for later" />
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : !favorites.length ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-          <div className="rounded-full bg-muted p-4"><Heart className="h-7 w-7 text-muted-foreground" /></div>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed py-20 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10"><Heart className="h-7 w-7 text-primary" /></div>
           <p className="text-sm font-medium">No favorites yet</p>
           <p className="max-w-sm text-sm text-muted-foreground">Tap the heart on a vehicle to save it here.</p>
         </div>

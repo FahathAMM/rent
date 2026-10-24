@@ -44,9 +44,9 @@ export function AccountSidebar({ navigation, user, onLogout, isVendor, open = fa
 
       <aside
         className={cn(
-          "flex h-screen w-72 shrink-0 flex-col border-r bg-card",
-          "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out",
-          "lg:static lg:translate-x-0 lg:w-64",
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-72 shrink-0 flex-col border-r bg-card",
+          "transition-transform duration-200 ease-out",
+          "lg:w-64 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >

@@ -47,7 +47,7 @@ export default function AccountLayout({ children }) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen flex-1 flex-col lg:ml-64">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b bg-background px-4 py-3 lg:hidden">
           <Button variant="outline" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-4 w-4" />
@@ -55,7 +55,7 @@ export default function AccountLayout({ children }) {
           <NotificationBell />
         </header>
 
-        <div className="hidden justify-end border-b bg-background px-6 py-3 lg:flex">
+        <div className="sticky top-0 z-20 hidden justify-end border-b bg-background px-6 py-3 lg:flex">
           <NotificationBell />
         </div>
 
