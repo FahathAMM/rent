@@ -6,4 +6,5 @@ export const bookingService = {
   getOne: (reference) => api.get(`/bookings/${reference}`),
   create: (data) => api.post("/bookings", data),
   cancel: (reference, reason) => api.post(`/bookings/${reference}/cancel`, { reason }),
+  checkout: (reference) => api.post(`/bookings/${reference}/checkout`),
 };

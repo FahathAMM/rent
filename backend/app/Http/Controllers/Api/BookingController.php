@@ -11,6 +11,7 @@ use App\Queries\PublicVehicleQuery;
 use App\Services\AuditService;
 use App\Services\AuthUser;
 use App\Services\BookingService;
+use App\Services\PaymentService;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class BookingController extends Controller
 {
     use JsonResponseTrait;
 
-    public function __construct(private BookingService $service, private TransitionBooking $transitions) {}
+    public function __construct(private BookingService $service, private TransitionBooking $transitions, private PaymentService $payments) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -62,6 +63,16 @@ class BookingController extends Controller
         AuditService::create('Booking', $booking->id, $booking->booking_reference);
 
         return $this->response('Booking request submitted', new BookingResource($booking), 201);
+    }
+
+    public function checkout(string $reference): JsonResponse
+    {
+        $booking = CustomerBookingQuery::find(AuthUser::id(), $reference);
+        abort_unless($booking, 404);
+
+        $checkout = $this->payments->startCheckout($booking);
+
+        return $this->response('Checkout ready', $checkout);
     }
 
     public function cancel(Request $request, string $reference): JsonResponse

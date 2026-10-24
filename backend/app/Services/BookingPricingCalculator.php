@@ -29,7 +29,16 @@ class BookingPricingCalculator
         $subtotal = $baseAmount + $driverAmount + $deliveryAmount;
         $taxAmount = round($subtotal * (float) $pricing->tax_rate / 100, 2);
         $securityDeposit = round((float) $pricing->security_deposit, 2);
-        $totalPayable = round($subtotal + $taxAmount + $securityDeposit, 2);
+
+        // Only a prepaid deposit is collected THROUGH the gateway with the
+        // rental - cash_on_pickup is collected by the shop in person and
+        // waived is simply never collected. See
+        // app-doc/marketplace/04-lifecycles.md "Security deposit" - this
+        // is the amount the PayHere hash is computed from, so getting it
+        // wrong here means the gateway rejects the payment outright, not
+        // just a display error.
+        $depositCollectedNow = $pricing->deposit_method === 'prepaid' ? $securityDeposit : 0;
+        $totalPayable = round($subtotal + $taxAmount + $depositCollectedNow, 2);
 
         $snapshot = $pricing->only([
             'currency', 'daily_rate', 'weekly_rate', 'monthly_rate', 'weekend_surcharge_pct',

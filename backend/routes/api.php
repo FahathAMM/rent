@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\OwnerOnboardingController;
+use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
@@ -31,6 +32,12 @@ Route::get('platform-details', [PlatformDetailController::class, 'show']);
 // Simple traffic logging (site visits, pricing preview) — writes to a log
 // file only, no database table.
 Route::post('visits', [VisitLogController::class, 'track']);
+
+// PayHere server-to-server notification — public, unauthenticated, no
+// CSRF (api.php routes never get the web CSRF middleware group). See
+// PayHereWebhookController's docblock and
+// app-doc/marketplace/04-lifecycles.md "Payment lifecycle".
+Route::post('webhooks/payhere', [PayHereWebhookController::class, 'handle']);
 
 // The public marketplace catalogue (search, vehicle detail, shop profile,
 // categories, reviews) — see routes/public.php.
@@ -80,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('bookings', [BookingController::class, 'index']);
     Route::post('bookings', [BookingController::class, 'store']);
     Route::get('bookings/{booking:booking_reference}', [BookingController::class, 'show']);
+    Route::post('bookings/{booking:booking_reference}/checkout', [BookingController::class, 'checkout']);
     Route::post('bookings/{booking:booking_reference}/cancel', [BookingController::class, 'cancel']);
 
     // NOTE: favorites, reviews, disputes land in Phase 4+ once their

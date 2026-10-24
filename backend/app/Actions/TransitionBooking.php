@@ -3,12 +3,19 @@
 namespace App\Actions;
 
 use App\Models\Booking;
+use App\Models\BookingFinancial;
+use App\Models\BookingPricing;
 use App\Models\BookingStatusHistory;
+use App\Models\LedgerEntry;
+use App\Models\Payment;
 use App\Models\ReservationHold;
+use App\Models\SecurityDeposit;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
+use App\Services\CommissionResolver;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -164,6 +171,174 @@ class TransitionBooking
 
             return $booking->fresh();
         });
+    }
+
+    /**
+     * accepted -> confirmed. The ONLY caller is the PayHere webhook
+     * handler, after it has already verified the signature, locked the
+     * payment row, and asserted amount/currency match
+     * booking_pricing.total_payable — see
+     * app-doc/marketplace/04-lifecycles.md "Payment lifecycle" steps 3-5.
+     * Idempotent: a replayed webhook that somehow reaches this (it
+     * shouldn't — PaymentWebhookEvent's unique constraint catches replays
+     * first) finds the booking already confirmed and returns it as-is
+     * rather than double-writing financials/ledger/availability.
+     */
+    public function confirm(Booking $booking, Payment $payment, CommissionResolver $resolver): Booking
+    {
+        if ($booking->status === Booking::STATUS_CONFIRMED) {
+            return $booking;
+        }
+        if ($booking->status !== Booking::STATUS_ACCEPTED) {
+            throw ValidationException::withMessages(['status' => ['Only an accepted booking can be confirmed.']]);
+        }
+
+        return DB::transaction(function () use ($booking, $payment, $resolver) {
+            $vehicle = Vehicle::whereKey($booking->vehicle_id)->lockForUpdate()->firstOrFail();
+
+            $this->assertNoOverlap($vehicle->id, $booking->pickup_at, $booking->return_at, $booking->id);
+
+            $booking->update([
+                'status' => Booking::STATUS_CONFIRMED,
+                'confirmed_at' => now(),
+                'payment_status' => Booking::PAYMENT_PAID,
+            ]);
+
+            $this->releaseHold($booking, ReservationHold::STATUS_CONSUMED);
+            $this->writeAvailability($vehicle->id, $booking);
+            $this->writeFinancials($booking, $vehicle, $payment, $resolver);
+            $this->writeSecurityDeposit($booking, $vehicle);
+
+            $this->history($booking, Booking::STATUS_ACCEPTED, Booking::STATUS_CONFIRMED, 'system', null);
+
+            return $booking->fresh();
+        });
+    }
+
+    /** One vehicle_availability row per rental day — unique(vehicle_id, date) is the hard backstop against double booking. */
+    private function writeAvailability(int $vehicleId, Booking $booking): void
+    {
+        $rows = [];
+        $cursor = $booking->pickup_at->copy()->startOfDay();
+        $end = $booking->return_at->copy()->startOfDay();
+
+        while ($cursor->lessThan($end)) {
+            $rows[] = [
+                'vehicle_id' => $vehicleId,
+                'date' => $cursor->toDateString(),
+                'status' => VehicleAvailability::STATUS_BOOKED,
+                'booking_id' => $booking->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $cursor->addDay();
+        }
+
+        VehicleAvailability::insert($rows);
+    }
+
+    /**
+     * Commission resolved and frozen NOW, at confirmation — see
+     * app-doc/marketplace/04-lifecycles.md "Commission model": editing or
+     * deleting the rule later never re-prices this booking. Writes
+     * booking_financials (the settlement view) and the 8-line ledger
+     * entry set from the worked example in that same doc.
+     */
+    private function writeFinancials(Booking $booking, Vehicle $vehicle, Payment $payment, CommissionResolver $resolver): void
+    {
+        $pricing = $booking->pricing;
+        $rule = $resolver->resolveFor($vehicle);
+
+        $computed = $rule
+            ? $resolver->compute($rule, (float) $pricing->base_amount, (float) $pricing->extras_amount, (float) $pricing->delivery_amount, (float) $pricing->driver_amount)
+            : ['commissionable' => (float) $pricing->base_amount, 'commission' => 0.0];
+
+        $processingFeeBorneBy = $rule?->processing_fee_borne_by ?? 'platform';
+        $gatewayFee = round((float) $payment->amount * (float) config('services.payhere.fee_percentage') / 100, 2);
+        $ownerFeeShare = match ($processingFeeBorneBy) {
+            'owner' => $gatewayFee,
+            'split' => round($gatewayFee / 2, 2),
+            default => 0.0,
+        };
+        $platformFeeShare = $gatewayFee - $ownerFeeShare;
+
+        $ownerPayable = round($computed['commissionable'] - $computed['commission'] - $ownerFeeShare, 2);
+        $platformNet = round($computed['commission'] - $platformFeeShare, 2);
+
+        BookingFinancial::create([
+            'booking_id' => $booking->id,
+            'currency' => $pricing->currency,
+            'customer_paid_amount' => $payment->amount,
+            'security_deposit_held' => (float) ($pricing->pricing_snapshot['security_deposit'] ?? 0),
+            'gross_rental_amount' => $pricing->base_amount,
+            'commissionable_amount' => $computed['commissionable'],
+            'commission_rule_id' => $rule?->id,
+            'commission_rate' => $rule?->percentage,
+            'commission_fixed' => $rule?->fixed_amount,
+            'commission_amount' => $computed['commission'],
+            'payment_processing_fee' => $gatewayFee,
+            'processing_fee_borne_by' => $processingFeeBorneBy === 'split' ? 'platform' : $processingFeeBorneBy,
+            'owner_payable_amount' => $ownerPayable,
+            'platform_net_amount' => $platformNet,
+            'settlement_status' => BookingFinancial::SETTLEMENT_NOT_ELIGIBLE,
+        ]);
+
+        $this->writeLedgerEntries($booking, $payment, $pricing, $computed, $platformFeeShare, $ownerPayable);
+    }
+
+    /**
+     * The 8-line entry set from app-doc/marketplace/04-lifecycles.md
+     * "Ledger entries at confirmation" verbatim. Deposits post to
+     * deposit_liability, never to revenue - see the same doc's "Security
+     * deposit" section.
+     */
+    private function writeLedgerEntries(Booking $booking, Payment $payment, BookingPricing $pricing, array $computed, float $platformFeeShare, float $ownerPayable): void
+    {
+        $batchId = (string) Str::uuid();
+        $today = now()->toDateString();
+        $depositHeld = (float) ($pricing->pricing_snapshot['security_deposit'] ?? 0);
+        $common = [
+            'entry_date' => $today, 'currency' => $pricing->currency,
+            'booking_id' => $booking->id, 'shop_id' => $booking->shop_id, 'payment_id' => $payment->id,
+            'batch_id' => $batchId,
+        ];
+
+        $entries = [
+            ['account' => LedgerEntry::ACCOUNT_PLATFORM_CASH, 'direction' => LedgerEntry::DEBIT, 'amount' => $payment->amount, 'memo' => 'Cash received'],
+            ['account' => LedgerEntry::ACCOUNT_CUSTOMER_RECEIVABLE, 'direction' => LedgerEntry::CREDIT, 'amount' => $computed['commissionable'], 'memo' => 'Rental revenue recognised'],
+        ];
+        if ($depositHeld > 0 && ($pricing->pricing_snapshot['deposit_method'] ?? null) === 'prepaid') {
+            $entries[] = ['account' => LedgerEntry::ACCOUNT_DEPOSIT_LIABILITY, 'direction' => LedgerEntry::CREDIT, 'amount' => $depositHeld, 'memo' => 'Deposit held — not revenue'];
+        }
+        if ($platformFeeShare > 0) {
+            $entries[] = ['account' => LedgerEntry::ACCOUNT_GATEWAY_FEES, 'direction' => LedgerEntry::DEBIT, 'amount' => $platformFeeShare, 'memo' => 'Gateway fee'];
+            $entries[] = ['account' => LedgerEntry::ACCOUNT_PLATFORM_CASH, 'direction' => LedgerEntry::CREDIT, 'amount' => $platformFeeShare, 'memo' => 'Gateway fee paid'];
+        }
+        $entries[] = ['account' => LedgerEntry::ACCOUNT_COMMISSION_INCOME, 'direction' => LedgerEntry::CREDIT, 'amount' => $computed['commission'], 'memo' => 'Platform commission'];
+        $entries[] = ['account' => LedgerEntry::ACCOUNT_CUSTOMER_RECEIVABLE, 'direction' => LedgerEntry::DEBIT, 'amount' => $computed['commission'], 'memo' => 'Commission out of rental revenue'];
+        $entries[] = ['account' => LedgerEntry::ACCOUNT_OWNER_PAYABLE, 'direction' => LedgerEntry::CREDIT, 'amount' => $ownerPayable, 'memo' => 'Accrues — not yet payout-eligible'];
+        $entries[] = ['account' => LedgerEntry::ACCOUNT_CUSTOMER_RECEIVABLE, 'direction' => LedgerEntry::DEBIT, 'amount' => $ownerPayable, 'memo' => 'Owner payable recognised'];
+
+        foreach ($entries as $entry) {
+            LedgerEntry::create($entry + $common);
+        }
+    }
+
+    private function writeSecurityDeposit(Booking $booking, Vehicle $vehicle): void
+    {
+        $pricing = $booking->pricing;
+        $depositMethod = $pricing->pricing_snapshot['deposit_method'] ?? $vehicle->pricing?->deposit_method ?? 'cash_on_pickup';
+        $required = (float) ($pricing->pricing_snapshot['security_deposit'] ?? 0);
+        $isPrepaid = $depositMethod === 'prepaid' && $required > 0;
+
+        SecurityDeposit::create([
+            'booking_id' => $booking->id,
+            'amount_required' => $required,
+            'amount_collected' => $isPrepaid ? $required : 0,
+            'hold_method' => $depositMethod,
+            'status' => $isPrepaid ? SecurityDeposit::STATUS_HELD : SecurityDeposit::STATUS_PENDING,
+            'collected_at' => $isPrepaid ? now() : null,
+        ]);
     }
 
     /**

@@ -16,6 +16,23 @@ import { toast } from "sonner";
 
 const CANCELLABLE = ["pending", "accepted"];
 
+/** Hosted-checkout redirect: PayHere needs a real browser form POST, not a fetch/XHR. */
+function submitToGateway(url, fields) {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  Object.entries(fields).forEach(([name, value]) => {
+    if (value === null || value === undefined) return;
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+
 export default function BookingDetailPage() {
   const { reference } = useParams();
   const qc = useQueryClient();
@@ -38,6 +55,15 @@ export default function BookingDetailPage() {
     onError: (err) => toast.error(err.response?.data?.message ?? "Could not cancel booking"),
   });
 
+  const checkout = useMutation({
+    mutationFn: () => bookingService.checkout(reference),
+    onSuccess: (res) => {
+      const { url, fields } = res.data.data;
+      submitToGateway(url, fields);
+    },
+    onError: (err) => toast.error(err.response?.data?.message ?? err.response?.data?.errors?.status?.[0] ?? "Could not start checkout"),
+  });
+
   if (isLoading) {
     return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -52,6 +78,7 @@ export default function BookingDetailPage() {
   }
 
   const canCancel = CANCELLABLE.includes(booking.status);
+  const canPay = booking.status === "accepted" && ["unpaid", "failed"].includes(booking.payment_status);
   const pricing = booking.pricing ?? {};
 
   return (
@@ -68,9 +95,14 @@ export default function BookingDetailPage() {
         <StatusBadge status={booking.status} />
       </div>
 
-      {booking.status === "accepted" && (
-        <Card className="border-amber-400/60"><CardContent className="py-4 text-sm text-amber-700">
-          Your request was accepted — payment is coming in a future update. Hang tight.
+      {booking.status === "accepted" && booking.payment_status === "failed" && (
+        <Card className="border-destructive/40"><CardContent className="py-4 text-sm text-destructive">
+          Your last payment attempt didn&apos;t go through. You can try again below.
+        </CardContent></Card>
+      )}
+      {booking.status === "confirmed" && (
+        <Card className="border-emerald-400/60"><CardContent className="py-4 text-sm text-emerald-700">
+          Payment received — your booking is confirmed. See you at pickup!
         </CardContent></Card>
       )}
       {booking.status === "rejected" && booking.rejection_reason && (
@@ -115,11 +147,19 @@ export default function BookingDetailPage() {
         <Card><CardHeader><CardTitle className="text-base">Your Note</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{booking.customer_note}</CardContent></Card>
       )}
 
-      {canCancel && (
-        <div className="flex justify-end">
-          <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
-            Cancel Booking
-          </Button>
+      {(canCancel || canPay) && (
+        <div className="flex justify-end gap-2">
+          {canCancel && (
+            <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
+              Cancel Booking
+            </Button>
+          )}
+          {canPay && (
+            <Button size="lg" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
+              {checkout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Pay {format(pricing.total_payable)}
+            </Button>
+          )}
         </div>
       )}
 

@@ -59,7 +59,15 @@ export function BookingRequestWidget({ vehicle }) {
     const driver = withDriver ? Number(pricing.driver_rate_per_day ?? 0) * rentalDays : 0;
     const delivery = deliveryRequested && pricing.delivery_available ? Number(pricing.delivery_flat_fee ?? 0) : 0;
     const deposit = Number(pricing.security_deposit ?? 0);
-    return { base, driver, delivery, deposit, total: base + driver + delivery + deposit };
+    // Only a prepaid deposit is paid through the gateway with the rental —
+    // cash_on_pickup is collected by the shop in person, so it's shown but
+    // excluded from "pay now". Must match BookingPricingCalculator exactly,
+    // since that's what the real charge will be.
+    const depositPrepaid = pricing.deposit_method === "prepaid";
+    return {
+      base, driver, delivery, deposit, depositPrepaid,
+      total: base + driver + delivery + (depositPrepaid ? deposit : 0),
+    };
   }, [rentalDays, pricing, withDriver, deliveryRequested]);
 
   const handleSubmit = () => {
@@ -113,8 +121,13 @@ export function BookingRequestWidget({ vehicle }) {
           <div className="flex justify-between"><span className="text-muted-foreground">Rental ({rentalDays} day{rentalDays > 1 ? "s" : ""})</span><span>{format(estimate.base)}</span></div>
           {estimate.driver > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span>{format(estimate.driver)}</span></div>}
           {estimate.delivery > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>{format(estimate.delivery)}</span></div>}
-          {estimate.deposit > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Security deposit</span><span>{format(estimate.deposit)}</span></div>}
-          <div className="flex justify-between border-t pt-1 font-semibold"><span>Estimated total</span><span>{format(estimate.total)}</span></div>
+          {estimate.deposit > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Security deposit {estimate.depositPrepaid ? "" : "(pay at pickup)"}</span>
+              <span>{format(estimate.deposit)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t pt-1 font-semibold"><span>Pay now</span><span>{format(estimate.total)}</span></div>
         </div>
       )}
 
