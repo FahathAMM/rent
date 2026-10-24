@@ -9,7 +9,7 @@ import { favoriteService } from "@/services/favoriteService";
 import { reportService } from "@/services/reportService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { useAuth } from "@/hooks/useAuth";
-import { AuthDialog } from "@/components/auth/AuthDialog";
+import { usePublicAuth } from "@/components/public/PublicAuthProvider";
 import { BookingRequestWidget } from "@/components/marketplace/BookingRequestWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import { TextInput, TextareaInput } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import {
   Car, Users, Fuel, Gauge, Briefcase, ShieldCheck, MapPin, Loader2, ArrowLeft,
-  Heart, MessageCircle, Flag,
+  Heart, MessageCircle, Flag, Star,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -105,7 +105,7 @@ function ReportListingDialog({ open, onOpenChange, vehicle }) {
 function Spec({ icon: Icon, label, value }) {
   if (value === null || value === undefined || value === "") return null;
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
+    <div className="flex items-center gap-2 rounded-xl border bg-card p-3">
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -115,16 +115,47 @@ function Spec({ icon: Icon, label, value }) {
   );
 }
 
+function Gallery({ images, title }) {
+  const [active, setActive] = useState(0);
+  const image = images?.[active]?.url;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex aspect-video items-center justify-center overflow-hidden rounded-2xl border bg-muted">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt={title} className="h-full w-full object-cover" />
+        ) : (
+          <Car className="h-16 w-16 text-muted-foreground/30" />
+        )}
+      </div>
+      {images?.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {images.map((img, i) => (
+            <button
+              key={img.url ?? i}
+              type="button"
+              onClick={() => setActive(i)}
+              className={`shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${i === active ? "border-primary" : "border-transparent"}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.url} alt="" className="h-14 w-20 object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VehicleDetailPage() {
   const { slug } = useParams();
   const { format } = useCurrencyFormat();
   const { user, isAuthenticated } = useAuth();
+  const { openAuth } = usePublicAuth();
   const [contacting, setContacting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [authView, setAuthView] = useState(null); // "login" | "register" | null
-
-  const requireLogin = () => setAuthView("login");
 
   const { data: vehicle, isLoading } = useQuery({
     queryKey: ["public-vehicle", slug],
@@ -145,7 +176,7 @@ export default function VehicleDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -153,52 +184,45 @@ export default function VehicleDetailPage() {
 
   if (!vehicle) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
         <p className="text-lg font-semibold">Vehicle not found</p>
         <Button asChild variant="outline"><Link href="/search">Back to search</Link></Button>
       </div>
     );
   }
 
-  const image = vehicle.images?.find((i) => i.is_primary)?.url ?? vehicle.images?.[0]?.url;
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
+    <div>
+      <div className="border-b bg-muted/30">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
           <Link href="/search" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to search
           </Link>
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => (isAuthenticated ? favorite.mutate() : requireLogin())} disabled={favorite.isPending || saved}>
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => (isAuthenticated ? favorite.mutate() : openAuth("login"))} disabled={favorite.isPending || saved}>
               <Heart className={`h-4 w-4 ${saved ? "fill-current text-destructive" : ""}`} /> {saved ? "Saved" : "Save"}
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : requireLogin())}>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : openAuth("login"))}>
               <Flag className="h-4 w-4" /> Report
             </Button>
-            {!isAuthenticated && (
-              <>
-                <Button variant="outline" size="sm" onClick={() => setAuthView("login")}>Sign in</Button>
-                <Button size="sm" onClick={() => setAuthView("register")}>Sign up</Button>
-              </>
-            )}
           </div>
         </div>
-      </header>
+      </div>
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-5">
-          <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl border bg-muted">
-            {image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={image} alt={vehicle.title} className="h-full w-full object-cover" />
-            ) : (
-              <Car className="h-16 w-16 text-muted-foreground/30" />
-            )}
-          </div>
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <Gallery images={vehicle.images} title={vehicle.title} />
 
           <div>
-            <h1 className="text-2xl font-bold">{vehicle.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{vehicle.title}</h1>
+              {vehicle.rating_count > 0 && (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-700">
+                  <Star className="h-3.5 w-3.5 fill-current" /> {Number(vehicle.rating_avg).toFixed(1)}
+                  <span className="text-amber-700/70">({vehicle.rating_count})</span>
+                </span>
+              )}
+            </div>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               Offered by <span className="font-medium text-foreground">{vehicle.shop?.name}</span>
               {vehicle.shop?.is_verified && <ShieldCheck className="h-4 w-4 text-emerald-600" />}
@@ -240,7 +264,7 @@ export default function VehicleDetailPage() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium">{r.reviewer_name ?? "Verified renter"}</p>
-                        <p className="text-sm">★ {r.rating}/5</p>
+                        <p className="flex items-center gap-1 text-sm"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {r.rating}/5</p>
                       </div>
                       {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
                     </CardContent>
@@ -254,7 +278,7 @@ export default function VehicleDetailPage() {
         </div>
 
         <div>
-          <Card className="sticky top-6">
+          <Card className="sticky top-20 shadow-sm">
             <CardContent className="space-y-4 p-5">
               <div>
                 <p className="text-2xl font-bold">{format(vehicle.pricing?.daily_rate)}<span className="text-sm font-normal text-muted-foreground">/day</span></p>
@@ -278,7 +302,6 @@ export default function VehicleDetailPage() {
 
       <ContactOwnerDialog open={contacting} onOpenChange={setContacting} vehicle={vehicle} user={isAuthenticated ? user : null} />
       <ReportListingDialog open={reporting} onOpenChange={setReporting} vehicle={vehicle} />
-      <AuthDialog open={!!authView} onOpenChange={(v) => !v && setAuthView(null)} initialView={authView ?? "login"} />
     </div>
   );
 }
