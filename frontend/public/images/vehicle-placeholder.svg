@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff7ed" />
+      <stop offset="50%" stop-color="#fdf2f8" />
+      <stop offset="100%" stop-color="#f5f3ff" />
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="50%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="300" fill="url(#bg)" />
+
+  <!-- ground line -->
+  <line x1="40" y1="215" x2="360" y2="215" stroke="#e5e7eb" stroke-width="2" />
+
+  <!-- car silhouette -->
+  <g opacity="0.92">
+    <path
+      d="M70 190
+         L95 150
+         Q110 128 138 126
+         L172 124
+         Q190 100 222 100
+         L252 100
+         Q278 100 292 122
+         L312 150
+         L330 156
+         Q345 160 345 178
+         L345 190
+         Z"
+      fill="url(#body)"
+    />
+    <rect x="58" y="178" width="292" height="24" rx="12" fill="url(#body)" />
+
+    <!-- windows -->
+    <path d="M146 146 L178 128 Q192 120 206 120 L206 146 Z" fill="#fdf4ff" opacity="0.85" />
+    <path d="M214 120 L250 120 Q266 120 276 136 L286 146 L214 146 Z" fill="#fdf4ff" opacity="0.85" />
+
+    <!-- wheels -->
+    <circle cx="128" cy="202" r="24" fill="#1f2937" />
+    <circle cx="128" cy="202" r="11" fill="#e5e7eb" />
+    <circle cx="282" cy="202" r="24" fill="#1f2937" />
+    <circle cx="282" cy="202" r="11" fill="#e5e7eb" />
+
+    <!-- headlight / taillight accents -->
+    <circle cx="340" cy="172" r="5" fill="#fde68a" />
+    <circle cx="66" cy="186" r="4" fill="#fca5a5" />
+  </g>
+
+  <text x="200" y="258" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" fill="#9ca3af">
+    No photo available
+  </text>
+</svg>

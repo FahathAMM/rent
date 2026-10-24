@@ -15,8 +15,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TextInput, TextareaInput } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
+import { VEHICLE_PLACEHOLDER_IMAGE } from "@/lib/constants";
 import {
-  Car, Users, Fuel, Gauge, Briefcase, ShieldCheck, MapPin, Loader2, ArrowLeft,
+  Users, Fuel, Gauge, Briefcase, ShieldCheck, MapPin, Loader2, ArrowLeft,
   Heart, MessageCircle, Flag, Star,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -116,17 +117,13 @@ function Spec({ icon: Icon, label, value }) {
 
 function Gallery({ images, title }) {
   const [active, setActive] = useState(0);
-  const image = images?.[active]?.url;
+  const image = images?.[active]?.url ?? VEHICLE_PLACEHOLDER_IMAGE;
 
   return (
     <div className="space-y-2">
       <div className="flex aspect-video items-center justify-center overflow-hidden rounded-2xl border bg-muted">
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt={title} className="h-full w-full object-cover" />
-        ) : (
-          <Car className="h-16 w-16 text-muted-foreground/30" />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image} alt={title} className="h-full w-full object-cover" />
       </div>
       {images?.length > 1 && (
         <div className="flex gap-2 overflow-x-auto no-scrollbar">

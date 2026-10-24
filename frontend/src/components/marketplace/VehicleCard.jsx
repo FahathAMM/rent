@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Car, Users, Fuel, Gauge, ShieldCheck } from "lucide-react";
+import { Users, Fuel, Gauge, ShieldCheck } from "lucide-react";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import { VEHICLE_PLACEHOLDER_IMAGE } from "@/lib/constants";
 
 /** A single vehicle tile for the public search grid and homepage — Http\Resources\Public\VehicleResource's shape. */
 export function VehicleCard({ vehicle }) {
   const { format } = useCurrencyFormat();
-  const image = vehicle.images?.find((i) => i.is_primary)?.url ?? vehicle.images?.[0]?.url ?? null;
+  const image = vehicle.images?.find((i) => i.is_primary)?.url ?? vehicle.images?.[0]?.url ?? VEHICLE_PLACEHOLDER_IMAGE;
 
   return (
     <Link
@@ -13,12 +14,8 @@ export function VehicleCard({ vehicle }) {
       className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
     >
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-muted">
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt={vehicle.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-        ) : (
-          <Car className="h-10 w-10 text-muted-foreground/40" />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image} alt={vehicle.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
         {vehicle.is_featured && (
           <span className="absolute left-2 top-2 rounded-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
             Featured
