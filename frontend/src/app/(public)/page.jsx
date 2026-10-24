@@ -8,16 +8,10 @@ import { publicService } from "@/services/publicService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VehicleCard } from "@/components/marketplace/VehicleCard";
+import { HowItWorksSection } from "@/components/public/HowItWorksSection";
 import {
-  Search, Car, ShieldCheck, Clock, Wallet, ArrowRight,
-  ClipboardList, CalendarCheck, KeyRound,
+  Search, Car, ShieldCheck, Clock, Wallet, ArrowRight, MapPin, Building2,
 } from "lucide-react";
-
-const HOW_IT_WORKS = [
-  { icon: ClipboardList, title: "Search & compare", body: "Filter by city, dates, transmission or budget and compare real listings from verified owners and shops." },
-  { icon: CalendarCheck, title: "Request to book", body: "Send a request with your dates — the owner confirms availability, then you pay securely to lock it in." },
-  { icon: KeyRound, title: "Pick up & go", body: "Meet the owner (or their shop), do a quick handover check, and drive off. Return it the same way." },
-];
 
 const TRUST_POINTS = [
   { icon: ShieldCheck, label: "Verified owners & shops" },
@@ -37,6 +31,16 @@ export default function HomePage() {
   const { data: featured } = useQuery({
     queryKey: ["public-vehicles", "featured"],
     queryFn: () => publicService.vehicles({ sort: "relevance", per_page: 8 }).then((r) => r.data.data),
+  });
+
+  const { data: cities } = useQuery({
+    queryKey: ["public-locations"],
+    queryFn: () => publicService.locations().then((r) => r.data.data),
+  });
+
+  const { data: shops } = useQuery({
+    queryKey: ["public-shops", "teaser"],
+    queryFn: () => publicService.shops({ per_page: 6 }).then((r) => r.data.data),
   });
 
   const handleSearch = (e) => {
@@ -133,22 +137,71 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* ── Browse by location ─────────────────────────────────────────── */}
+      {cities?.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-semibold tracking-tight">Browse by location</h2>
+            <Link href="/locations" className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+            {cities.slice(0, 8).map((c) => (
+              <Link
+                key={c.city}
+                href={`/search?city=${encodeURIComponent(c.city)}`}
+                className="group flex shrink-0 items-center gap-2.5 rounded-2xl border bg-card px-5 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium">{c.city}</p>
+                  <p className="text-xs text-muted-foreground">{c.vehicle_count} vehicles</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Rental companies ───────────────────────────────────────────── */}
+      {shops?.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-12">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-semibold tracking-tight">Trusted rental companies</h2>
+            <Link href="/shops" className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            {shops.map((shop) => (
+              <Link
+                key={shop.id}
+                href={`/shops/${shop.slug}`}
+                className="group flex flex-col items-center gap-2 rounded-2xl border bg-card p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                {shop.logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={shop.logo} alt={shop.name} className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <p className="truncate text-xs font-medium">{shop.name}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── How it works ───────────────────────────────────────────────── */}
       <section className="border-y bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 py-14">
-          <h2 className="text-center text-xl font-semibold tracking-tight">How it works</h2>
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {HOW_IT_WORKS.map(({ icon: Icon, title, body }, i) => (
-              <div key={title} className="relative rounded-2xl border bg-card p-6 shadow-sm">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <p className="mt-4 text-xs font-semibold text-muted-foreground">STEP {i + 1}</p>
-                <h3 className="mt-1 font-semibold">{title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{body}</p>
-              </div>
-            ))}
-          </div>
+          <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">How it works</h2>
+          <HowItWorksSection />
         </div>
       </section>
 

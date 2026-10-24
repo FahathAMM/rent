@@ -38,6 +38,9 @@ export function PublicFooter() {
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li><Link href="/" className="hover:text-foreground">Home</Link></li>
             <li><Link href="/search" className="hover:text-foreground">Browse vehicles</Link></li>
+            <li><Link href="/locations" className="hover:text-foreground">Browse by location</Link></li>
+            <li><Link href="/shops" className="hover:text-foreground">Rental companies</Link></li>
+            <li><Link href="/how-it-works" className="hover:text-foreground">How it works</Link></li>
           </ul>
         </div>
 

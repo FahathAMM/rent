@@ -107,6 +107,18 @@ class PublicVehicleQuery
         };
     }
 
+    /** Cities with at least one publicly visible vehicle, most vehicles first — "Browse by Location". */
+    public static function citiesWithCounts(): \Illuminate\Support\Collection
+    {
+        return self::base()
+            ->join('rental_shops', 'rental_shops.id', '=', 'vehicles.shop_id')
+            ->select('rental_shops.city')
+            ->selectRaw('count(*) as vehicle_count')
+            ->groupBy('rental_shops.city')
+            ->orderByDesc('vehicle_count')
+            ->get();
+    }
+
     public static function findBySlug(string $slug): ?Vehicle
     {
         return self::base()

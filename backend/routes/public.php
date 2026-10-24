@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Public\CategoryController;
 use App\Http\Controllers\Api\Public\InquiryController;
+use App\Http\Controllers\Api\Public\LocationController;
 use App\Http\Controllers\Api\Public\ShopController;
 use App\Http\Controllers\Api\Public\VehicleController;
 use Illuminate\Support\Facades\Route;
@@ -16,8 +17,8 @@ use Illuminate\Support\Facades\Route;
  * app-doc/marketplace/05-ui-and-api-map.md.
  *
  * Functional today: search, detail, shop profile, categories, reviews,
- * inquiries. NOTE: pickup-location search, date/availability filtering
- * and comparison are still outstanding.
+ * inquiries, city browse. NOTE: pickup_at/return_at date-availability
+ * filtering and vehicle comparison are still outstanding.
  */
 Route::prefix('public')->group(function () {
     Route::get('vehicles', [VehicleController::class, 'index']);
@@ -29,6 +30,7 @@ Route::prefix('public')->group(function () {
     Route::get('shops/{slug}/vehicles', [ShopController::class, 'vehicles']);
 
     Route::get('categories', [CategoryController::class, 'index']);
+    Route::get('locations', [LocationController::class, 'index']);
 
     // Contact-the-owner form on a vehicle detail page — rate-limited per
     // app-doc/marketplace/05-ui-and-api-map.md since it's reachable

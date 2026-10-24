@@ -28,11 +28,17 @@ function SearchPageContent() {
   const filters = {
     q: params.get("q") ?? undefined,
     category_id: params.get("category_id") ?? undefined,
+    city: params.get("city") ?? undefined,
     transmission: params.get("transmission") ?? undefined,
     fuel_type: params.get("fuel_type") ?? undefined,
     sort: params.get("sort") ?? "relevance",
     page: params.get("page") ?? 1,
   };
+
+  const { data: cities } = useQuery({
+    queryKey: ["public-locations"],
+    queryFn: () => publicService.locations().then((r) => r.data.data),
+  });
 
   const { data: categories } = useQuery({
     queryKey: ["public-categories"],
@@ -78,6 +84,14 @@ function SearchPageContent() {
           </form>
 
           <div className="mt-3 flex flex-wrap gap-2">
+            <Select value={params.get("city") ?? "all"} onValueChange={(v) => setParam("city", v === "all" ? "" : v)}>
+              <SelectTrigger className="w-40 bg-card"><SelectValue placeholder="Location" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locations</SelectItem>
+                {cities?.map((c) => <SelectItem key={c.city} value={c.city}>{c.city} ({c.vehicle_count})</SelectItem>)}
+              </SelectContent>
+            </Select>
+
             <Select value={params.get("category_id") ?? "all"} onValueChange={(v) => setParam("category_id", v === "all" ? "" : v)}>
               <SelectTrigger className="w-40 bg-card"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
