@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
+import { InspectionDialog } from "@/components/vendor/InspectionDialog";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/forms/SelectInput";
 import {
@@ -29,6 +30,7 @@ const STATUS_OPTIONS = [
   { value: "expired", label: "Expired" },
   { value: "cancelled_by_customer", label: "Cancelled by customer" },
   { value: "cancelled_by_owner", label: "Cancelled by me" },
+  { value: "no_show", label: "No-show" },
 ];
 
 export default function VendorBookingsPage() {
@@ -38,6 +40,7 @@ export default function VendorBookingsPage() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [reasonAction, setReasonAction] = useState(null); // 'reject' | 'cancel'
+  const [inspectionAction, setInspectionAction] = useState(null); // 'handover' | 'return'
 
   const { data, isLoading } = useQuery({
     queryKey: ["vendor-bookings", status, page],
@@ -73,6 +76,27 @@ export default function VendorBookingsPage() {
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to cancel"),
   });
 
+  const handover = useMutation({
+    mutationFn: (inspection) => vendorBookingService.handover(selected.booking_reference, inspection),
+    onSuccess: () => { invalidate(); toast.success("Handover recorded — booking is now active"); setInspectionAction(null); setSelected(null); },
+  });
+
+  const returnVehicle = useMutation({
+    mutationFn: (inspection) => vendorBookingService.returnVehicle(selected.booking_reference, inspection),
+    onSuccess: () => { invalidate(); toast.success("Return recorded — booking completed"); setInspectionAction(null); setSelected(null); },
+  });
+
+  const submitInspection = (payload, setErrors) => {
+    const mutation = inspectionAction === "handover" ? handover : returnVehicle;
+    mutation.mutate(payload, {
+      onError: (err) => {
+        const apiErrors = err.response?.data?.errors ?? {};
+        setErrors(apiErrors);
+        if (!Object.keys(apiErrors).length) toast.error(err.response?.data?.message ?? "Failed to save inspection");
+      },
+    });
+  };
+
   const columns = [
     {
       key: "booking_reference", header: "Booking",
@@ -96,6 +120,8 @@ export default function VendorBookingsPage() {
   const records = data?.data ?? [];
   const canRespond = detail?.status === "pending";
   const canCancel = detail?.status === "accepted";
+  const canHandover = detail?.status === "confirmed";
+  const canReturnVehicle = detail?.status === "active";
 
   const breadcrumbItems = [
     { label: "Home", href: "/vendor/dashboard", icon: <Home className="size-4" /> },
@@ -157,7 +183,7 @@ export default function VendorBookingsPage() {
                 <p className="rounded-md bg-muted p-2.5 text-sm"><span className="text-muted-foreground">Note: </span>{detail.customer_note}</p>
               )}
 
-              {(canRespond || canCancel) && (
+              {(canRespond || canCancel || canHandover || canReturnVehicle) && (
                 <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
                   {canRespond && (
                     <>
@@ -167,6 +193,12 @@ export default function VendorBookingsPage() {
                   )}
                   {canCancel && (
                     <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction("cancel")}>Cancel Booking</Button>
+                  )}
+                  {canHandover && (
+                    <Button onClick={() => setInspectionAction("handover")}>Record Handover</Button>
+                  )}
+                  {canReturnVehicle && (
+                    <Button onClick={() => setInspectionAction("return")}>Record Return</Button>
                   )}
                 </div>
               )}
@@ -192,6 +224,23 @@ export default function VendorBookingsPage() {
         confirmText="Cancel Booking"
         loading={cancel.isPending}
         onConfirm={(reason) => cancel.mutate(reason)}
+      />
+
+      <InspectionDialog
+        open={inspectionAction === "handover"}
+        onOpenChange={(v) => !v && setInspectionAction(null)}
+        title="Record Handover"
+        allowDamages={false}
+        onSubmit={submitInspection}
+        loading={handover.isPending}
+      />
+      <InspectionDialog
+        open={inspectionAction === "return"}
+        onOpenChange={(v) => !v && setInspectionAction(null)}
+        title="Record Return"
+        allowDamages
+        onSubmit={submitInspection}
+        loading={returnVehicle.isPending}
       />
     </div>
   );

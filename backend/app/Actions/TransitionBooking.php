@@ -3,11 +3,14 @@
 namespace App\Actions;
 
 use App\Models\Booking;
+use App\Models\BookingDamage;
 use App\Models\BookingFinancial;
+use App\Models\BookingInspection;
 use App\Models\BookingPricing;
 use App\Models\BookingStatusHistory;
 use App\Models\LedgerEntry;
 use App\Models\Payment;
+use App\Models\PlatformSetting;
 use App\Models\ReservationHold;
 use App\Models\SecurityDeposit;
 use App\Models\Vehicle;
@@ -339,6 +342,109 @@ class TransitionBooking
             'status' => $isPrepaid ? SecurityDeposit::STATUS_HELD : SecurityDeposit::STATUS_PENDING,
             'collected_at' => $isPrepaid ? now() : null,
         ]);
+    }
+
+    /**
+     * confirmed -> active. "Not before pickup_at - grace" per
+     * app-doc/marketplace/04-lifecycles.md - no grace setting is defined
+     * anywhere else in the schema for this specific check, so this reuses
+     * the same 2-hour buffer TransitionBooking::accept() already applies
+     * to the payment deadline cap, rather than inventing a new config key
+     * for a single call site.
+     */
+    public function handover(Booking $booking, int $actorId, array $inspection): Booking
+    {
+        if ($booking->status !== Booking::STATUS_CONFIRMED) {
+            throw ValidationException::withMessages(['status' => ['Only a confirmed booking can be handed over.']]);
+        }
+        if (now()->lessThan($booking->pickup_at->copy()->subHours(2))) {
+            throw ValidationException::withMessages(['status' => ['Too early for handover — check back closer to the pickup time.']]);
+        }
+
+        return DB::transaction(function () use ($booking, $actorId, $inspection) {
+            BookingInspection::create($inspection + [
+                'booking_id' => $booking->id,
+                'type' => BookingInspection::TYPE_HANDOVER,
+                'conducted_by' => $actorId,
+                'conducted_at' => now(),
+            ]);
+
+            $booking->update([
+                'status' => Booking::STATUS_ACTIVE,
+                'actual_pickup_at' => now(),
+            ]);
+
+            $this->history($booking, Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, 'staff', $actorId);
+
+            return $booking->fresh();
+        });
+    }
+
+    /**
+     * active -> completed. Records the return inspection and any damages,
+     * then opens the review window and sets the payout-eligibility date -
+     * see app-doc/marketplace/04-lifecycles.md "owner_payable accrues at
+     * confirmation but becomes payout-eligible only once completed and
+     * past payout_dispute_window_days". settlement_status flips to
+     * 'unsettled' right away (there is nothing left to wait on but the
+     * dispute window itself); payouts:build-cycle is the one that checks
+     * eligible_for_payout_at against now() before actually including it.
+     */
+    public function returnVehicle(Booking $booking, int $actorId, array $inspection, array $damages = []): Booking
+    {
+        if ($booking->status !== Booking::STATUS_ACTIVE) {
+            throw ValidationException::withMessages(['status' => ['Only an active booking can be returned.']]);
+        }
+
+        return DB::transaction(function () use ($booking, $actorId, $inspection, $damages) {
+            $returnInspection = BookingInspection::create($inspection + [
+                'booking_id' => $booking->id,
+                'type' => BookingInspection::TYPE_RETURN,
+                'conducted_by' => $actorId,
+                'conducted_at' => now(),
+            ]);
+
+            foreach ($damages as $damage) {
+                BookingDamage::create($damage + [
+                    'booking_id' => $booking->id,
+                    'inspection_id' => $returnInspection->id,
+                    'status' => 'reported',
+                    'reported_by' => $actorId,
+                ]);
+            }
+
+            $now = now();
+            $disputeWindowDays = (int) PlatformSetting::get('payout_dispute_window_days', 3);
+
+            $booking->update([
+                'status' => Booking::STATUS_COMPLETED,
+                'actual_return_at' => $now,
+                'completed_at' => $now,
+                'review_eligible_until' => $now->copy()->addDays(14),
+            ]);
+
+            $booking->vehicle()->increment('booking_count');
+            $booking->vehicle()->update(['last_booked_at' => $now]);
+
+            $booking->financials?->update([
+                'settlement_status' => BookingFinancial::SETTLEMENT_UNSETTLED,
+                'eligible_for_payout_at' => $now->copy()->addDays($disputeWindowDays),
+            ]);
+
+            $this->history($booking, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED, 'staff', $actorId);
+
+            return $booking->fresh();
+        });
+    }
+
+    /** confirmed -> no_show. Applied by a sweep when now() > pickup_at + no_show_grace_hours and the booking never reached handover. */
+    public function noShow(Booking $booking): Booking
+    {
+        $booking->update(['status' => Booking::STATUS_NO_SHOW]);
+
+        $this->history($booking, Booking::STATUS_CONFIRMED, Booking::STATUS_NO_SHOW, 'system', null);
+
+        return $booking->fresh();
     }
 
     /**

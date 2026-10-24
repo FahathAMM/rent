@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
+use App\Http\Controllers\Api\Vendor\PayoutController as VendorPayoutController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
 use App\Http\Controllers\Api\VisitLogController;
@@ -145,10 +146,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('bookings/{booking:booking_reference}/accept', [VendorBookingController::class, 'accept']);
             Route::post('bookings/{booking:booking_reference}/reject', [VendorBookingController::class, 'reject']);
             Route::post('bookings/{booking:booking_reference}/cancel', [VendorBookingController::class, 'cancel']);
+            Route::post('bookings/{booking:booking_reference}/handover', [VendorBookingController::class, 'handover']);
+            Route::post('bookings/{booking:booking_reference}/return', [VendorBookingController::class, 'return']);
+            Route::get('payouts', [VendorPayoutController::class, 'index']);
+            Route::get('payouts/{payout}', [VendorPayoutController::class, 'show']);
         });
 
-        // NOTE: availability calendars, finance, staff and settings
-        // endpoints land in Phases 5–6 once their controllers exist.
+        // NOTE: availability calendars, staff and settings endpoints
+        // land in Phases 6+ once their controllers exist.
     });
 });
 

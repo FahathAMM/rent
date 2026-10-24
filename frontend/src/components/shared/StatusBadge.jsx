@@ -28,6 +28,15 @@ export function StatusBadge({ status, className }) {
     published: "success",
     unpublished: "secondary",
     archived: "secondary",
+    confirmed: "success",
+    pending_approval: "warning",
+    processing: "info",
+    failed: "destructive",
+    expired: "secondary",
+    no_show: "destructive",
+    cancelled_by_customer: "secondary",
+    cancelled_by_owner: "secondary",
+    cancelled_by_admin: "destructive",
   };
 
   const labels = {
@@ -56,6 +65,15 @@ export function StatusBadge({ status, className }) {
     published: "Published",
     unpublished: "Unpublished",
     archived: "Archived",
+    confirmed: "Confirmed",
+    pending_approval: "Pending Approval",
+    processing: "Processing",
+    failed: "Failed",
+    expired: "Expired",
+    no_show: "No-show",
+    cancelled_by_customer: "Cancelled (customer)",
+    cancelled_by_owner: "Cancelled (owner)",
+    cancelled_by_admin: "Cancelled (admin)",
   };
 
   const key = String(status === true ? "true" : status === false ? "false" : status);

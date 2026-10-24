@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
 use App\Http\Controllers\Api\Platform\OwnerVerificationController;
+use App\Http\Controllers\Api\Platform\PayoutController as PlatformPayoutController;
 use App\Http\Controllers\Api\Platform\ShopVerificationController;
 use App\Http\Controllers\Api\Platform\SystemAdminController;
 use App\Http\Controllers\Api\PlatformDetailController;
@@ -113,10 +114,20 @@ Route::prefix('platform')->group(function () {
         Route::post('listings/{vehicle}/feature',   [ListingModerationController::class, 'feature']);
         Route::post('listings/{vehicle}/unfeature', [ListingModerationController::class, 'unfeature']);
 
+        // Manual payout settlement — see
+        // app-doc/marketplace/04-lifecycles.md "Payout cycle".
+        Route::get('payouts',                     [PlatformPayoutController::class, 'index']);
+        Route::get('payouts/{payout}',             [PlatformPayoutController::class, 'show']);
+        Route::post('payouts/build',               [PlatformPayoutController::class, 'build']);
+        Route::post('payouts/{payout}/approve',     [PlatformPayoutController::class, 'approve']);
+        Route::post('payouts/{payout}/processing',  [PlatformPayoutController::class, 'markProcessing']);
+        Route::post('payouts/{payout}/paid',        [PlatformPayoutController::class, 'markPaid']);
+        Route::post('payouts/{payout}/failed',      [PlatformPayoutController::class, 'markFailed']);
+
         // NOTE: dashboard, customers, categories, booking oversight,
-        // payments, commissions, payouts, reconciliation, disputes, abuse
+        // payments, commissions, reconciliation, disputes, abuse
         // reports, review moderation and platform settings land in
-        // Phases 3–8 once their controllers exist — see
+        // Phases 6–8 once their controllers exist — see
         // app-doc/marketplace/05-ui-and-api-map.md and 06-plan-and-risks.md.
     });
 });

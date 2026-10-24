@@ -48,6 +48,8 @@ class Automation extends Model
         'Expire Unanswered Bookings' => 'bookings:expire-unanswered',
         'Expire Unpaid Bookings' => 'bookings:expire-unpaid',
         'Release Expired Holds' => 'holds:release-expired',
+        'Flag No-Show Bookings' => 'bookings:flag-no-show',
+        'Build Owner Payouts' => 'payouts:build-cycle',
     ];
 
     /**

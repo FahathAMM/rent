@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Vendor;
 
 use App\Actions\TransitionBooking;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Booking\InspectionRequest;
 use App\Http\Requests\Booking\RejectBookingRequest;
 use App\Http\Resources\Vendor\BookingResource;
 use App\Models\Booking;
@@ -79,5 +80,35 @@ class BookingController extends Controller
         AuditService::edit('Booking', $booking->id, $booking->booking_reference, null, ['status' => 'cancelled_by_owner', 'reason' => $request->validated('reason')]);
 
         return $this->response('Booking cancelled', new BookingResource($booking));
+    }
+
+    public function handover(InspectionRequest $request, Booking $booking): JsonResponse
+    {
+        $this->authorize('conductHandover', $booking);
+
+        $booking = $this->transitions->handover($booking, AuthUser::id(), $request->safe()->except('damages'));
+
+        AuditService::edit('Booking', $booking->id, $booking->booking_reference, null, ['status' => 'active']);
+
+        return $this->response('Handover recorded — booking is now active', new BookingResource($booking));
+    }
+
+    public function return(InspectionRequest $request, Booking $booking): JsonResponse
+    {
+        $this->authorize('conductReturn', $booking);
+        if (!empty($request->validated('damages'))) {
+            $this->authorize('recordDamage', $booking);
+        }
+
+        $booking = $this->transitions->returnVehicle(
+            $booking,
+            AuthUser::id(),
+            $request->safe()->except('damages'),
+            $request->validated('damages', []),
+        );
+
+        AuditService::edit('Booking', $booking->id, $booking->booking_reference, null, ['status' => 'completed']);
+
+        return $this->response('Return recorded — booking completed', new BookingResource($booking));
     }
 }

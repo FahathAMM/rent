@@ -7,4 +7,6 @@ export const vendorBookingService = {
   accept: (reference) => api.post(`/vendor/bookings/${reference}/accept`),
   reject: (reference, reason) => api.post(`/vendor/bookings/${reference}/reject`, { reason }),
   cancel: (reference, reason) => api.post(`/vendor/bookings/${reference}/cancel`, { reason }),
+  handover: (reference, inspection) => api.post(`/vendor/bookings/${reference}/handover`, inspection),
+  returnVehicle: (reference, inspection) => api.post(`/vendor/bookings/${reference}/return`, inspection),
 };

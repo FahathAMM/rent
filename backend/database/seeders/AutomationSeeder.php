@@ -32,5 +32,19 @@ class AutomationSeeder extends Seeder
             ['name' => 'Release Expired Holds'],
             ['interval' => 'everyFiveMinutes', 'is_active' => true]
         );
+
+        Automation::firstOrCreate(
+            ['name' => 'Flag No-Show Bookings'],
+            ['interval' => 'everyFifteenMinutes', 'is_active' => true]
+        );
+
+        // Automation::INTERVALS has no "daily" entry (only 5min-6hr named
+        // intervals) - fixed_time is the model's own mechanism for a true
+        // once-a-day job, matching app-doc/marketplace/04-lifecycles.md
+        // "payouts:build-cycle | daily".
+        Automation::firstOrCreate(
+            ['name' => 'Build Owner Payouts'],
+            ['interval' => Automation::FIXED_TIME, 'fixed_time' => '02:00', 'is_active' => true]
+        );
     }
 }
