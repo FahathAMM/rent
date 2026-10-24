@@ -9,6 +9,7 @@ import { getIcon } from "@/lib/iconMap";
 import { TILE_COLORS } from "@/lib/tileColors";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/authStore";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -161,6 +162,8 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
             </Button>
           )}
         </div>
+
+        <NotificationBell />
 
         <div className="h-8 w-px bg-border shrink-0" aria-hidden="true" />
 

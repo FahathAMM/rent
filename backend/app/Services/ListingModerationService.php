@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ListingModerationHistory;
 use App\Models\SystemAdmin;
 use App\Models\Vehicle;
+use App\Notifications\MarketplaceNotification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -24,6 +25,10 @@ class ListingModerationService
 
         AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, null, ['moderation_status' => 'approved', 'decided_by_admin_id' => $admin->id]);
 
+        $vehicle->shop?->owner?->notify(new MarketplaceNotification(
+            'listing_approved', 'Listing approved', "Your listing \"{$vehicle->title}\" passed moderation — you can publish it now.", '/vendor/vehicles',
+        ));
+
         return $vehicle->fresh();
     }
 
@@ -38,6 +43,10 @@ class ListingModerationService
         $this->history($admin, $vehicle, $from, Vehicle::MODERATION_REJECTED, 'rejected', $reason);
 
         AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, null, ['moderation_status' => 'rejected', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
+
+        $vehicle->shop?->owner?->notify(new MarketplaceNotification(
+            'listing_rejected', 'Listing rejected', "Your listing \"{$vehicle->title}\" was rejected: {$reason}", '/vendor/vehicles',
+        ));
 
         return $vehicle->fresh();
     }

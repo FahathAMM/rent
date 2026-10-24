@@ -10,6 +10,7 @@ use App\Models\PayoutAdjustment;
 use App\Models\PlatformSetting;
 use App\Models\RentalShop;
 use App\Models\SystemAdmin;
+use App\Notifications\MarketplaceNotification;
 use App\Support\NumberGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -178,6 +179,10 @@ class PayoutService
             $this->writePaidLedgerEntry($payout);
 
             AuditService::edit('OwnerPayout', $payout->id, $payout->payout_reference, null, ['status' => 'paid', 'decided_by_admin_id' => $admin->id]);
+
+            $payout->shop?->owner?->notify(new MarketplaceNotification(
+                'payout_paid', 'Payout paid', "Your payout {$payout->payout_reference} for " . number_format((float) $payout->net_amount, 2) . " LKR has been settled.", '/vendor/finance/payouts',
+            ));
 
             return $payout->fresh();
         });

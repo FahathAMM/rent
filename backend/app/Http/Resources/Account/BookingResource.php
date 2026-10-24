@@ -54,6 +54,11 @@ class BookingResource extends JsonResource
             'customer_note' => $this->customer_note,
             'cancellation_reason' => $this->cancellation_reason,
             'review_eligible_until' => $this->review_eligible_until?->toISOString(),
+            'review' => $this->whenLoaded('review', fn () => $this->review ? [
+                'id' => $this->review->id,
+                'rating' => $this->review->rating,
+                'status' => $this->review->status,
+            ] : null),
             'has_open_dispute' => $this->has_open_dispute,
             'created_at' => $this->created_at->toISOString(),
         ];

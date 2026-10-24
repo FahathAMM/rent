@@ -15,6 +15,7 @@ use App\Models\ReservationHold;
 use App\Models\SecurityDeposit;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
+use App\Notifications\MarketplaceNotification;
 use App\Services\CommissionResolver;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -74,6 +75,8 @@ class TransitionBooking
 
             $this->history($booking, Booking::STATUS_PENDING, Booking::STATUS_ACCEPTED, 'staff', $actorId);
 
+            $this->notifyCustomer($booking, 'booking_accepted', 'Booking accepted', "Your request for {$booking->vehicle->title} was accepted — complete payment to confirm it.", "/account/bookings/{$booking->booking_reference}");
+
             return $booking->fresh();
         });
     }
@@ -93,6 +96,8 @@ class TransitionBooking
         ]);
 
         $this->history($booking, Booking::STATUS_PENDING, Booking::STATUS_REJECTED, 'staff', $actorId, $reason);
+
+        $this->notifyCustomer($booking, 'booking_rejected', 'Booking declined', "Your request for {$booking->vehicle->title} was declined: {$reason}", "/account/bookings/{$booking->booking_reference}");
 
         return $booking->fresh();
     }
@@ -118,6 +123,8 @@ class TransitionBooking
             $this->releaseHold($booking);
             $this->history($booking, $from, Booking::STATUS_CANCELLED_BY_CUSTOMER, 'customer', $actorId, $reason);
 
+            $this->notifyShopOwner($booking, 'booking_cancelled', 'Booking cancelled by customer', "The booking for {$booking->vehicle->title} ({$booking->booking_reference}) was cancelled by the customer.", '/vendor/bookings');
+
             return $booking->fresh();
         });
     }
@@ -141,6 +148,8 @@ class TransitionBooking
             $this->releaseHold($booking);
             $this->history($booking, Booking::STATUS_ACCEPTED, Booking::STATUS_CANCELLED_BY_OWNER, 'staff', $actorId, $reason);
 
+            $this->notifyCustomer($booking, 'booking_cancelled', 'Booking cancelled', "Your booking for {$booking->vehicle->title} was cancelled by the owner: {$reason}", "/account/bookings/{$booking->booking_reference}");
+
             return $booking->fresh();
         });
     }
@@ -155,6 +164,8 @@ class TransitionBooking
         ]);
 
         $this->history($booking, Booking::STATUS_PENDING, Booking::STATUS_EXPIRED, 'system', null, 'owner_no_response');
+
+        $this->notifyCustomer($booking, 'booking_expired', 'Request expired', "The owner didn't respond to your request for {$booking->vehicle->title} in time, so it has expired.", '/account/bookings');
 
         return $booking->fresh();
     }
@@ -171,6 +182,8 @@ class TransitionBooking
 
             $this->releaseHold($booking, ReservationHold::STATUS_EXPIRED);
             $this->history($booking, Booking::STATUS_ACCEPTED, Booking::STATUS_EXPIRED, 'system', null, 'payment_timeout');
+
+            $this->notifyCustomer($booking, 'booking_expired', 'Payment window expired', "The payment window for your booking of {$booking->vehicle->title} has passed, so it has expired.", '/account/bookings');
 
             return $booking->fresh();
         });
@@ -213,6 +226,9 @@ class TransitionBooking
             $this->writeSecurityDeposit($booking, $vehicle);
 
             $this->history($booking, Booking::STATUS_ACCEPTED, Booking::STATUS_CONFIRMED, 'system', null);
+
+            $this->notifyCustomer($booking, 'booking_confirmed', 'Booking confirmed', "Payment received — your booking for {$booking->vehicle->title} is confirmed.", "/account/bookings/{$booking->booking_reference}");
+            $this->notifyShopOwner($booking, 'booking_confirmed', 'Booking confirmed', "Payment received for {$booking->vehicle->title} ({$booking->booking_reference}) — the booking is now confirmed.", '/vendor/bookings');
 
             return $booking->fresh();
         });
@@ -433,6 +449,8 @@ class TransitionBooking
 
             $this->history($booking, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED, 'staff', $actorId);
 
+            $this->notifyCustomer($booking, 'booking_completed', 'Trip completed', "Your rental of {$booking->vehicle->title} is complete — share your experience with a review.", "/account/bookings/{$booking->booking_reference}");
+
             return $booking->fresh();
         });
     }
@@ -498,5 +516,16 @@ class TransitionBooking
             'actor_id' => $actorId,
             'reason' => $reason,
         ]);
+    }
+
+    private function notifyCustomer(Booking $booking, string $type, string $title, string $body, ?string $actionUrl = null): void
+    {
+        $booking->customer?->notify(new MarketplaceNotification($type, $title, $body, $actionUrl));
+    }
+
+    /** $booking->shop (a plain belongsTo, not BelongsToShop) needs no scope workaround — see Booking's own docblock on shop_id being denormalised for exactly this kind of read. */
+    private function notifyShopOwner(Booking $booking, string $type, string $title, string $body, ?string $actionUrl = null): void
+    {
+        $booking->shop?->owner?->notify(new MarketplaceNotification($type, $title, $body, $actionUrl));
     }
 }

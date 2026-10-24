@@ -7,13 +7,16 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
+use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
 use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
 use App\Http\Controllers\Api\Vendor\PayoutController as VendorPayoutController;
+use App\Http\Controllers\Api\Vendor\ReviewController as VendorReviewController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
 use App\Http\Controllers\Api\VisitLogController;
@@ -92,7 +95,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('bookings/{booking:booking_reference}/checkout', [BookingController::class, 'checkout']);
     Route::post('bookings/{booking:booking_reference}/cancel', [BookingController::class, 'cancel']);
 
-    // NOTE: favorites, reviews, disputes land in Phase 4+ once their
+    // Customer's own reviews — Review has no BelongsToShop/ShopScope at
+    // all (unlike Booking/Vehicle), so there is no scope-bypass concern
+    // here the way there is for CustomerBookingQuery.
+    Route::get('reviews', [ReviewController::class, 'index']);
+    Route::post('reviews', [ReviewController::class, 'store']);
+
+    // Shared by both the customer and vendor apps — a notification
+    // belongs to the User model itself, never to a shop.
+    Route::get('notifications', [NotificationController::class, 'index']);
+    Route::post('notifications/{id}/read', [NotificationController::class, 'markRead']);
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+    // NOTE: favorites, disputes land in a later phase once their
     // controllers exist — see app-doc/marketplace/05-ui-and-api-map.md.
 
     // ─── Vendor-side — requires an active shop context ───────────────────────
@@ -153,6 +168,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('bookings/{booking:booking_reference}/return', [VendorBookingController::class, 'return']);
             Route::get('payouts', [VendorPayoutController::class, 'index']);
             Route::get('payouts/{payout}', [VendorPayoutController::class, 'show']);
+            Route::get('reviews', [VendorReviewController::class, 'index']);
+            Route::post('reviews/{review}/reply', [VendorReviewController::class, 'reply']);
         });
 
         // NOTE: availability calendars, staff and settings endpoints

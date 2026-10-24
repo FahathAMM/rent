@@ -6,7 +6,7 @@ import { cn, getInitials } from "@/lib/utils";
 import { usePlatformAuth } from "@/hooks/usePlatformAuth";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
-  Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote,
+  Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
   FileSearch, ExternalLink,
 } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/listings", label: "Listing Moderation", icon: Car },
   { href: "/platform/payouts", label: "Payouts", icon: Banknote },
+  { href: "/platform/reviews", label: "Reviews", icon: Star },
   { href: "/platform/users", label: "Users", icon: Users },
   { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
   // /platform/logs (custom log viewer) temporarily hidden from nav — the

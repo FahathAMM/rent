@@ -5,12 +5,14 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { bookingService } from "@/services/bookingService";
+import { reviewService } from "@/services/reviewService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
+import { WriteReviewDialog } from "@/components/account/WriteReviewDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Phone, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, Phone, MapPin, Star } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -38,6 +40,7 @@ export default function BookingDetailPage() {
   const qc = useQueryClient();
   const { format } = useCurrencyFormat();
   const [cancelling, setCancelling] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["my-booking", reference],
@@ -64,6 +67,20 @@ export default function BookingDetailPage() {
     onError: (err) => toast.error(err.response?.data?.message ?? err.response?.data?.errors?.status?.[0] ?? "Could not start checkout"),
   });
 
+  const submitReview = useMutation({
+    mutationFn: (data) => reviewService.create({ booking_reference: reference, ...data }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-booking", reference] });
+      qc.invalidateQueries({ queryKey: ["my-reviews"] });
+      toast.success("Review submitted — it will appear once moderated");
+      setReviewing(false);
+    },
+  });
+
+  const handleReviewSubmit = (data, setErrors) => {
+    submitReview.mutate(data, { onError: (err) => setErrors(err.response?.data?.errors ?? {}) });
+  };
+
   if (isLoading) {
     return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -79,6 +96,8 @@ export default function BookingDetailPage() {
 
   const canCancel = CANCELLABLE.includes(booking.status);
   const canPay = booking.status === "accepted" && ["unpaid", "failed"].includes(booking.payment_status);
+  const canReview = booking.status === "completed" && !booking.review
+    && (!booking.review_eligible_until || new Date(booking.review_eligible_until) > new Date());
   const pricing = booking.pricing ?? {};
 
   return (
@@ -147,11 +166,22 @@ export default function BookingDetailPage() {
         <Card><CardHeader><CardTitle className="text-base">Your Note</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{booking.customer_note}</CardContent></Card>
       )}
 
-      {(canCancel || canPay) && (
+      {booking.review && (
+        <Card><CardContent className="py-4 text-sm text-muted-foreground">
+          You rated this rental {booking.review.rating}/5 — <StatusBadge status={booking.review.status} className="ml-1" />
+        </CardContent></Card>
+      )}
+
+      {(canCancel || canPay || canReview) && (
         <div className="flex justify-end gap-2">
           {canCancel && (
             <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
               Cancel Booking
+            </Button>
+          )}
+          {canReview && (
+            <Button variant="outline" className="gap-1.5" onClick={() => setReviewing(true)}>
+              <Star className="h-4 w-4" /> Write a Review
             </Button>
           )}
           {canPay && (
@@ -171,6 +201,13 @@ export default function BookingDetailPage() {
         confirmText="Cancel Booking"
         loading={cancel.isPending}
         onConfirm={(reason) => cancel.mutate(reason)}
+      />
+
+      <WriteReviewDialog
+        open={reviewing}
+        onOpenChange={setReviewing}
+        onSubmit={handleReviewSubmit}
+        loading={submitReview.isPending}
       />
     </div>
   );

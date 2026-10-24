@@ -49,11 +49,18 @@ class MenuSeeder extends Seeder
             'sort_order' => 3,
         ],
         [
+            'key' => 'reviews',
+            'name' => 'My Reviews',
+            'route_name' => '/account/reviews',
+            'icon' => 'Star',
+            'sort_order' => 4,
+        ],
+        [
             'key' => 'profile',
             'name' => 'Profile',
             'route_name' => '/account/profile',
             'icon' => 'User',
-            'sort_order' => 4,
+            'sort_order' => 5,
         ],
     ];
 
@@ -84,10 +91,17 @@ class MenuSeeder extends Seeder
             'sort_order' => 3,
         ],
         [
+            'key' => 'reviews',
+            'name' => 'Reviews',
+            'route_name' => '/vendor/reviews',
+            'icon' => 'Star',
+            'sort_order' => 4,
+        ],
+        [
             'key' => 'finance',
             'name' => 'Finance',
             'icon' => 'Wallet',
-            'sort_order' => 4,
+            'sort_order' => 5,
             'children' => [
                 ['key' => 'earnings', 'name' => 'Earnings', 'route_name' => '/vendor/finance/earnings', 'icon' => 'TrendingUp', 'sort_order' => 1],
                 ['key' => 'payouts', 'name' => 'Payouts', 'route_name' => '/vendor/finance/payouts', 'icon' => 'Banknote', 'sort_order' => 2],
@@ -98,7 +112,7 @@ class MenuSeeder extends Seeder
             'key' => 'expense',
             'name' => 'Expenses',
             'icon' => 'Receipt',
-            'sort_order' => 5,
+            'sort_order' => 6,
             'children' => [
                 ['key' => 'expenses', 'name' => 'Expenses', 'route_name' => '/vendor/expenses', 'icon' => 'Receipt', 'sort_order' => 1],
                 ['key' => 'categories', 'name' => 'Categories', 'route_name' => '/vendor/expense-categories', 'icon' => 'Tag', 'sort_order' => 2],
@@ -109,13 +123,13 @@ class MenuSeeder extends Seeder
             'name' => 'Staff',
             'route_name' => '/vendor/staff',
             'icon' => 'Users',
-            'sort_order' => 6,
+            'sort_order' => 7,
         ],
         [
             'key' => 'settings',
             'name' => 'Settings',
             'icon' => 'Settings2',
-            'sort_order' => 7,
+            'sort_order' => 8,
             'children' => [
                 ['key' => 'shop', 'name' => 'Shop Profile', 'route_name' => '/vendor/settings/shop', 'icon' => 'Building2', 'sort_order' => 1],
                 ['key' => 'locations', 'name' => 'Locations', 'route_name' => '/vendor/settings/locations', 'icon' => 'MapPin', 'sort_order' => 2],
@@ -149,6 +163,7 @@ class MenuSeeder extends Seeder
             'dashboard'          => ['view'],
             'bookings'           => ['view', 'create', 'edit'],
             'favorites'          => ['view', 'create', 'delete'],
+            'reviews'            => ['view', 'create'],
             'profile'            => ['view', 'edit'],
         ],
         'vehicle-owner' => [
@@ -156,6 +171,7 @@ class MenuSeeder extends Seeder
             'vehicles-list'      => ['view', 'create', 'edit', 'delete'],
             'vehicles-calendar'  => ['view', 'edit'],
             'bookings'           => ['view', 'create', 'edit'],
+            'reviews'            => ['view', 'edit'],
             'finance-earnings'   => ['view'],
             'finance-payouts'    => ['view'],
             'finance-bank_details' => ['view', 'edit'],
@@ -170,6 +186,7 @@ class MenuSeeder extends Seeder
             'vehicles-list'      => ['view', 'create', 'edit', 'delete'],
             'vehicles-calendar'  => ['view', 'edit'],
             'bookings'           => ['view', 'create', 'edit'],
+            'reviews'            => ['view', 'edit'],
             'finance-earnings'   => ['view'],
             'finance-payouts'    => ['view'],
             'finance-bank_details' => ['view', 'edit'],
@@ -184,6 +201,7 @@ class MenuSeeder extends Seeder
             'vehicles-list'      => ['view', 'edit'],
             'vehicles-calendar'  => ['view', 'edit'],
             'bookings'           => ['view', 'edit'],
+            'reviews'            => ['view', 'edit'],
             'expense-expenses'   => ['view'],
         ],
     ];

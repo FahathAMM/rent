@@ -9,6 +9,7 @@ use App\Models\RentalShop;
 use App\Models\ShopMember;
 use App\Models\ShopSettings;
 use App\Models\SystemAdmin;
+use App\Notifications\MarketplaceNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -125,6 +126,10 @@ class OwnerOnboardingService
 
             AuditService::edit('OwnerProfile', $profile->id, $profile->full_name, null, ['status' => 'approved']);
 
+            $user->notify(new MarketplaceNotification(
+                'owner_application_approved', 'Application approved', "You're now a verified vehicle owner — list your first vehicle to get started.", '/vendor/vehicles',
+            ));
+
             return $profile->fresh();
         });
     }
@@ -139,6 +144,10 @@ class OwnerOnboardingService
         ]);
 
         AuditService::edit('OwnerProfile', $profile->id, $profile->full_name, null, ['status' => 'rejected', 'reason' => $reason]);
+
+        $profile->user?->notify(new MarketplaceNotification(
+            'owner_application_rejected', 'Application rejected', "Your owner application was rejected: {$reason}", '/account/become-owner',
+        ));
 
         return $profile->fresh();
     }

@@ -10,6 +10,7 @@ import { getIcon } from "@/lib/iconMap";
 import { cn } from "@/lib/utils";
 import { Loader2, LogOut, User as UserIcon } from "lucide-react";
 import { BrandLogo } from "@/components/auth/BrandLogo";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,6 +82,8 @@ export default function AccountLayout({ children }) {
               );
             })}
           </nav>
+
+          <NotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

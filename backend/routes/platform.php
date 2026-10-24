@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
 use App\Http\Controllers\Api\Platform\OwnerVerificationController;
 use App\Http\Controllers\Api\Platform\PayoutController as PlatformPayoutController;
+use App\Http\Controllers\Api\Platform\ReviewController as PlatformReviewController;
 use App\Http\Controllers\Api\Platform\ShopVerificationController;
 use App\Http\Controllers\Api\Platform\SystemAdminController;
 use App\Http\Controllers\Api\PlatformDetailController;
@@ -126,10 +127,16 @@ Route::prefix('platform')->group(function () {
         Route::post('payouts/{payout}/paid',        [PlatformPayoutController::class, 'markPaid']);
         Route::post('payouts/{payout}/failed',      [PlatformPayoutController::class, 'markFailed']);
 
-        // NOTE: dashboard, customers, categories, booking oversight,
-        // payments, commissions, reconciliation, disputes, abuse
-        // reports, review moderation and platform settings land in
-        // Phases 6–8 once their controllers exist — see
+        // Review moderation — see
+        // app-doc/marketplace/05-ui-and-api-map.md "/platform/reviews".
+        Route::get('reviews',                [PlatformReviewController::class, 'index']);
+        Route::post('reviews/{review}/publish', [PlatformReviewController::class, 'publish']);
+        Route::post('reviews/{review}/reject',  [PlatformReviewController::class, 'reject']);
+        Route::post('reviews/{review}/hide',    [PlatformReviewController::class, 'hide']);
+
+        // NOTE: customers, categories, booking oversight, payments,
+        // commissions, reconciliation, disputes and abuse reports land
+        // in Phases 7–8 once their controllers exist — see
         // app-doc/marketplace/05-ui-and-api-map.md and 06-plan-and-risks.md.
     });
 });

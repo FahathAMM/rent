@@ -8,6 +8,7 @@ use App\Models\RentalShop;
 use App\Models\ShopMember;
 use App\Models\ShopSettings;
 use App\Models\SystemAdmin;
+use App\Notifications\MarketplaceNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -96,6 +97,10 @@ class ShopOnboardingService
 
         AuditService::edit('RentalShop', $shop->id, $shop->name, null, ['verification_status' => 'verified', 'decided_by_admin_id' => $admin->id]);
 
+        $shop->owner?->notify(new MarketplaceNotification(
+            'shop_verified', 'Shop verified', "{$shop->name} is now verified and published on the marketplace.", '/vendor/dashboard',
+        ));
+
         return $shop->fresh();
     }
 
@@ -108,6 +113,10 @@ class ShopOnboardingService
         ]);
 
         AuditService::edit('RentalShop', $shop->id, $shop->name, null, ['verification_status' => 'rejected', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
+
+        $shop->owner?->notify(new MarketplaceNotification(
+            'shop_rejected', 'Shop verification rejected', "{$shop->name} was rejected: {$reason}", '/account/shops/new',
+        ));
 
         return $shop->fresh();
     }
