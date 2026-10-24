@@ -139,7 +139,7 @@ export default function BecomeOwnerPage() {
   };
 
   const breadcrumbItems = [
-    { label: "Home", href: "/account", icon: <Home className="size-4" /> },
+    { label: "Home", href: "/account/dashboard", icon: <Home className="size-4" /> },
     { label: "Become an Owner" },
   ];
 

@@ -29,7 +29,7 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
     setLoading(true);
     try {
       await register(form);
-      router.push("/account");
+      router.push("/account/dashboard");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Registration failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });

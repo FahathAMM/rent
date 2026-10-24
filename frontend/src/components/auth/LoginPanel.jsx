@@ -28,7 +28,7 @@ export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
     try {
       const user = await login(form);
       const isVendor = (user.roles ?? []).some((r) => ["vehicle-owner", "shop-owner", "shop-staff"].includes(r));
-      router.push(isVendor ? "/vendor/dashboard" : "/account");
+      router.push(isVendor ? "/vendor/dashboard" : "/account/dashboard");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Login failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });

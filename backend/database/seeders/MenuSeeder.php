@@ -30,7 +30,7 @@ class MenuSeeder extends Seeder
         [
             'key' => 'dashboard',
             'name' => 'Dashboard',
-            'route_name' => '/account',
+            'route_name' => '/account/dashboard',
             'icon' => 'LayoutDashboard',
             'sort_order' => 1,
         ],

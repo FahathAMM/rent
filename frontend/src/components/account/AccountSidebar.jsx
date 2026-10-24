@@ -51,7 +51,7 @@ export function AccountSidebar({ navigation, user, onLogout, isVendor, open = fa
         )}
       >
         <div className="flex items-center justify-between gap-2 border-b px-4 py-4">
-          <Link href="/account" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
+          <Link href="/account/dashboard" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
             <BrandLogo
               logoUrl={logoUrl}
               brandName={brandName}

@@ -74,7 +74,7 @@ export function PublicHeader() {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              <Link href="/account">
+              <Link href="/account/dashboard">
                 <UserIcon className="mr-2 h-4 w-4" /> {user?.name?.split(" ")[0] ?? "My Account"}
               </Link>
             </Button>
