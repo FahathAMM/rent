@@ -6,7 +6,9 @@ use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PlatformDetailController;
+use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\VisitLogController;
 use Illuminate\Support\Facades\Route;
@@ -50,9 +52,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('menus/navigation', [MenuController::class, 'navigation']);
     Route::get('menus/flat',       [MenuController::class, 'flat']);
 
+    // Owner/shop onboarding — deliberately NOT behind shop.context: an
+    // individual owner has no shop until approval auto-provisions one,
+    // and shop registration is how the first one is created at all. See
+    // app-doc/marketplace/01-phase1-architecture.md section 3.1.
+    Route::prefix('onboarding')->group(function () {
+        Route::get('owner',             [OwnerOnboardingController::class, 'show']);
+        Route::post('owner',            [OwnerOnboardingController::class, 'store']);
+        Route::post('owner/documents',  [OwnerOnboardingController::class, 'uploadDocument']);
+        Route::get('owner/documents/{verification}/download', [OwnerOnboardingController::class, 'downloadDocument']);
+        Route::post('owner/submit',     [OwnerOnboardingController::class, 'submit']);
+
+        Route::get('shops',                       [ShopOnboardingController::class, 'index']);
+        Route::post('shops',                      [ShopOnboardingController::class, 'store']);
+        Route::post('shops/{shop}/documents',     [ShopOnboardingController::class, 'uploadDocument']);
+        Route::get('shops/documents/{verification}/download', [ShopOnboardingController::class, 'downloadDocument']);
+        Route::post('shops/{shop}/submit',        [ShopOnboardingController::class, 'submitForVerification']);
+    });
+
     // NOTE: customer-facing endpoints (favorites, own bookings, reviews,
-    // disputes, owner/shop onboarding) land in Phase 2+ once their
-    // controllers exist — see app-doc/marketplace/05-ui-and-api-map.md.
+    // disputes) land in Phase 4+ once their controllers exist — see
+    // app-doc/marketplace/05-ui-and-api-map.md.
 
     // ─── Vendor-side — requires an active shop context ───────────────────────
     // shop.context validates X-Shop-Id against the caller's shop_members

@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomation
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
+use App\Http\Controllers\Api\Platform\OwnerVerificationController;
+use App\Http\Controllers\Api\Platform\ShopVerificationController;
 use App\Http\Controllers\Api\Platform\SystemAdminController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use Illuminate\Support\Facades\Route;
@@ -77,11 +79,30 @@ Route::prefix('platform')->group(function () {
         Route::post('impersonation/start', [ImpersonationController::class, 'start']);
         Route::post('impersonation/stop',  [ImpersonationController::class, 'stop']);
 
-        // NOTE: dashboard, customers, owner/shop verification, listing
-        // moderation, categories, booking oversight, payments, commissions,
-        // payouts, reconciliation, disputes, abuse reports, review
-        // moderation and platform settings land in Phases 2–8 once their
-        // controllers and models' business logic exist — see
+        // Individual-owner applications — see
+        // app-doc/marketplace/01-phase1-architecture.md section 3.1:
+        // approving one auto-provisions the applicant's personal shop.
+        Route::get('owner-applications',                      [OwnerVerificationController::class, 'index']);
+        Route::get('owner-applications/{ownerProfile}',        [OwnerVerificationController::class, 'show']);
+        Route::post('owner-applications/{ownerProfile}/approve', [OwnerVerificationController::class, 'approve']);
+        Route::post('owner-applications/{ownerProfile}/reject',  [OwnerVerificationController::class, 'reject']);
+        Route::post('owner-applications/{ownerProfile}/request-info', [OwnerVerificationController::class, 'requestInfo']);
+        Route::post('owner-applications/{ownerProfile}/suspend', [OwnerVerificationController::class, 'suspend']);
+        Route::get('owner-applications/documents/{verification}/download', [OwnerVerificationController::class, 'downloadDocument']);
+
+        // Business shop verification and publication status.
+        Route::get('shops',                      [ShopVerificationController::class, 'index']);
+        Route::get('shops/{rentalShop}',          [ShopVerificationController::class, 'show']);
+        Route::post('shops/{rentalShop}/verify',  [ShopVerificationController::class, 'verify']);
+        Route::post('shops/{rentalShop}/reject',  [ShopVerificationController::class, 'reject']);
+        Route::post('shops/{rentalShop}/suspend', [ShopVerificationController::class, 'suspend']);
+        Route::post('shops/{rentalShop}/activate', [ShopVerificationController::class, 'activate']);
+        Route::get('shops/documents/{verification}/download', [ShopVerificationController::class, 'downloadDocument']);
+
+        // NOTE: dashboard, customers, listing moderation, categories,
+        // booking oversight, payments, commissions, payouts, reconciliation,
+        // disputes, abuse reports, review moderation and platform settings
+        // land in Phases 3–8 once their controllers exist — see
         // app-doc/marketplace/05-ui-and-api-map.md and 06-plan-and-risks.md.
     });
 });

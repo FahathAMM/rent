@@ -43,7 +43,8 @@ class RentalShop extends Model
         'latitude', 'longitude', 'operating_hours',
         'pickup_instructions', 'return_instructions', 'rental_terms', 'cancellation_policy',
         'logo', 'cover_image', 'business_registration_no', 'tax_id',
-        'status', 'verification_status', 'is_published', 'suspended_reason',
+        'status', 'verification_status', 'is_published', 'published_at', 'suspended_reason',
+        'verified_at', 'verified_by',
         'commission_rate_override', 'payout_schedule', 'min_payout_threshold',
     ];
 

@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Expense;
+use App\Models\OwnerProfile;
+use App\Models\RentalShop;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
         // map, and User is intentionally not in it.
         Relation::morphMap([
             'expense' => Expense::class,
+            'owner_profile' => OwnerProfile::class,
+            'rental_shop' => RentalShop::class,
         ]);
     }
 }
