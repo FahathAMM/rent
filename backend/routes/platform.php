@@ -7,13 +7,20 @@ use App\Http\Controllers\Api\Platform\AuditLogController as PlatformAuditLogCont
 use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
+use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
+use App\Http\Controllers\Api\Platform\CategoryController as PlatformCategoryController;
+use App\Http\Controllers\Api\Platform\CommissionController as PlatformCommissionController;
+use App\Http\Controllers\Api\Platform\CustomerController as PlatformCustomerController;
 use App\Http\Controllers\Api\Platform\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\Api\Platform\DisputeController as PlatformDisputeController;
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
 use App\Http\Controllers\Api\Platform\OwnerVerificationController;
+use App\Http\Controllers\Api\Platform\PaymentController as PlatformPaymentController;
 use App\Http\Controllers\Api\Platform\PayoutController as PlatformPayoutController;
+use App\Http\Controllers\Api\Platform\ReconciliationController as PlatformReconciliationController;
+use App\Http\Controllers\Api\Platform\RefundController as PlatformRefundController;
 use App\Http\Controllers\Api\Platform\ReportController as PlatformReportController;
 use App\Http\Controllers\Api\Platform\ReviewController as PlatformReviewController;
 use App\Http\Controllers\Api\Platform\ShopVerificationController;
@@ -150,9 +157,49 @@ Route::prefix('platform')->group(function () {
         Route::get('abuse-reports',               [PlatformReportController::class, 'index']);
         Route::post('abuse-reports/{report}/action', [PlatformReportController::class, 'action']);
 
-        // NOTE: customers, categories, booking oversight, payments,
-        // commissions and reconciliation land in Phase 8 once their
-        // controllers exist — see app-doc/marketplace/05-ui-and-api-map.md
-        // and 06-plan-and-risks.md.
+        // Customer accounts (any marketplace user — customer, owner, or
+        // staff; there is no separate "customer" table) — suspend/ban
+        // revokes every token the account already holds.
+        Route::get('customers',                 [PlatformCustomerController::class, 'index']);
+        Route::get('customers/{user}',           [PlatformCustomerController::class, 'show']);
+        Route::post('customers/{user}/suspend',  [PlatformCustomerController::class, 'suspend']);
+        Route::post('customers/{user}/ban',      [PlatformCustomerController::class, 'ban']);
+        Route::post('customers/{user}/activate', [PlatformCustomerController::class, 'activate']);
+
+        // Vehicle categories — platform-managed, feeds the public search
+        // facets and VehicleCategoryController's commission-base lookups.
+        Route::apiResource('categories', PlatformCategoryController::class)->parameters(['categories' => 'category']);
+
+        // Commission rules — see app-doc/marketplace/04-lifecycles.md
+        // "Commission model". Deleting/editing a rule never re-prices a
+        // booking that already confirmed; the resolved rule is frozen
+        // into booking_financials at that moment.
+        Route::apiResource('commissions', PlatformCommissionController::class)->parameters(['commissions' => 'commission']);
+
+        // Payments — read-only; only ever written by PaymentService / the
+        // PayHere webhook handler.
+        Route::get('payments',           [PlatformPaymentController::class, 'index']);
+        Route::get('payments/{payment}', [PlatformPaymentController::class, 'show']);
+
+        // Refunds — manual settlement, same evidence-required pattern as
+        // PayoutController::markPaid (PayHere's refund API is unconfirmed
+        // against a live merchant account).
+        Route::get('refunds',                    [PlatformRefundController::class, 'index']);
+        Route::get('refunds/{refund}',            [PlatformRefundController::class, 'show']);
+        Route::post('refunds',                    [PlatformRefundController::class, 'store']);
+        Route::post('refunds/{refund}/approve',   [PlatformRefundController::class, 'approve']);
+        Route::post('refunds/{refund}/reject',    [PlatformRefundController::class, 'reject']);
+        Route::post('refunds/{refund}/complete',  [PlatformRefundController::class, 'complete']);
+
+        // Cross-shop booking oversight — no ShopScope bypass needed (see
+        // PlatformBookingController's docblock).
+        Route::get('bookings',                       [PlatformBookingController::class, 'index']);
+        Route::get('bookings/{reference}',             [PlatformBookingController::class, 'show']);
+        Route::post('bookings/{reference}/cancel',     [PlatformBookingController::class, 'cancel']);
+
+        // "Gateway vs ledger vs payouts" — see
+        // app-doc/marketplace/05-ui-and-api-map.md "/platform/reconciliation".
+        Route::get('reconciliation',          [PlatformReconciliationController::class, 'index']);
+        Route::get('reconciliation/export',   [PlatformReconciliationController::class, 'export']);
     });
 });

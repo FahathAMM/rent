@@ -7,7 +7,8 @@ import { usePlatformAuth } from "@/hooks/usePlatformAuth";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
-  FileSearch, ExternalLink, AlertTriangle, Flag,
+  FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag,
+  Percent, CreditCard, Undo2, Scale,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -16,10 +17,17 @@ import {
 
 const NAV_ITEMS = [
   { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/platform/customers", label: "Customers", icon: UserCheck },
   { href: "/platform/owners", label: "Owner Applications", icon: UserCheck },
   { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/listings", label: "Listing Moderation", icon: Car },
+  { href: "/platform/categories", label: "Categories", icon: Tag },
+  { href: "/platform/bookings", label: "Bookings", icon: CalendarCheck },
+  { href: "/platform/payments", label: "Payments", icon: CreditCard },
+  { href: "/platform/refunds", label: "Refunds", icon: Undo2 },
   { href: "/platform/payouts", label: "Payouts", icon: Banknote },
+  { href: "/platform/commissions", label: "Commissions", icon: Percent },
+  { href: "/platform/reconciliation", label: "Reconciliation", icon: Scale },
   { href: "/platform/disputes", label: "Disputes", icon: AlertTriangle },
   { href: "/platform/abuse-reports", label: "Abuse Reports", icon: Flag },
   { href: "/platform/reviews", label: "Reviews", icon: Star },

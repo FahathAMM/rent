@@ -154,6 +154,47 @@ class TransitionBooking
         });
     }
 
+    /**
+     * Any pre-terminal state -> cancelled_by_admin. A platform override
+     * for abuse/fraud/dispute situations that a customer or owner cannot
+     * cancel themselves — e.g. the normal cancelByOwner() path only
+     * allows cancelling an accepted-but-unpaid booking, with no route to
+     * cancel a confirmed/active one at all. Deliberately does NOT touch
+     * money: if the booking was paid, the admin records a Refund
+     * separately (RefundService) rather than this method triggering one
+     * as a side effect — consistent with the manual-settlement model,
+     * where money movement is always an explicit, evidenced step.
+     */
+    public function cancelByAdmin(Booking $booking, int $adminId, string $reason): Booking
+    {
+        if (!in_array($booking->status, [
+            Booking::STATUS_PENDING, Booking::STATUS_ACCEPTED, Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE,
+        ], true)) {
+            throw ValidationException::withMessages(['status' => ['This booking can no longer be cancelled.']]);
+        }
+
+        return DB::transaction(function () use ($booking, $adminId, $reason) {
+            $from = $booking->status;
+
+            $booking->update([
+                'status' => Booking::STATUS_CANCELLED_BY_ADMIN,
+                'cancelled_at' => now(),
+                'cancelled_by_type' => 'system_admin',
+                'cancelled_by_id' => $adminId,
+                'cancellation_reason' => $reason,
+            ]);
+
+            $this->releaseHold($booking);
+            VehicleAvailability::where('vehicle_id', $booking->vehicle_id)->where('booking_id', $booking->id)->delete();
+            $this->history($booking, $from, Booking::STATUS_CANCELLED_BY_ADMIN, 'system_admin', $adminId, $reason);
+
+            $this->notifyCustomer($booking, 'booking_cancelled', 'Booking cancelled', "Your booking for {$booking->vehicle->title} was cancelled by the platform: {$reason}", "/account/bookings/{$booking->booking_reference}");
+            $this->notifyShopOwner($booking, 'booking_cancelled', 'Booking cancelled', "Booking {$booking->booking_reference} was cancelled by the platform: {$reason}", '/vendor/bookings');
+
+            return $booking->fresh();
+        });
+    }
+
     /** pending -> expired. Applied by the bookings:expire-unanswered sweep when now() > owner_response_deadline_at. */
     public function expireUnanswered(Booking $booking): Booking
     {

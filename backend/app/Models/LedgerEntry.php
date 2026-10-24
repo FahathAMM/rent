@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Append-only financial ledger - the complete auditable transaction
@@ -37,4 +38,9 @@ class LedgerEntry extends Model
         'entry_date' => 'date',
         'amount' => 'decimal:2',
     ];
+
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
+    }
 }
