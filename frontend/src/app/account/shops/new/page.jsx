@@ -6,9 +6,12 @@ import { shopOnboardingService } from "@/services/shopOnboardingService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { OnboardingStepper } from "@/components/account/OnboardingStepper";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
 import { Fieldset } from "@/components/forms/Fieldset";
-import { Loader2, UploadCloud, FileCheck2, Store } from "lucide-react";
+import {
+  Loader2, UploadCloud, FileCheck2, Store, Clock, XCircle, Building2, FileBarChart,
+} from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { downloadBlob } from "@/lib/utils";
@@ -21,6 +24,23 @@ const defaultForm = {
 
 const EDITABLE_VERIFICATION_STATES = ["unverified", "rejected"];
 const UNVERIFIED_STATES = ["unverified", "pending", "rejected"];
+const STEPS = ["Details", "Documents", "Review"];
+
+function StatusBanner({ icon: Icon, tone, title, body }) {
+  const tones = {
+    info: "bg-muted/60 text-foreground [&_svg]:text-muted-foreground",
+    destructive: "bg-destructive/10 text-destructive [&_svg]:text-destructive",
+  };
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl p-4 ${tones[tone]}`}>
+      <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        {body && <p className="mt-0.5 text-sm opacity-90">{body}</p>}
+      </div>
+    </div>
+  );
+}
 
 export default function NewShopPage() {
   const qc = useQueryClient();
@@ -106,33 +126,45 @@ export default function NewShopPage() {
 
   const businessReg = inProgressShop?.verifications?.find((v) => v.document_type === "business_registration");
   const canEdit = !inProgressShop || EDITABLE_VERIFICATION_STATES.includes(inProgressShop.verification_status);
+  const stepIndex = !inProgressShop ? 0 : (canEdit ? 1 : 2);
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Register a Rental Shop</h1>
-          <p className="text-sm text-muted-foreground">Run a business with multiple vehicles and staff? Register your shop here.</p>
+      {/* ── Hero ───────────────────────────────────────────────────────── */}
+      <div className="relative isolate overflow-hidden rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden opacity-70">
+          <div className="aurora-blob aurora-blob-2" />
+          <div className="aurora-blob aurora-blob-4" />
         </div>
-        {inProgressShop && <StatusBadge status={inProgressShop.verification_status} />}
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
+              <Store className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Register a Rental Shop</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Run a business with multiple vehicles and staff.</p>
+            </div>
+          </div>
+          {inProgressShop && <StatusBadge status={inProgressShop.verification_status} />}
+        </div>
+        <div className="relative mt-6">
+          <OnboardingStepper steps={STEPS} currentIndex={stepIndex} />
+        </div>
       </div>
 
       {inProgressShop?.verification_status === "pending" && (
-        <Card><CardContent className="py-6 text-sm text-muted-foreground">
-          Your shop is submitted and awaiting platform review.
-        </CardContent></Card>
+        <StatusBanner icon={Clock} tone="info" title="Awaiting platform review" body="Your shop is submitted and awaiting platform review." />
       )}
 
       {inProgressShop?.verification_status === "rejected" && (
-        <Card className="border-destructive/40"><CardContent className="py-6">
-          <p className="text-sm font-medium text-destructive">Verification rejected</p>
-          <p className="mt-1 text-sm text-muted-foreground">{inProgressShop.suspended_reason}</p>
-        </CardContent></Card>
+        <StatusBanner icon={XCircle} tone="destructive" title="Verification rejected" body={inProgressShop.suspended_reason} />
       )}
 
       {!inProgressShop && (
-        <Card>
-          <CardHeader>
+        <Card className="rounded-2xl shadow-sm">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Building2 className="h-4 w-4" /></div>
             <CardTitle className="text-base">Shop Details</CardTitle>
           </CardHeader>
           <CardContent>
@@ -160,7 +192,7 @@ export default function NewShopPage() {
                 <TextareaInput label="Description" value={form.description} onChange={fi("description")} error={errors.description?.[0]} />
               </Fieldset>
               <div className="flex justify-end">
-                <Button type="submit" disabled={register.isPending}>
+                <Button type="submit" disabled={register.isPending} className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
                   {register.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Register Shop
                 </Button>
@@ -171,16 +203,21 @@ export default function NewShopPage() {
       )}
 
       {inProgressShop && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Required Document</CardTitle>
-            <CardDescription>Upload your business registration certificate (JPG, PNG or PDF, max 5MB).</CardDescription>
+        <Card className="rounded-2xl shadow-sm">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><FileBarChart className="h-4 w-4" /></div>
+            <div>
+              <CardTitle className="text-base">Required Document</CardTitle>
+              <CardDescription>Upload your business registration certificate (JPG, PNG or PDF, max 5MB).</CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleFileChange} />
-            <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center justify-between rounded-xl border p-3.5 transition-colors hover:bg-muted/40">
               <div className="flex items-center gap-3">
-                {businessReg ? <FileCheck2 className="h-5 w-5 text-emerald-500" /> : <UploadCloud className="h-5 w-5 text-muted-foreground" />}
+                <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${businessReg ? "bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                  {businessReg ? <FileCheck2 className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
+                </div>
                 <div>
                   <p className="text-sm font-medium">Business Registration</p>
                   {businessReg && <p className="text-xs text-muted-foreground">{businessReg.attachment?.file_name}</p>}
@@ -191,7 +228,14 @@ export default function NewShopPage() {
                   <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(businessReg.id, businessReg.attachment?.file_name)}>View</Button>
                 )}
                 {canEdit && (
-                  <Button type="button" variant={businessReg ? "outline" : "default"} size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                  <Button
+                    type="button"
+                    variant={businessReg ? "outline" : "default"}
+                    size="sm"
+                    className={businessReg ? "" : "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90"}
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (businessReg ? "Replace" : "Upload")}
                   </Button>
                 )}
@@ -203,7 +247,7 @@ export default function NewShopPage() {
 
       {inProgressShop && canEdit && (
         <div className="flex justify-end">
-          <Button onClick={() => submit.mutate(inProgressShop.id)} disabled={!businessReg || submit.isPending}>
+          <Button size="lg" onClick={() => submit.mutate(inProgressShop.id)} disabled={!businessReg || submit.isPending} className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
             {submit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit for Verification
           </Button>

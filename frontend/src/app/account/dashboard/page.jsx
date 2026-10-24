@@ -72,26 +72,34 @@ export default function AccountDashboardPage() {
         </Card>
       ) : (
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">List your own vehicles</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
-                <p className="font-semibold">Become a Vehicle Owner</p>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold tracking-tight">List your own vehicles</h2>
+            <p className="text-sm text-muted-foreground">Turn an idle vehicle into income — pick whichever fits how you want to operate.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="group relative isolate overflow-hidden rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
+              <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent blur-2xl" />
+              <span className="relative inline-flex items-center rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-700">For individuals</span>
+              <div className="relative mt-4 flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
+                <UserPlus className="h-6 w-6" />
               </div>
-              <p className="mt-3 text-sm text-muted-foreground">List your own car or bike individually and start earning.</p>
-              <Button asChild variant="outline" className="mt-4 w-fit">
-                <Link href="/account/become-owner">Get started <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <h3 className="relative mt-4 font-semibold">Become a Vehicle Owner</h3>
+              <p className="relative mt-1.5 text-sm text-muted-foreground">List your own car or bike individually and start earning.</p>
+              <Button asChild className="relative mt-5 w-fit bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
+                <Link href="/account/become-owner">Get started <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
               </Button>
             </div>
-            <div className="rounded-2xl border bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Store className="h-5 w-5" /></div>
-                <p className="font-semibold">Register a Rental Shop</p>
+
+            <div className="group relative isolate overflow-hidden rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
+              <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/20 via-pink-500/20 to-transparent blur-2xl" />
+              <span className="relative inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700">For businesses</span>
+              <div className="relative mt-4 flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
+                <Store className="h-6 w-6" />
               </div>
-              <p className="mt-3 text-sm text-muted-foreground">Run a business with multiple vehicles and staff? Register your shop.</p>
-              <Button asChild variant="outline" className="mt-4 w-fit">
-                <Link href="/account/shops/new">Get started <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <h3 className="relative mt-4 font-semibold">Register a Rental Shop</h3>
+              <p className="relative mt-1.5 text-sm text-muted-foreground">Run a business with multiple vehicles and staff? Register your shop.</p>
+              <Button asChild className="relative mt-5 w-fit bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
+                <Link href="/account/shops/new">Get started <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
               </Button>
             </div>
           </div>

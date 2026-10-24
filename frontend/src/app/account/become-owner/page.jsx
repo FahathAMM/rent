@@ -8,9 +8,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { OnboardingStepper } from "@/components/account/OnboardingStepper";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
 import { Fieldset } from "@/components/forms/Fieldset";
-import { Loader2, UploadCloud, FileCheck2, CheckCircle2, Home } from "lucide-react";
+import {
+  Loader2, UploadCloud, FileCheck2, CheckCircle2, UserPlus,
+  Clock, XCircle, AlertTriangle, Info, IdCard, MapPinned,
+} from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { downloadBlob } from "@/lib/utils";
@@ -22,6 +26,24 @@ const REQUIRED_DOCS = [
 ];
 
 const EDITABLE_STATUSES = ["draft", "info_requested"];
+const STEPS = ["Details", "Documents", "Review"];
+
+function StatusBanner({ icon: Icon, tone, title, body }) {
+  const tones = {
+    info: "bg-muted/60 text-foreground [&_svg]:text-muted-foreground",
+    destructive: "bg-destructive/10 text-destructive [&_svg]:text-destructive",
+    warning: "bg-amber-50 text-amber-800 [&_svg]:text-amber-600",
+  };
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl p-4 ${tones[tone]}`}>
+      <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        {body && <p className="mt-0.5 text-sm opacity-90">{body}</p>}
+      </div>
+    </div>
+  );
+}
 
 export default function BecomeOwnerPage() {
   const qc = useQueryClient();
@@ -97,6 +119,7 @@ export default function BecomeOwnerPage() {
   const uploadedTypes = new Set((profile?.verifications ?? []).map((v) => v.document_type));
   const canEdit = !profile || EDITABLE_STATUSES.includes(status);
   const allDocsUploaded = REQUIRED_DOCS.every((d) => uploadedTypes.has(d.type));
+  const stepIndex = !profile ? 0 : (canEdit ? 1 : 2);
 
   const fi = (k) => (e) => setForm((p) => ({ ...(p ?? profile ?? {}), [k]: e.target.value }));
 
@@ -138,53 +161,56 @@ export default function BecomeOwnerPage() {
     }
   };
 
-  const breadcrumbItems = [
-    { label: "Home", href: "/account/dashboard", icon: <Home className="size-4" /> },
-    { label: "Become an Owner" },
-  ];
-
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Become a Vehicle Owner</h1>
-          <p className="text-sm text-muted-foreground">List your own vehicle on RentLanka and start earning.</p>
+      {/* ── Hero ───────────────────────────────────────────────────────── */}
+      <div className="relative isolate overflow-hidden rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden opacity-70">
+          <div className="aurora-blob aurora-blob-1" />
+          <div className="aurora-blob aurora-blob-3" />
         </div>
-        {status && <StatusBadge status={status} />}
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
+              <UserPlus className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">Become a Vehicle Owner</h1>
+              <p className="mt-1 text-sm text-muted-foreground">List your own vehicle and start earning.</p>
+            </div>
+          </div>
+          {status && <StatusBadge status={status} />}
+        </div>
+        <div className="relative mt-6">
+          <OnboardingStepper steps={STEPS} currentIndex={stepIndex} />
+        </div>
       </div>
 
       {status === "submitted" && (
-        <Card><CardContent className="py-6 text-sm text-muted-foreground">
-          Your application is under review. We&apos;ll notify you once it&apos;s been checked — usually within 1–2 business days.
-        </CardContent></Card>
+        <StatusBanner icon={Clock} tone="info" title="Your application is under review"
+          body="We'll notify you once it's been checked — usually within 1–2 business days." />
       )}
 
       {status === "rejected" && (
-        <Card className="border-destructive/40"><CardContent className="py-6">
-          <p className="text-sm font-medium text-destructive">Application rejected</p>
-          <p className="mt-1 text-sm text-muted-foreground">{profile.rejection_reason}</p>
-        </CardContent></Card>
+        <StatusBanner icon={XCircle} tone="destructive" title="Application rejected" body={profile.rejection_reason} />
       )}
 
       {status === "suspended" && (
-        <Card className="border-destructive/40"><CardContent className="py-6">
-          <p className="text-sm font-medium text-destructive">Your owner account is suspended</p>
-          <p className="mt-1 text-sm text-muted-foreground">{profile.suspension_reason}</p>
-        </CardContent></Card>
+        <StatusBanner icon={AlertTriangle} tone="destructive" title="Your owner account is suspended" body={profile.suspension_reason} />
       )}
 
       {status === "info_requested" && (
-        <Card className="border-amber-400/60"><CardContent className="py-6">
-          <p className="text-sm font-medium text-amber-700">More information requested</p>
-          <p className="mt-1 text-sm text-muted-foreground">{profile.info_requested_note}</p>
-        </CardContent></Card>
+        <StatusBanner icon={Info} tone="warning" title="More information requested" body={profile.info_requested_note} />
       )}
 
       {canEdit && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Your Details</CardTitle>
-            <CardDescription>This information is used to verify your identity — it&apos;s kept private.</CardDescription>
+        <Card className="rounded-2xl shadow-sm">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><IdCard className="h-4 w-4" /></div>
+            <div>
+              <CardTitle className="text-base">Your Details</CardTitle>
+              <CardDescription>This information is used to verify your identity — it&apos;s kept private.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="space-y-4">
@@ -202,7 +228,7 @@ export default function BecomeOwnerPage() {
                 <TextInput label="Postal Code" value={data?.postal_code ?? ""} onChange={fi("postal_code")} error={errors.postal_code?.[0]} />
               </Fieldset>
               <div className="flex justify-end">
-                <Button type="submit" disabled={saveDraft.isPending}>
+                <Button type="submit" disabled={saveDraft.isPending} className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
                   {saveDraft.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save Details
                 </Button>
@@ -213,20 +239,25 @@ export default function BecomeOwnerPage() {
       )}
 
       {profile && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Required Documents</CardTitle>
-            <CardDescription>Upload clear photos or scans (JPG, PNG or PDF, max 5MB each).</CardDescription>
+        <Card className="rounded-2xl shadow-sm">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><MapPinned className="h-4 w-4" /></div>
+            <div>
+              <CardTitle className="text-base">Required Documents</CardTitle>
+              <CardDescription>Upload clear photos or scans (JPG, PNG or PDF, max 5MB each).</CardDescription>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2.5">
             <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleFileChange} />
             {REQUIRED_DOCS.map((doc) => {
               const verification = (profile.verifications ?? []).find((v) => v.document_type === doc.type);
               const isUploaded = !!verification;
               return (
-                <div key={doc.type} className="flex items-center justify-between rounded-lg border p-3">
+                <div key={doc.type} className="flex items-center justify-between rounded-xl border p-3.5 transition-colors hover:bg-muted/40">
                   <div className="flex items-center gap-3">
-                    {isUploaded ? <FileCheck2 className="h-5 w-5 text-emerald-500" /> : <UploadCloud className="h-5 w-5 text-muted-foreground" />}
+                    <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${isUploaded ? "bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                      {isUploaded ? <FileCheck2 className="h-4 w-4" /> : <UploadCloud className="h-4 w-4" />}
+                    </div>
                     <div>
                       <p className="text-sm font-medium">{doc.label}</p>
                       {isUploaded && <p className="text-xs text-muted-foreground">{verification.attachment?.file_name}</p>}
@@ -243,6 +274,7 @@ export default function BecomeOwnerPage() {
                         type="button"
                         variant={isUploaded ? "outline" : "default"}
                         size="sm"
+                        className={isUploaded ? "" : "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90"}
                         disabled={uploadingType === doc.type}
                         onClick={() => triggerUpload(doc.type)}
                       >
@@ -259,7 +291,7 @@ export default function BecomeOwnerPage() {
 
       {canEdit && profile && (
         <div className="flex justify-end">
-          <Button onClick={() => submit.mutate()} disabled={!allDocsUploaded || submit.isPending}>
+          <Button size="lg" onClick={() => submit.mutate()} disabled={!allDocsUploaded || submit.isPending} className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
             {submit.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit Application
           </Button>
