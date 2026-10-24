@@ -18,6 +18,12 @@ export function StatusBadge({ status, className }) {
     paid: "success",
     partial: "warning",
     unpaid: "secondary",
+    draft: "secondary",
+    submitted: "warning",
+    info_requested: "warning",
+    verified: "success",
+    unverified: "secondary",
+    pending_review: "warning",
   };
 
   const labels = {
@@ -36,6 +42,12 @@ export function StatusBadge({ status, className }) {
     paid: "Paid",
     partial: "Partial",
     unpaid: "Unpaid",
+    draft: "Draft",
+    submitted: "Submitted",
+    info_requested: "Info Requested",
+    verified: "Verified",
+    unverified: "Unverified",
+    pending_review: "Pending Review",
   };
 
   const key = String(status === true ? "true" : status === false ? "false" : status);

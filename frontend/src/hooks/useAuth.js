@@ -7,9 +7,21 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export function useAuth() {
-  const { user, token, isAuthenticated, setAuth, logout: storeLogout, isVendor } = useAuthStore();
+  const { user, token, isAuthenticated, setAuth, updateUser, logout: storeLogout, isVendor } = useAuthStore();
   const { setShops, clear: clearShops } = useShopStore();
   const router = useRouter();
+
+  // Re-fetches the current user's roles/permissions/shops — needed after an
+  // action elsewhere (e.g. a platform admin approving an owner application)
+  // changes them server-side; the stored user otherwise stays stale until
+  // the next login.
+  const refreshUser = async () => {
+    const res = await authService.me();
+    const freshUser = res.data.data;
+    updateUser(freshUser);
+    setShops(freshUser.shops ?? []);
+    return freshUser;
+  };
 
   const login = async (credentials) => {
     const res = await authService.login(credentials);
@@ -37,5 +49,5 @@ export function useAuth() {
     toast.success("Logged out successfully");
   };
 
-  return { user, token, isAuthenticated, login, register, logout, isVendor };
+  return { user, token, isAuthenticated, login, register, logout, isVendor, refreshUser };
 }

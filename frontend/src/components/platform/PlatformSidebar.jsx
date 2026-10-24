@@ -6,7 +6,7 @@ import { cn, getInitials } from "@/lib/utils";
 import { usePlatformAuth } from "@/hooks/usePlatformAuth";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
-  CreditCard, Package, Settings, LogOut, ShieldCheck, X,
+  Settings, LogOut, ShieldCheck, X, UserCheck,
   FileSearch, ExternalLink,
 } from "lucide-react";
 import {
@@ -16,13 +16,12 @@ import {
 
 const NAV_ITEMS = [
   { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/platform/companies", label: "Companies", icon: Building2 },
+  { href: "/platform/owners", label: "Owner Applications", icon: UserCheck },
+  { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/users", label: "Users", icon: Users },
   { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
   // /platform/logs (custom log viewer) temporarily hidden from nav — the
   // page and its API routes still work if linked to directly.
-  { href: "/platform/subscriptions", label: "Subscriptions", icon: CreditCard },
-  { href: "/platform/plans", label: "Plans", icon: Package },
   { href: "/platform/settings", label: "Settings", icon: Settings },
 ];
 
