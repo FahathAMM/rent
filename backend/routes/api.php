@@ -4,11 +4,13 @@ use App\Http\Controllers\Api\Administration\AuditLogController;
 use App\Http\Controllers\Api\Administration\MenuController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ShopOnboardingController;
+use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
 use App\Http\Controllers\Api\VisitLogController;
@@ -71,9 +73,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('shops/{shop}/submit',        [ShopOnboardingController::class, 'submitForVerification']);
     });
 
-    // NOTE: customer-facing endpoints (favorites, own bookings, reviews,
-    // disputes) land in Phase 4+ once their controllers exist — see
-    // app-doc/marketplace/05-ui-and-api-map.md.
+    // Customer's own bookings — ownership by customer_id, no shop context
+    // needed at all. See BookingPolicy's docblock. Bound by
+    // booking_reference (not id) to match the human-facing {reference}
+    // URLs in app-doc/marketplace/05-ui-and-api-map.md.
+    Route::get('bookings', [BookingController::class, 'index']);
+    Route::post('bookings', [BookingController::class, 'store']);
+    Route::get('bookings/{booking:booking_reference}', [BookingController::class, 'show']);
+    Route::post('bookings/{booking:booking_reference}/cancel', [BookingController::class, 'cancel']);
+
+    // NOTE: favorites, reviews, disputes land in Phase 4+ once their
+    // controllers exist — see app-doc/marketplace/05-ui-and-api-map.md.
 
     // ─── Vendor-side — requires an active shop context ───────────────────────
     // shop.context validates X-Shop-Id against the caller's shop_members
@@ -113,9 +123,24 @@ Route::middleware('auth:sanctum')->group(function () {
         // shop context — see Administration\AuditLogController.
         Route::get('audit-logs', [AuditLogController::class, 'index']);
 
-        // NOTE: availability calendars, bookings, finance, staff and
-        // settings endpoints land in Phases 3–6 once their controllers
-        // exist.
+        // The shop's booking inbox — prefixed `vendor/` since
+        // "/bookings" is already the customer's own-bookings endpoint
+        // above (same auth:sanctum group, no other path segment would
+        // otherwise distinguish them); matches
+        // app-doc/marketplace/05-ui-and-api-map.md's `/vendor/bookings`
+        // exactly. confirm/active/completed transitions (payment
+        // webhook, handover, return) land in Phases 5-6 once payments
+        // and inspections exist.
+        Route::prefix('vendor')->group(function () {
+            Route::get('bookings', [VendorBookingController::class, 'index']);
+            Route::get('bookings/{booking:booking_reference}', [VendorBookingController::class, 'show']);
+            Route::post('bookings/{booking:booking_reference}/accept', [VendorBookingController::class, 'accept']);
+            Route::post('bookings/{booking:booking_reference}/reject', [VendorBookingController::class, 'reject']);
+            Route::post('bookings/{booking:booking_reference}/cancel', [VendorBookingController::class, 'cancel']);
+        });
+
+        // NOTE: availability calendars, finance, staff and settings
+        // endpoints land in Phases 5–6 once their controllers exist.
     });
 });
 

@@ -45,6 +45,9 @@ class Automation extends Model
      */
     private const COMMANDS = [
         'Database Backup' => 'backup:run --only-db',
+        'Expire Unanswered Bookings' => 'bookings:expire-unanswered',
+        'Expire Unpaid Bookings' => 'bookings:expire-unpaid',
+        'Release Expired Holds' => 'holds:release-expired',
     ];
 
     /**

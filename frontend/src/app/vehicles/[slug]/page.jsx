@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import { BookingRequestWidget } from "@/components/marketplace/BookingRequestWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -149,12 +150,7 @@ export default function VehicleDetailPage() {
                   Security deposit: {format(vehicle.pricing.security_deposit)} ({vehicle.pricing.deposit_method === "cash_on_pickup" ? "collected at pickup" : "prepaid"})
                 </p>
               )}
-              <Button className="w-full" size="lg" disabled>
-                Request to book
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Booking requests land in a later phase — see app-doc/marketplace/04-lifecycles.md.
-              </p>
+              <BookingRequestWidget vehicle={vehicle} />
             </CardContent>
           </Card>
         </div>

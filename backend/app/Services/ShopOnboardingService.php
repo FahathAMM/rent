@@ -43,7 +43,7 @@ class ShopOnboardingService
                 'accepted_at' => now(),
             ]);
 
-            ShopSettings::create(['shop_id' => $shop->id]);
+            ShopSettings::createFor($shop->id);
 
             if (!empty($data['address_line_1']) || !empty($data['city'])) {
                 Location::create([

@@ -114,4 +114,17 @@ class PublicVehicleQuery
             ->where('slug', $slug)
             ->first();
     }
+
+    /**
+     * Used by booking creation (a customer, not an anonymous visitor, but
+     * the same "must actually be publicly bookable" precondition applies)
+     * - see BookingService::create(). Deliberately the same base() filter
+     * as findBySlug(), not a plain Vehicle::find(), so a customer can
+     * never request a booking against a draft/unapproved/unpublished
+     * vehicle just by guessing its id.
+     */
+    public static function findById(int $id): ?Vehicle
+    {
+        return self::base()->with(['pricing', 'shop.settings'])->find($id);
+    }
 }

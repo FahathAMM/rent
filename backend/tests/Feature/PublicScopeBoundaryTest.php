@@ -7,12 +7,15 @@ use Tests\TestCase;
 
 /**
  * A structural guard, not a functional one: asserts that
- * withoutGlobalScope(ShopScope::class) - the one sanctioned way to read
- * across every shop for public/anonymous consumption - is used ONLY
- * inside App\Queries\Public* (see
- * app-doc/marketplace/01-phase1-architecture.md section 2.2). If this
- * ever fails, something outside the public query layer has started
- * bypassing shop isolation, and every occurrence needs auditing.
+ * withoutGlobalScope(ShopScope::class) is used ONLY inside
+ * App\Queries\Public* or App\Queries\Customer* (see
+ * app-doc/marketplace/01-phase1-architecture.md section 2.2 and
+ * CustomerBookingQuery's docblock for why a second case exists: a
+ * customer's own bookings span multiple shops, so shop-scoping is the
+ * wrong question, and ShopScope's authenticated-but-no-context branch
+ * fails closed - every customer request has no shop context at all).
+ * If this ever fails, something outside those two narrow, audited
+ * layers has started bypassing shop isolation.
  */
 class PublicScopeBoundaryTest extends TestCase
 {
@@ -20,6 +23,7 @@ class PublicScopeBoundaryTest extends TestCase
     {
         $appPath = base_path('app');
         $offenders = [];
+        $queriesPath = 'app' . DIRECTORY_SEPARATOR . 'Queries' . DIRECTORY_SEPARATOR;
 
         foreach (File::allFiles($appPath) as $file) {
             if ($file->getExtension() !== 'php') {
@@ -36,7 +40,8 @@ class PublicScopeBoundaryTest extends TestCase
             }
 
             $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
-            $isSanctioned = str_starts_with($relative, 'app' . DIRECTORY_SEPARATOR . 'Queries' . DIRECTORY_SEPARATOR . 'Public');
+            $isSanctioned = str_starts_with($relative, $queriesPath . 'Public')
+                || str_starts_with($relative, $queriesPath . 'Customer');
 
             if (!$isSanctioned) {
                 $offenders[] = $relative;
@@ -45,7 +50,7 @@ class PublicScopeBoundaryTest extends TestCase
 
         $this->assertEmpty(
             $offenders,
-            "withoutGlobalScope() found outside App\\Queries\\Public*: " . implode(', ', $offenders)
+            "withoutGlobalScope() found outside App\\Queries\\Public*/Customer*: " . implode(', ', $offenders)
         );
     }
 }

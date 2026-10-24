@@ -168,7 +168,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'status' => ShopMember::STATUS_ACTIVE, 'accepted_at' => now(),
             ]);
 
-            ShopSettings::create(['shop_id' => $shop->id]);
+            ShopSettings::createFor($shop->id);
 
             OwnerBankDetail::create([
                 'shop_id' => $shop->id,
@@ -257,7 +257,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'status' => ShopMember::STATUS_ACTIVE, 'accepted_at' => now(),
             ]);
 
-            ShopSettings::create(['shop_id' => $shop->id]);
+            ShopSettings::createFor($shop->id);
 
             OwnerBankDetail::create([
                 'shop_id' => $shop->id,
@@ -395,14 +395,18 @@ class MarketplaceDemoSeeder extends Seeder
         ];
 
         $bookingNo = 1;
+        $maxBookingNoByShop = [];
         foreach ($plan as $row) {
             $vehicle = $vehicles[$row['vehicle']]->load('pricing', 'shop');
             $customer = $customers[$row['customer']];
             $pickupAt = now()->addDays($row['daysFromNow'])->setTime(10, 0);
             $returnAt = $pickupAt->copy()->addDays($row['rentalDays']);
 
+            $usedBookingNo = $bookingNo++;
+            $maxBookingNoByShop[$vehicle->shop_id] = max($maxBookingNoByShop[$vehicle->shop_id] ?? 0, $usedBookingNo);
+
             $booking = Booking::create([
-                'booking_reference' => sprintf('BKG-%s-%05d', now()->format('Y'), $bookingNo++),
+                'booking_reference' => sprintf('BKG-%s-%05d', now()->format('Y'), $usedBookingNo),
                 'vehicle_id' => $vehicle->id,
                 'shop_id' => $vehicle->shop_id,
                 'customer_id' => $customer->id,
@@ -577,6 +581,18 @@ class MarketplaceDemoSeeder extends Seeder
                 $booking->update(['accepted_at' => $booking->created_at]);
                 $this->statusHistory($booking, Booking::STATUS_PENDING, Booking::STATUS_ACCEPTED, 'owner', $vehicle->shop->owner_user_id);
             }
+        }
+
+        // $bookingNo above is a single counter shared across every shop
+        // (so demo references are globally sequential, e.g. BKG-2026-00001
+        // through -00011), but NumberGenerator's real counter is per-shop
+        // (shop_settings.next_booking_number, starting at 1 for every
+        // shop) — left unadvanced, the very first real booking request
+        // after seeding collides with whichever demo reference that shop
+        // already used. Fast-forward each shop's counter past its highest
+        // demo reference.
+        foreach ($maxBookingNoByShop as $shopId => $maxNo) {
+            ShopSettings::where('shop_id', $shopId)->update(['next_booking_number' => $maxNo + 1]);
         }
     }
 

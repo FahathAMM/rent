@@ -111,7 +111,7 @@ class OwnerOnboardingService
                     'accepted_at' => now(),
                 ]);
 
-                ShopSettings::create(['shop_id' => $shop->id]);
+                ShopSettings::createFor($shop->id);
 
                 Location::create([
                     'shop_id' => $shop->id,

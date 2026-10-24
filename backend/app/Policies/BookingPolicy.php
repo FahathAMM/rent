@@ -18,6 +18,11 @@ use App\Support\VendorContext;
  */
 class BookingPolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return ShopGate::allowsCurrent($user, ShopAbility::BookingsView);
+    }
+
     public function view(User $user, Booking $booking): bool
     {
         if ($booking->customer_id === $user->id) {

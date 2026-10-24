@@ -17,5 +17,20 @@ class AutomationSeeder extends Seeder
             ['name' => 'Database Backup'],
             ['interval' => 'everyTenMinutes', 'is_active' => true]
         );
+
+        Automation::firstOrCreate(
+            ['name' => 'Expire Unanswered Bookings'],
+            ['interval' => 'everyFiveMinutes', 'is_active' => true]
+        );
+
+        Automation::firstOrCreate(
+            ['name' => 'Expire Unpaid Bookings'],
+            ['interval' => 'everyFiveMinutes', 'is_active' => true]
+        );
+
+        Automation::firstOrCreate(
+            ['name' => 'Release Expired Holds'],
+            ['interval' => 'everyFiveMinutes', 'is_active' => true]
+        );
     }
 }
