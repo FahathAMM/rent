@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
 import { favoriteService } from "@/services/favoriteService";
 import { reportService } from "@/services/reportService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { useAuth } from "@/hooks/useAuth";
-import { usePublicAuth } from "@/components/public/PublicAuthProvider";
 import { BookingRequestWidget } from "@/components/marketplace/BookingRequestWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -150,12 +149,17 @@ function Gallery({ images, title }) {
 
 export default function VehicleDetailPage() {
   const { slug } = useParams();
+  const router = useRouter();
   const { format } = useCurrencyFormat();
   const { user, isAuthenticated } = useAuth();
-  const { openAuth } = usePublicAuth();
   const [contacting, setContacting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const requireLogin = () => {
+    toast.error("Please log in first");
+    router.push("/login");
+  };
 
   const { data: vehicle, isLoading } = useQuery({
     queryKey: ["public-vehicle", slug],
@@ -199,10 +203,10 @@ export default function VehicleDetailPage() {
             <ArrowLeft className="h-4 w-4" /> Back to browse
           </Link>
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => (isAuthenticated ? favorite.mutate() : openAuth("login"))} disabled={favorite.isPending || saved}>
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => (isAuthenticated ? favorite.mutate() : requireLogin())} disabled={favorite.isPending || saved}>
               <Heart className={`h-4 w-4 ${saved ? "fill-current text-destructive" : ""}`} /> {saved ? "Saved" : "Save"}
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : openAuth("login"))}>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : requireLogin())}>
               <Flag className="h-4 w-4" /> Report
             </Button>
           </div>

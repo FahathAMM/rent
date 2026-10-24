@@ -13,7 +13,7 @@ import { DevCredit } from "@/components/auth/DevCredit";
  * see app-doc/marketplace/01-phase1-architecture.md "Identity & ownership
  * model" for why a single login can mean either.
  */
-export function LoginPanel({ brandName, logoUrl, onSwitchToRegister, onSuccess }) {
+export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
   const { login } = useAuth();
   const router = useRouter();
 
@@ -27,12 +27,8 @@ export function LoginPanel({ brandName, logoUrl, onSwitchToRegister, onSuccess }
     setLoading(true);
     try {
       const user = await login(form);
-      if (onSuccess) {
-        onSuccess(user);
-      } else {
-        const isVendor = (user.roles ?? []).some((r) => ["vehicle-owner", "shop-owner", "shop-staff"].includes(r));
-        router.push(isVendor ? "/vendor/dashboard" : "/account");
-      }
+      const isVendor = (user.roles ?? []).some((r) => ["vehicle-owner", "shop-owner", "shop-staff"].includes(r));
+      router.push(isVendor ? "/vendor/dashboard" : "/account");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Login failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });

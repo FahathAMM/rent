@@ -15,7 +15,7 @@ const EMPTY_FORM = {
   password_confirmation: "",
 };
 
-export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin, onSuccess }) {
+export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
   const { register } = useAuth();
   const router = useRouter();
 
@@ -28,12 +28,8 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin, onSuccess }
     setErrors({});
     setLoading(true);
     try {
-      const user = await register(form);
-      if (onSuccess) {
-        onSuccess(user);
-      } else {
-        router.push("/account");
-      }
+      await register(form);
+      router.push("/account");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Registration failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });

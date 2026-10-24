@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
-import { usePublicAuth } from "@/components/public/PublicAuthProvider";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { Button } from "@/components/ui/button";
@@ -28,11 +27,10 @@ function isActive(pathname, href) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 }
 
-/** The one top bar shared by every (public) page — logo, primary nav, and the sign-in/sign-up popup trigger. */
+/** The one top bar shared by every (public) page — logo, primary nav, and sign-in/sign-up links. */
 export function PublicHeader() {
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
-  const { openAuth } = usePublicAuth();
 
   const { data: brand } = useQuery({
     queryKey: ["platform-details"],
@@ -82,9 +80,9 @@ export function PublicHeader() {
             </Button>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
-              <Button variant="outline" onClick={() => openAuth("login")}>Sign in</Button>
-              <Button className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90" onClick={() => openAuth("register")}>
-                Sign up
+              <Button variant="outline" asChild><Link href="/login">Sign in</Link></Button>
+              <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
+                <Link href="/register">Sign up</Link>
               </Button>
             </div>
           )}
@@ -105,8 +103,8 @@ export function PublicHeader() {
               {!isAuthenticated && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => openAuth("login")}>Sign in</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => openAuth("register")}>Sign up</DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/login">Sign in</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/register">Sign up</Link></DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
