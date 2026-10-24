@@ -29,7 +29,7 @@ class VehicleRepo
         $dir  = $request->sort_direction === 'asc' ? 'asc' : 'desc';
 
         return $this->model
-            ->with('category', 'pricing', 'images')
+            ->with('category', 'pricing', 'images.attachment')
             ->when($request->search, fn ($q) => $q->where(function ($qq) use ($request) {
                 $qq->where('title', 'like', "%{$request->search}%")
                     ->orWhere('registration_number', 'like', "%{$request->search}%");

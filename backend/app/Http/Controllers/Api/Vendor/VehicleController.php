@@ -57,7 +57,7 @@ class VehicleController extends Controller
     {
         $this->authorize('view', $vehicle);
 
-        $vehicle->load(['category', 'pricing', 'images', 'pickupLocations.location']);
+        $vehicle->load(['category', 'pricing', 'images.attachment', 'pickupLocations.location']);
 
         return $this->response('Vehicle retrieved successfully', new VehicleResource($vehicle));
     }

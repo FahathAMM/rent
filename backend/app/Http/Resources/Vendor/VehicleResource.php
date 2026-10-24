@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Vendor;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The owner/staff view of their own vehicle - the full record, including
@@ -43,7 +44,13 @@ class VehicleResource extends JsonResource
             'published_at' => $this->published_at?->toISOString(),
             'is_featured' => $this->is_featured,
             'pricing' => $this->whenLoaded('pricing'),
-            'images' => $this->whenLoaded('images'),
+            'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
+                'id' => $img->id,
+                'url' => $img->attachment ? Storage::disk($img->attachment->disk)->url($img->attachment->file_path) : null,
+                'sort_order' => $img->sort_order,
+                'is_primary' => $img->is_primary,
+                'alt_text' => $img->alt_text,
+            ])->values()),
             'pickup_locations' => $this->whenLoaded('pickupLocations'),
             'view_count' => $this->view_count,
             'inquiry_count' => $this->inquiry_count,

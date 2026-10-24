@@ -24,6 +24,10 @@ export function StatusBadge({ status, className }) {
     verified: "success",
     unverified: "secondary",
     pending_review: "warning",
+    flagged: "destructive",
+    published: "success",
+    unpublished: "secondary",
+    archived: "secondary",
   };
 
   const labels = {
@@ -48,6 +52,10 @@ export function StatusBadge({ status, className }) {
     verified: "Verified",
     unverified: "Unverified",
     pending_review: "Pending Review",
+    flagged: "Flagged",
+    published: "Published",
+    unpublished: "Unpublished",
+    archived: "Archived",
   };
 
   const key = String(status === true ? "true" : status === false ? "false" : status);

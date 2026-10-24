@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Public;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Column allow-list for anonymous/public consumption. Deliberately never
@@ -61,7 +62,7 @@ class VehicleResource extends JsonResource
                 'max_rental_days' => $this->pricing->max_rental_days,
             ]),
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
-                'url' => $img->attachment?->file_path,
+                'url' => $img->attachment ? Storage::disk($img->attachment->disk)->url($img->attachment->file_path) : null,
                 'is_primary' => $img->is_primary,
                 'alt_text' => $img->alt_text,
             ])->values()),

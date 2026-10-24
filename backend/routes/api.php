@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
+use App\Http\Controllers\Api\Vendor\VehicleImageController;
 use App\Http\Controllers\Api\VisitLogController;
 use Illuminate\Support\Facades\Route;
 
@@ -84,6 +85,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('vehicles/{vehicle}/unpublish', [VendorVehicleController::class, 'unpublish']);
         Route::post('vehicles/{vehicle}/archive', [VendorVehicleController::class, 'archive']);
         Route::put('vehicles/{vehicle}/pricing', [VendorVehicleController::class, 'updatePricing']);
+
+        // Listing photos — public disk, dedicated endpoints (not the
+        // generic AttachmentController) since they need sort_order/
+        // is_primary and are world-readable, unlike every other
+        // attachable type. See VehicleImageController's docblock.
+        Route::get('vehicles/{vehicle}/images', [VehicleImageController::class, 'index']);
+        Route::post('vehicles/{vehicle}/images', [VehicleImageController::class, 'store']);
+        Route::post('vehicles/{vehicle}/images/reorder', [VehicleImageController::class, 'reorder']);
+        Route::delete('vehicle-images/{image}', [VehicleImageController::class, 'destroy']);
+        Route::post('vehicle-images/{image}/primary', [VehicleImageController::class, 'setPrimary']);
 
         Route::apiResource('expense-categories', ExpenseCategoryController::class)->parameters(['expense-categories' => 'expenseCategory']);
         Route::apiResource('expenses', ExpenseController::class);

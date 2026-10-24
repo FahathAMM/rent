@@ -45,7 +45,7 @@ class PublicVehicleQuery
      */
     public static function search(array $filters): Builder
     {
-        $query = self::base()->with(['category', 'shop', 'pricing', 'images' => fn ($q) => $q->orderBy('sort_order')]);
+        $query = self::base()->with(['category', 'shop', 'pricing', 'images' => fn ($q) => $q->orderBy('sort_order')->with('attachment')]);
 
         if (!empty($filters['q'])) {
             $term = $filters['q'];
@@ -110,7 +110,7 @@ class PublicVehicleQuery
     public static function findBySlug(string $slug): ?Vehicle
     {
         return self::base()
-            ->with(['category', 'shop', 'pricing', 'pickupLocations.location', 'images' => fn ($q) => $q->orderBy('sort_order')])
+            ->with(['category', 'shop', 'pricing', 'pickupLocations.location', 'images' => fn ($q) => $q->orderBy('sort_order')->with('attachment')])
             ->where('slug', $slug)
             ->first();
     }

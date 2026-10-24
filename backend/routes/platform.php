@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\ImpersonationController;
+use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
 use App\Http\Controllers\Api\Platform\OwnerVerificationController;
 use App\Http\Controllers\Api\Platform\ShopVerificationController;
@@ -99,10 +100,23 @@ Route::prefix('platform')->group(function () {
         Route::post('shops/{rentalShop}/activate', [ShopVerificationController::class, 'activate']);
         Route::get('shops/documents/{verification}/download', [ShopVerificationController::class, 'downloadDocument']);
 
-        // NOTE: dashboard, customers, listing moderation, categories,
-        // booking oversight, payments, commissions, payouts, reconciliation,
-        // disputes, abuse reports, review moderation and platform settings
-        // land in Phases 3–8 once their controllers exist — see
+        // Listing moderation queue — a vehicle's moderation_status starts
+        // 'pending' at creation; approving here is the only path that
+        // unblocks VehicleController::publish(). See
+        // app-doc/marketplace/05-ui-and-api-map.md "/platform/listings".
+        Route::get('listings',                     [ListingModerationController::class, 'index']);
+        Route::get('listings/{vehicle}',            [ListingModerationController::class, 'show']);
+        Route::post('listings/{vehicle}/approve',   [ListingModerationController::class, 'approve']);
+        Route::post('listings/{vehicle}/reject',    [ListingModerationController::class, 'reject']);
+        Route::post('listings/{vehicle}/flag',      [ListingModerationController::class, 'flag']);
+        Route::post('listings/{vehicle}/unpublish', [ListingModerationController::class, 'unpublish']);
+        Route::post('listings/{vehicle}/feature',   [ListingModerationController::class, 'feature']);
+        Route::post('listings/{vehicle}/unfeature', [ListingModerationController::class, 'unfeature']);
+
+        // NOTE: dashboard, customers, categories, booking oversight,
+        // payments, commissions, payouts, reconciliation, disputes, abuse
+        // reports, review moderation and platform settings land in
+        // Phases 3–8 once their controllers exist — see
         // app-doc/marketplace/05-ui-and-api-map.md and 06-plan-and-risks.md.
     });
 });

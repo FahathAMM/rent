@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Expense;
 use App\Models\OwnerProfile;
 use App\Models\RentalShop;
+use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -27,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
             'expense' => Expense::class,
             'owner_profile' => OwnerProfile::class,
             'rental_shop' => RentalShop::class,
+            'vehicle' => Vehicle::class,
         ]);
     }
 }

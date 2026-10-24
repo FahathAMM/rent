@@ -15,8 +15,9 @@ import { Modal } from "@/components/Elements/Modal";
 import { TextInput, TextareaInput, ValidationError, CheckboxInput } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { Fieldset } from "@/components/forms/Fieldset";
+import { VehicleImageManager } from "@/components/vendor/VehicleImageManager";
 import { toast } from "sonner";
-import { Pencil, Trash2, Home, UploadCloud, DownloadCloud, Archive, DollarSign } from "lucide-react";
+import { Pencil, Trash2, Home, UploadCloud, DownloadCloud, Archive, DollarSign, Images } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 const TRANSMISSIONS = [
@@ -77,6 +78,7 @@ export default function VehiclesPage() {
   const [pricingForm, setPricingForm] = useState(defaultPricing);
   const [pricingErrors, setPricingErrors] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [imagesTarget, setImagesTarget] = useState(null);
 
   const { data: categories } = useQuery({
     queryKey: ["public-categories"],
@@ -261,6 +263,7 @@ export default function VehiclesPage() {
           {can("vendor-vehicles-list-edit") && (
             <>
               <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit vehicle" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
+              <ActionButton onClick={() => setImagesTarget(row)} icon={Images} label="Manage photos" className="text-sky-600 border-sky-300 hover:text-sky-700 hover:bg-sky-50 hover:border-sky-400" />
               <ActionButton onClick={() => openPricing(row)} icon={DollarSign} label="Edit pricing" className="text-emerald-600 border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400" />
               {row.status !== "published" ? (
                 <ActionButton onClick={() => publish.mutate(row.id)} icon={UploadCloud} label="Publish" className="text-blue-600 border-blue-300 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-400" />
@@ -371,6 +374,8 @@ export default function VehiclesPage() {
           </div>
         </form>
       </Modal>
+
+      <VehicleImageManager vehicle={imagesTarget} open={!!imagesTarget} onOpenChange={(v) => !v && setImagesTarget(null)} />
 
       <ConfirmDialog
         open={!!deleteTarget}
