@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
+use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
 use App\Http\Controllers\Api\Vendor\PayoutController as VendorPayoutController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
@@ -99,6 +100,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // rows and pins it for ShopScope/BelongsToShop — see
     // app-doc/marketplace/03-permissions-model.md "Layer 2".
     Route::middleware('shop.context')->group(function () {
+        Route::get('dashboard', [VendorDashboardController::class, 'index']);
+
         Route::apiResource('vehicles', VendorVehicleController::class);
         Route::post('vehicles/{vehicle}/publish', [VendorVehicleController::class, 'publish']);
         Route::post('vehicles/{vehicle}/unpublish', [VendorVehicleController::class, 'unpublish']);

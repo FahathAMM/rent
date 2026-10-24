@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Platform\AuditLogController as PlatformAuditLogCont
 use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
+use App\Http\Controllers\Api\Platform\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
@@ -29,6 +30,7 @@ Route::prefix('platform')->group(function () {
         Route::get('me',      [PlatformAuthController::class, 'me']);
 
         Route::get('audit-logs',  [PlatformAuditLogController::class, 'index']);
+        Route::get('dashboard',   [PlatformDashboardController::class, 'index']);
 
         // Platform branding shown on the public site and every account/vendor sidebar
         Route::get('details',  [PlatformDetailController::class, 'show']);

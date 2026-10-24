@@ -1,177 +1,131 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformDashboardService, platformCompanyService } from "@/services/platformService";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { platformDashboardService } from "@/services/platformService";
 import { PageWrapper } from "@/components/shared/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { toast } from "sonner";
-import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Building2, Users, UserCheck, ShieldAlert, Hourglass, Clock, CheckCircle2, Home,
+  Wallet, CalendarCheck, Percent, Banknote, UserCheck, Building2, Car, Clock, Home,
 } from "lucide-react";
 
-const CARDS = [
-  { key: "total_companies", label: "Total Companies", icon: Building2, color: "text-indigo-600 bg-indigo-50" },
-  { key: "active_companies", label: "Active Companies", icon: UserCheck, color: "text-emerald-600 bg-emerald-50" },
-  { key: "pending_companies", label: "Pending Activation", icon: Clock, color: "text-amber-600 bg-amber-50", href: "/platform/companies?status=initiate" },
-  { key: "trial_companies", label: "Trial Companies", icon: Hourglass, color: "text-amber-600 bg-amber-50" },
-  { key: "suspended_companies", label: "Suspended Companies", icon: ShieldAlert, color: "text-red-600 bg-red-50" },
-  { key: "total_users", label: "Total Users", icon: Users, color: "text-sky-600 bg-sky-50" },
-];
+function format(amount) {
+  return amount == null ? "—" : `LKR ${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
 
-function StatCard({ label, value, Icon, color, loading, href }) {
-  const content = (
-    <Card className={href ? "transition-colors hover:bg-muted/40" : undefined}>
+function StatCard({ label, value, sub, Icon, color }) {
+  return (
+    <Card>
       <CardContent className="flex items-center gap-4 p-5">
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${color}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold tracking-tight">{loading ? "—" : value}</p>
+          <p className="text-xl font-bold tracking-tight">{value}</p>
+          {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
         </div>
       </CardContent>
     </Card>
   );
+}
 
-  return href ? <Link href={href}>{content}</Link> : content;
+function QueueCard({ label, count, href, Icon }) {
+  return (
+    <Link href={href}>
+      <Card className="transition-colors hover:bg-muted/40">
+        <CardContent className="flex items-center justify-between gap-3 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+              <Icon className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium">{label}</p>
+          </div>
+          <p className="text-2xl font-bold">{count}</p>
+        </CardContent>
+      </Card>
+    </Link>
+  );
 }
 
 export default function PlatformDashboardPage() {
-  const queryClient = useQueryClient();
-
   const { data, isLoading } = useQuery({
     queryKey: ["platform-dashboard"],
     queryFn: () => platformDashboardService.getSummary().then((r) => r.data.data),
   });
 
-  const activate = useMutation({
-    mutationFn: platformCompanyService.activate,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["platform-dashboard"] });
-      toast.success("Company activated");
-    },
-    onError: (err) => toast.error(err.response?.data?.message ?? "Failed to activate company"),
-  });
+  const gmv = data?.gmv ?? {};
+  const bookings = data?.bookings ?? {};
+  const commission = data?.commission ?? {};
+  const payoutsDue = data?.payouts_due ?? {};
+  const queues = data?.queues ?? {};
 
-  const cards = data?.cards ?? {};
-
-  const breadcrumbItems = [
-    { label: "Dashboard", icon: <Home className="size-4" /> },
-  ];
+  const breadcrumbItems = [{ label: "Dashboard", icon: <Home className="size-4" /> }];
 
   return (
     <div>
       <PageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Platform Dashboard" description="Global statistics across every company on the platform." />
+        <PageHeader title="Platform Dashboard" description="GMV, bookings, commission, payouts due, and review queues across the marketplace." />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {CARDS.map((c) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            key={c.key}
-            label={c.label}
-            Icon={c.icon}
-            color={c.color}
-            loading={isLoading}
-            href={c.href}
-            value={c.money ? formatCurrency(cards[c.key]) : (cards[c.key] ?? 0).toLocaleString()}
+            label="GMV (paid bookings)"
+            value={isLoading ? "—" : format(gmv.total)}
+            sub={isLoading ? undefined : `${gmv.paid_booking_count ?? 0} paid bookings`}
+            Icon={Wallet}
+            color="text-indigo-600 bg-indigo-50"
           />
-        ))}
-      </div>
+          <StatCard
+            label="Total Bookings"
+            value={isLoading ? "—" : (bookings.total ?? 0).toLocaleString()}
+            sub={isLoading ? undefined : `${bookings.pending ?? 0} pending · ${bookings.active ?? 0} active`}
+            Icon={CalendarCheck}
+            color="text-sky-600 bg-sky-50"
+          />
+          <StatCard
+            label="Commission Income"
+            value={isLoading ? "—" : format(commission.commission_income)}
+            sub={isLoading ? undefined : `${format(commission.platform_net)} net of gateway fees`}
+            Icon={Percent}
+            color="text-emerald-600 bg-emerald-50"
+          />
+          <StatCard
+            label="Payouts Due"
+            value={isLoading ? "—" : format((payoutsDue.in_flight_payouts ?? 0) + (payoutsDue.unsettled_not_yet_built ?? 0))}
+            sub={isLoading ? undefined : `${format(payoutsDue.in_flight_payouts)} in flight`}
+            Icon={Banknote}
+            color="text-amber-600 bg-amber-50"
+          />
+        </div>
 
-      {(data?.pending_activations?.length > 0 || isLoading) && (
-        <Card className="mt-6 border-amber-200">
-          <CardContent className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="flex items-center gap-1.5 text-sm font-semibold"><Clock className="h-4 w-4 text-amber-600" /> Pending Activation</h3>
-              <Link href="/platform/companies?status=initiate" className="text-xs text-primary hover:underline">View all</Link>
-            </div>
-            <ul className="divide-y">
-              {(data?.pending_activations ?? []).length === 0 && !isLoading && (
-                <li className="py-6 text-center text-sm text-muted-foreground">No companies waiting on activation.</li>
-              )}
-              {(data?.pending_activations ?? []).map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <div className="min-w-0">
-                    <Link href={`/platform/companies/${c.id}`} className="text-sm font-medium hover:underline">{c.name}</Link>
-                    <p className="truncate text-xs text-muted-foreground">{c.email ?? "—"} · Signed up {formatDateTime(c.created_at)}</p>
-                  </div>
-                  <Button size="sm" onClick={() => activate.mutate(c.id)} disabled={activate.isPending} className="shrink-0">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Activate
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
+        <div className="mt-6">
+          <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Booking Pipeline</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {[
+              ["Pending", bookings.pending],
+              ["Confirmed", bookings.confirmed],
+              ["Active", bookings.active],
+              ["Completed", bookings.completed],
+              ["Cancelled / Expired", bookings.cancelled_or_expired],
+            ].map(([label, value]) => (
+              <Card key={label}><CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold">{isLoading ? "—" : (value ?? 0)}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </CardContent></Card>
+            ))}
+          </div>
+        </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="mb-3 text-sm font-semibold">Recent Companies</h3>
-            <ul className="divide-y">
-              {(data?.recent_companies ?? []).length === 0 && !isLoading && (
-                <li className="py-6 text-center text-sm text-muted-foreground">No companies yet.</li>
-              )}
-              {(data?.recent_companies ?? []).map((c) => (
-                <li key={c.id} className="flex items-center justify-between py-2.5">
-                  <Link href={`/platform/companies/${c.id}`} className="text-sm font-medium hover:underline">
-                    {c.name}
-                  </Link>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={c.status === "active" ? "success" : c.status === "suspended" ? "destructive" : c.status === "initiate" ? "warning" : "secondary"} className="capitalize">
-                      {c.status === "initiate" ? "Pending" : c.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{formatDateTime(c.created_at)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="mb-3 text-sm font-semibold">Recent Signups</h3>
-            <ul className="divide-y">
-              {(data?.recent_signups ?? []).length === 0 && !isLoading && (
-                <li className="py-6 text-center text-sm text-muted-foreground">No signups yet.</li>
-              )}
-              {(data?.recent_signups ?? []).map((s) => (
-                <li key={s.id} className="py-2.5">
-                  <p className="text-sm font-medium">{s.name} <span className="text-xs font-normal text-muted-foreground">— {s.email}</span></p>
-                  <p className="text-xs text-muted-foreground">
-                    <Link href={`/platform/companies/${s.company_id}`} className="hover:underline">{s.company_name}</Link>
-                    {" · "}{formatDateTime(s.created_at)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="mb-3 text-sm font-semibold">Subscription Overview</h3>
-            <ul className="space-y-2">
-              {Object.entries(data?.subscription_overview ?? {}).length === 0 && !isLoading && (
-                <li className="py-6 text-center text-sm text-muted-foreground">No subscriptions yet.</li>
-              )}
-              {Object.entries(data?.subscription_overview ?? {}).map(([status, count]) => (
-                <li key={status} className="flex items-center justify-between text-sm">
-                  <span className="capitalize text-muted-foreground">{status}</span>
-                  <span className="font-semibold">{count}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+        <div className="mt-6">
+          <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Review Queues</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <QueueCard label="Owner Applications" count={isLoading ? "—" : queues.owner_applications ?? 0} href="/platform/owners" Icon={UserCheck} />
+            <QueueCard label="Shop Verifications" count={isLoading ? "—" : queues.shop_verifications ?? 0} href="/platform/shops" Icon={Building2} />
+            <QueueCard label="Listing Moderation" count={isLoading ? "—" : queues.listing_moderation ?? 0} href="/platform/listings" Icon={Car} />
+            <QueueCard label="Payout Approvals" count={isLoading ? "—" : queues.payout_approvals ?? 0} href="/platform/payouts" Icon={Clock} />
+          </div>
+        </div>
       </PageWrapper>
     </div>
   );
