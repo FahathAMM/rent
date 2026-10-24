@@ -5,13 +5,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
+import { useAuthStore } from "@/store/authStore";
 import { VehicleCard } from "@/components/marketplace/VehicleCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { AuthDialog } from "@/components/auth/AuthDialog";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { Car, Search as SearchIcon, Loader2 } from "lucide-react";
+import { Car, Search as SearchIcon, Loader2, User as UserIcon } from "lucide-react";
 
 export default function SearchPage() {
   return (
@@ -25,6 +27,8 @@ function SearchPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
+  const { isAuthenticated, user } = useAuthStore();
+  const [authView, setAuthView] = useState(null); // "login" | "register" | null
 
   const filters = {
     q: params.get("q") ?? undefined,
@@ -72,8 +76,24 @@ function SearchPageContent() {
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by make, model or city..." />
             <Button type="submit"><SearchIcon className="h-4 w-4" /></Button>
           </form>
+          {isAuthenticated ? (
+            <Button variant="outline" asChild className="shrink-0">
+              <Link href="/account"><UserIcon className="mr-2 h-4 w-4" /> {user?.name?.split(" ")[0] ?? "My Account"}</Link>
+            </Button>
+          ) : (
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" onClick={() => setAuthView("login")}>Sign in</Button>
+              <Button onClick={() => setAuthView("register")}>Sign up</Button>
+            </div>
+          )}
         </div>
       </header>
+
+      <AuthDialog
+        open={!!authView}
+        onOpenChange={(v) => !v && setAuthView(null)}
+        initialView={authView ?? "login"}
+      />
 
       <div className="mx-auto max-w-6xl px-4 py-6">
         <div className="mb-5 flex flex-wrap gap-2">

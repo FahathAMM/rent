@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
 import { favoriteService } from "@/services/favoriteService";
 import { reportService } from "@/services/reportService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthDialog } from "@/components/auth/AuthDialog";
 import { BookingRequestWidget } from "@/components/marketplace/BookingRequestWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -116,17 +117,14 @@ function Spec({ icon: Icon, label, value }) {
 
 export default function VehicleDetailPage() {
   const { slug } = useParams();
-  const router = useRouter();
   const { format } = useCurrencyFormat();
   const { user, isAuthenticated } = useAuth();
   const [contacting, setContacting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [authView, setAuthView] = useState(null); // "login" | "register" | null
 
-  const requireLogin = () => {
-    toast.error("Please log in first");
-    router.push("/login");
-  };
+  const requireLogin = () => setAuthView("login");
 
   const { data: vehicle, isLoading } = useQuery({
     queryKey: ["public-vehicle", slug],
@@ -178,6 +176,12 @@ export default function VehicleDetailPage() {
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : requireLogin())}>
               <Flag className="h-4 w-4" /> Report
             </Button>
+            {!isAuthenticated && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setAuthView("login")}>Sign in</Button>
+                <Button size="sm" onClick={() => setAuthView("register")}>Sign up</Button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -274,6 +278,7 @@ export default function VehicleDetailPage() {
 
       <ContactOwnerDialog open={contacting} onOpenChange={setContacting} vehicle={vehicle} user={isAuthenticated ? user : null} />
       <ReportListingDialog open={reporting} onOpenChange={setReporting} vehicle={vehicle} />
+      <AuthDialog open={!!authView} onOpenChange={(v) => !v && setAuthView(null)} initialView={authView ?? "login"} />
     </div>
   );
 }

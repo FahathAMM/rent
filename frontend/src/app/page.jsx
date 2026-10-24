@@ -8,6 +8,7 @@ import { publicService } from "@/services/publicService";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthDialog } from "@/components/auth/AuthDialog";
 import { Search, Car, User as UserIcon } from "lucide-react";
 import { VehicleCard } from "@/components/marketplace/VehicleCard";
 
@@ -15,6 +16,7 @@ export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
   const [q, setQ] = useState("");
+  const [authView, setAuthView] = useState(null); // "login" | "register" | null
 
   const { data: categories } = useQuery({
     queryKey: ["public-categories"],
@@ -53,13 +55,19 @@ export default function HomePage() {
               </Button>
             ) : (
               <>
-                <Button variant="outline" asChild><Link href="/login">Sign in</Link></Button>
-                <Button asChild><Link href="/register">Sign up</Link></Button>
+                <Button variant="outline" onClick={() => setAuthView("login")}>Sign in</Button>
+                <Button onClick={() => setAuthView("register")}>Sign up</Button>
               </>
             )}
           </nav>
         </div>
       </header>
+
+      <AuthDialog
+        open={!!authView}
+        onOpenChange={(v) => !v && setAuthView(null)}
+        initialView={authView ?? "login"}
+      />
 
       <section className="border-b bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 py-16 text-center">
