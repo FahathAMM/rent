@@ -65,7 +65,11 @@ function FilterSection({ icon: Icon, title, children }) {
   );
 }
 
-function FilterSidebarContent({ params, setParam, cities, categories, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll }) {
+function FilterSidebarContent({ params, setParam, setDistrict, cities, categories, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll }) {
+  const selectedDistrict = params.get("district") ?? "";
+  const districts = Array.from(new Set((cities ?? []).map((c) => c.district).filter(Boolean))).sort();
+  const visibleCities = selectedDistrict ? cities?.filter((c) => c.district === selectedDistrict) : cities;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -74,13 +78,27 @@ function FilterSidebarContent({ params, setParam, cities, categories, priceMin, 
       </div>
 
       <FilterSection icon={MapPin} title="Location">
-        <div className="flex flex-wrap gap-2">
-          <Pill active={!params.get("city")} onClick={() => setParam("city", "")}>All cities</Pill>
-          {cities?.map((c) => (
-            <Pill key={c.city} active={params.get("city") === c.city} onClick={() => setParam("city", c.city)}>
-              {c.city} <span className="opacity-70">({c.vehicle_count})</span>
-            </Pill>
-          ))}
+        <div className="space-y-3">
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">District</p>
+            <div className="flex flex-wrap gap-2">
+              <Pill active={!selectedDistrict} onClick={() => setDistrict("")}>All districts</Pill>
+              {districts.map((d) => (
+                <Pill key={d} active={selectedDistrict === d} onClick={() => setDistrict(d)}>{d}</Pill>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">City</p>
+            <div className="flex flex-wrap gap-2">
+              <Pill active={!params.get("city")} onClick={() => setParam("city", "")}>All cities</Pill>
+              {visibleCities?.map((c) => (
+                <Pill key={c.city} active={params.get("city") === c.city} onClick={() => setParam("city", c.city)}>
+                  {c.city} <span className="opacity-70">({c.vehicle_count})</span>
+                </Pill>
+              ))}
+            </div>
+          </div>
         </div>
       </FilterSection>
 
@@ -162,6 +180,7 @@ function BrowseVehiclesPageContent() {
   const filters = {
     q: params.get("q") ?? undefined,
     category_id: params.get("category_id") ?? undefined,
+    district: params.get("district") ?? undefined,
     city: params.get("city") ?? undefined,
     transmission: params.get("transmission") ?? undefined,
     fuel_type: params.get("fuel_type") ?? undefined,
@@ -196,6 +215,14 @@ function BrowseVehiclesPageContent() {
     router.push(`/browse?${next.toString()}`);
   };
 
+  const setDistrict = (value) => {
+    const next = new URLSearchParams(params.toString());
+    if (value) next.set("district", value); else next.delete("district");
+    next.delete("city");
+    next.delete("page");
+    router.push(`/browse?${next.toString()}`);
+  };
+
   const applyPrice = () => {
     const next = new URLSearchParams(params.toString());
     if (priceMin) next.set("price_min", priceMin); else next.delete("price_min");
@@ -216,10 +243,10 @@ function BrowseVehiclesPageContent() {
     setParam("q", q);
   };
 
-  const activeFilterCount = ["category_id", "city", "transmission", "fuel_type", "seats_min", "delivery", "price_min", "price_max"]
+  const activeFilterCount = ["category_id", "district", "city", "transmission", "fuel_type", "seats_min", "delivery", "price_min", "price_max"]
     .filter((k) => params.get(k)).length;
 
-  const filterProps = { params, setParam, cities, categories, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll };
+  const filterProps = { params, setParam, setDistrict, cities, categories, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll };
 
   return (
     <div>
@@ -229,32 +256,36 @@ function BrowseVehiclesPageContent() {
           <div className="aurora-blob aurora-blob-2" />
           <div className="aurora-blob aurora-blob-3" />
         </div>
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:py-12">
-          <div className="border-border/60 bg-background/80 mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> {data?.meta?.total ?? "Hundreds of"} vehicles ready to book
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Browse{" "}
-            <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Vehicles</span>
-          </h1>
-          <p className="mt-1.5 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Search real listings from verified owners and rental shops across Sri Lanka.
-          </p>
-
-          <form onSubmit={handleSearch} className="mt-6 flex max-w-2xl gap-2">
-            <div className="relative flex-1">
-              <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search by make, model or city..."
-                className="h-12 bg-card pl-10 shadow-sm"
-              />
+        <div className="relative mx-auto max-w-7xl px-4 py-6 sm:py-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+            <div>
+              <div className="border-border/60 bg-background/80 mb-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> {data?.meta?.total ?? "Hundreds of"} vehicles ready to book
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                Browse{" "}
+                <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">Vehicles</span>
+              </h1>
+              <p className="mt-1 max-w-md text-xs text-muted-foreground sm:text-sm">
+                Search real listings from verified owners and rental shops across Sri Lanka.
+              </p>
             </div>
-            <Button type="submit" size="lg" className="h-12 shrink-0 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              Search
-            </Button>
-          </form>
+
+            <form onSubmit={handleSearch} className="flex w-full gap-2 lg:w-[420px] lg:shrink-0">
+              <div className="relative flex-1">
+                <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search by make, model or city..."
+                  className="h-11 bg-card pl-10 shadow-sm"
+                />
+              </div>
+              <Button type="submit" size="lg" className="h-11 shrink-0 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
+                Search
+              </Button>
+            </form>
+          </div>
         </div>
       </section>
 

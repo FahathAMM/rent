@@ -36,7 +36,7 @@ class PublicVehicleQuery
 
     /**
      * @param array{
-     *   q?: string, category_id?: int, city?: string,
+     *   q?: string, category_id?: int, district?: string, city?: string,
      *   pickup_at?: string, return_at?: string,
      *   price_min?: float, price_max?: float,
      *   transmission?: string, fuel_type?: string, seats_min?: int,
@@ -58,6 +58,10 @@ class PublicVehicleQuery
 
         if (!empty($filters['category_id'])) {
             $query->where('category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['district'])) {
+            $query->whereHas('shop', fn (Builder $q) => $q->where('district', $filters['district']));
         }
 
         if (!empty($filters['city'])) {
@@ -107,14 +111,14 @@ class PublicVehicleQuery
         };
     }
 
-    /** Cities with at least one publicly visible vehicle, most vehicles first — "Browse by Location". */
+    /** Cities (with their district) that have at least one publicly visible vehicle, most vehicles first — "Browse by Location". */
     public static function citiesWithCounts(): \Illuminate\Support\Collection
     {
         return self::base()
             ->join('rental_shops', 'rental_shops.id', '=', 'vehicles.shop_id')
-            ->select('rental_shops.city')
+            ->select('rental_shops.city', 'rental_shops.district')
             ->selectRaw('count(*) as vehicle_count')
-            ->groupBy('rental_shops.city')
+            ->groupBy('rental_shops.city', 'rental_shops.district')
             ->orderByDesc('vehicle_count')
             ->get();
     }

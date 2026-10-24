@@ -12,7 +12,11 @@ class LocationController extends Controller
     public function index(): JsonResponse
     {
         $cities = PublicVehicleQuery::citiesWithCounts()
-            ->map(fn ($row) => ['city' => $row->city, 'vehicle_count' => (int) $row->vehicle_count])
+            ->map(fn ($row) => [
+                'city' => $row->city,
+                'district' => $row->district,
+                'vehicle_count' => (int) $row->vehicle_count,
+            ])
             ->values();
 
         return response()->json(['data' => $cities]);

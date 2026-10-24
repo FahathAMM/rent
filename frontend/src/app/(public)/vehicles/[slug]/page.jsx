@@ -105,11 +105,13 @@ function ReportListingDialog({ open, onOpenChange, vehicle }) {
 function Spec({ icon: Icon, label, value }) {
   if (value === null || value === undefined || value === "") return null;
   return (
-    <div className="flex items-center gap-2 rounded-xl border bg-card p-3">
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-3.5 shadow-sm">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium capitalize">{value}</p>
+        <p className="text-sm font-semibold capitalize">{value}</p>
       </div>
     </div>
   );
@@ -120,8 +122,8 @@ function Gallery({ images, title }) {
   const image = images?.[active]?.url ?? VEHICLE_PLACEHOLDER_IMAGE;
 
   return (
-    <div className="space-y-2">
-      <div className="flex aspect-video items-center justify-center overflow-hidden rounded-2xl border bg-muted">
+    <div className="space-y-3">
+      <div className="flex aspect-video items-center justify-center overflow-hidden rounded-3xl border bg-muted shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt={title} className="h-full w-full object-cover" />
       </div>
@@ -132,10 +134,10 @@ function Gallery({ images, title }) {
               key={img.url ?? i}
               type="button"
               onClick={() => setActive(i)}
-              className={`shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${i === active ? "border-primary" : "border-transparent"}`}
+              className={`shrink-0 overflow-hidden rounded-xl border-2 transition-all ${i === active ? "border-primary shadow-sm" : "border-transparent opacity-80 hover:opacity-100"}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="h-14 w-20 object-cover" />
+              <img src={img.url} alt="" className="h-16 w-24 object-cover" />
             </button>
           ))}
         </div>
@@ -196,14 +198,14 @@ export default function VehicleDetailPage() {
     <div>
       <div className="border-b bg-muted/30">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
-          <Link href="/browse" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/browse" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to browse
           </Link>
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => (isAuthenticated ? favorite.mutate() : requireLogin())} disabled={favorite.isPending || saved}>
+            <Button variant="outline" size="sm" className="gap-1.5 bg-card" onClick={() => (isAuthenticated ? favorite.mutate() : requireLogin())} disabled={favorite.isPending || saved}>
               <Heart className={`h-4 w-4 ${saved ? "fill-current text-destructive" : ""}`} /> {saved ? "Saved" : "Save"}
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : requireLogin())}>
+            <Button variant="outline" size="sm" className="gap-1.5 bg-card text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : requireLogin())}>
               <Flag className="h-4 w-4" /> Report
             </Button>
           </div>
@@ -211,12 +213,12 @@ export default function VehicleDetailPage() {
       </div>
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-7">
           <Gallery images={vehicle.images} title={vehicle.title} />
 
           <div>
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-2xl font-bold tracking-tight">{vehicle.title}</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{vehicle.title}</h1>
               {vehicle.rating_count > 0 && (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-700">
                   <Star className="h-3.5 w-3.5 fill-current" /> {Number(vehicle.rating_avg).toFixed(1)}
@@ -224,14 +226,24 @@ export default function VehicleDetailPage() {
                 </span>
               )}
             </div>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              Offered by <span className="font-medium text-foreground">{vehicle.shop?.name}</span>
-              {vehicle.shop?.is_verified && <ShieldCheck className="h-4 w-4 text-emerald-600" />}
-              {vehicle.shop?.city && <><MapPin className="ml-1 h-3.5 w-3.5" />{vehicle.shop.city}</>}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                Offered by <span className="font-medium text-foreground">{vehicle.shop?.name}</span>
+              </span>
+              {vehicle.shop?.is_verified && (
+                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Verified
+                </span>
+              )}
+              {vehicle.shop?.city && (
+                <span className="flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 text-xs">
+                  <MapPin className="h-3.5 w-3.5" />{vehicle.shop.city}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <Spec icon={Users} label="Seats" value={vehicle.seating_capacity} />
             <Spec icon={Fuel} label="Fuel" value={vehicle.fuel_type} />
             <Spec icon={Gauge} label="Transmission" value={vehicle.transmission} />
@@ -240,34 +252,39 @@ export default function VehicleDetailPage() {
 
           {vehicle.description && (
             <div>
-              <h2 className="mb-2 font-semibold">About this vehicle</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{vehicle.description}</p>
+              <h2 className="mb-2 text-lg font-semibold">About this vehicle</h2>
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{vehicle.description}</p>
             </div>
           )}
 
           {vehicle.features?.length > 0 && (
             <div>
-              <h2 className="mb-2 font-semibold">Features</h2>
+              <h2 className="mb-2 text-lg font-semibold">Features</h2>
               <div className="flex flex-wrap gap-2">
                 {vehicle.features.map((feat) => (
-                  <span key={feat} className="rounded-full border bg-muted px-3 py-1 text-xs">{feat}</span>
+                  <span key={feat} className="rounded-full border bg-gradient-to-br from-orange-500/5 via-pink-500/5 to-violet-500/5 px-3 py-1 text-xs font-medium">{feat}</span>
                 ))}
               </div>
             </div>
           )}
 
           <div>
-            <h2 className="mb-2 font-semibold">Reviews {vehicle.rating_count > 0 && `(${vehicle.rating_count})`}</h2>
+            <h2 className="mb-3 text-lg font-semibold">Reviews {vehicle.rating_count > 0 && `(${vehicle.rating_count})`}</h2>
             {reviews?.length ? (
               <div className="space-y-3">
                 {reviews.map((r) => (
-                  <Card key={r.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{r.reviewer_name ?? "Verified renter"}</p>
-                        <p className="flex items-center gap-1 text-sm"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {r.rating}/5</p>
+                  <Card key={r.id} className="shadow-sm">
+                    <CardContent className="flex gap-3 p-4">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-sm font-semibold text-white">
+                        {(r.reviewer_name ?? "V")[0].toUpperCase()}
                       </div>
-                      {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{r.reviewer_name ?? "Verified renter"}</p>
+                          <p className="flex items-center gap-1 text-sm font-medium"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {r.rating}/5</p>
+                        </div>
+                        {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -279,16 +296,19 @@ export default function VehicleDetailPage() {
         </div>
 
         <div>
-          <Card className="sticky top-20 shadow-sm">
+          <Card className="sticky top-20 overflow-hidden shadow-sm">
+            <div className="h-1.5 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500" />
             <CardContent className="space-y-4 p-5">
               <div>
-                <p className="text-2xl font-bold">{format(vehicle.pricing?.daily_rate)}<span className="text-sm font-normal text-muted-foreground">/day</span></p>
+                <p className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-3xl font-bold text-transparent">
+                  {format(vehicle.pricing?.daily_rate)}<span className="text-sm font-normal text-muted-foreground">/day</span>
+                </p>
                 {vehicle.pricing?.weekly_rate && (
                   <p className="text-sm text-muted-foreground">{format(vehicle.pricing.weekly_rate)}/week</p>
                 )}
               </div>
               {vehicle.pricing?.security_deposit > 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="rounded-lg bg-muted/60 p-2.5 text-xs text-muted-foreground">
                   Security deposit: {format(vehicle.pricing.security_deposit)} ({vehicle.pricing.deposit_method === "cash_on_pickup" ? "collected at pickup" : "prepaid"})
                 </p>
               )}
