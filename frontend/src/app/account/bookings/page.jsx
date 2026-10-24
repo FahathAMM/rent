@@ -50,7 +50,7 @@ export default function AccountBookingsPage() {
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
           <div className="rounded-full bg-muted p-4"><CalendarCheck className="h-7 w-7 text-muted-foreground" /></div>
           <p className="text-sm font-medium">No bookings yet</p>
-          <Button asChild variant="outline"><Link href="/search">Browse vehicles</Link></Button>
+          <Button asChild variant="outline"><Link href="/browse">Browse vehicles</Link></Button>
         </div>
       ) : (
         <div className="space-y-3">

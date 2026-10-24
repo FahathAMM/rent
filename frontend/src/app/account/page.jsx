@@ -28,7 +28,7 @@ export default function AccountDashboardPage() {
             </div>
           </div>
           <Button asChild>
-            <Link href="/search">
+            <Link href="/browse">
               <Car className="mr-2 h-4 w-4" /> Browse vehicles
             </Link>
           </Button>

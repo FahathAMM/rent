@@ -45,7 +45,7 @@ export default function HomePage() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+    router.push(q ? `/browse?q=${encodeURIComponent(q)}` : "/browse");
   };
 
   return (
@@ -105,7 +105,7 @@ export default function HomePage() {
             {categories.map((c) => (
               <Link
                 key={c.id}
-                href={`/search?category_id=${c.id}`}
+                href={`/browse?category_id=${c.id}`}
                 className="group flex shrink-0 flex-col items-center gap-2 rounded-2xl border bg-card px-6 py-5 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
@@ -122,7 +122,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight">Featured vehicles</h2>
-          <Link href="/search" className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+          <Link href="/browse" className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -150,7 +150,7 @@ export default function HomePage() {
             {cities.slice(0, 8).map((c) => (
               <Link
                 key={c.city}
-                href={`/search?city=${encodeURIComponent(c.city)}`}
+                href={`/browse?city=${encodeURIComponent(c.city)}`}
                 className="group flex shrink-0 items-center gap-2.5 rounded-2xl border bg-card px-5 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">

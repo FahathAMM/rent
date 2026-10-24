@@ -12,15 +12,15 @@ import {
 } from "@/components/ui/select";
 import { Search as SearchIcon, Loader2, CarFront } from "lucide-react";
 
-export default function SearchPage() {
+export default function BrowseVehiclesPage() {
   return (
     <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
-      <SearchPageContent />
+      <BrowseVehiclesPageContent />
     </Suspense>
   );
 }
 
-function SearchPageContent() {
+function BrowseVehiclesPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
@@ -46,7 +46,7 @@ function SearchPageContent() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["public-vehicles", "search", filters],
+    queryKey: ["public-vehicles", "browse", filters],
     queryFn: () => publicService.vehicles(filters).then((r) => r.data),
   });
 
@@ -55,7 +55,7 @@ function SearchPageContent() {
     if (value) next.set(key, value);
     else next.delete(key);
     next.delete("page");
-    router.push(`/search?${next.toString()}`);
+    router.push(`/browse?${next.toString()}`);
   };
 
   const handleSearch = (e) => {
@@ -65,10 +65,13 @@ function SearchPageContent() {
 
   return (
     <div>
-      {/* ── Search + filters bar ──────────────────────────────────────── */}
+      {/* ── Heading + search + filters bar ───────────────────────────── */}
       <div className="border-b bg-muted/30">
-        <div className="mx-auto max-w-6xl px-4 py-6">
-          <form onSubmit={handleSearch} className="flex gap-2">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <h1 className="text-2xl font-semibold tracking-tight">Browse Vehicles</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Search real listings from verified owners and rental shops across Sri Lanka.</p>
+
+          <form onSubmit={handleSearch} className="mt-5 flex gap-2">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

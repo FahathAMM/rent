@@ -17,7 +17,7 @@ import { Menu, User as UserIcon } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
-  { href: "/search", label: "Browse Vehicles" },
+  { href: "/browse", label: "Browse Vehicles" },
   { href: "/locations", label: "Browse by Location" },
   { href: "/shops", label: "Rental Companies" },
   { href: "/how-it-works", label: "How It Works" },

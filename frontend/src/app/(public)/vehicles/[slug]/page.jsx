@@ -186,7 +186,7 @@ export default function VehicleDetailPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
         <p className="text-lg font-semibold">Vehicle not found</p>
-        <Button asChild variant="outline"><Link href="/search">Back to search</Link></Button>
+        <Button asChild variant="outline"><Link href="/browse">Back to browse</Link></Button>
       </div>
     );
   }
@@ -195,8 +195,8 @@ export default function VehicleDetailPage() {
     <div>
       <div className="border-b bg-muted/30">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
-          <Link href="/search" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to search
+          <Link href="/browse" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to browse
           </Link>
           <div className="flex items-center gap-1.5">
             <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => (isAuthenticated ? favorite.mutate() : openAuth("login"))} disabled={favorite.isPending || saved}>

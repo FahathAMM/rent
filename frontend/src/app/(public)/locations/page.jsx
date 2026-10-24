@@ -30,7 +30,7 @@ export default function LocationsPage() {
             {cities.map((c) => (
               <Link
                 key={c.city}
-                href={`/search?city=${encodeURIComponent(c.city)}`}
+                href={`/browse?city=${encodeURIComponent(c.city)}`}
                 className="group flex items-center gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
