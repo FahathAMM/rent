@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 
+/** The active shop's branches / pickup points. */
 export const locationService = {
   getAll: (params) => api.get("/locations", { params }),
   getOne: (id) => api.get(`/locations/${id}`),
