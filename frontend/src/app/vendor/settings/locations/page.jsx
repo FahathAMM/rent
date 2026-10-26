@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { locationService } from "@/services/locationService";
 import { useAuthStore } from "@/store/authStore";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -113,13 +112,11 @@ export default function LocationsSettingsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Locations"
-          description="Branches and vehicle pickup/return points customers can choose when booking."
-          action={can("vendor-settings-locations-create") && (
+        {can("vendor-settings-locations-create") && (
+          <div className="mb-4 flex justify-end">
             <Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> New Location</Button>
-          )}
-        />
+          </div>
+        )}
 
         <DataTable columns={columns} data={locations} loading={isLoading} />
       </HomePageWrapper>

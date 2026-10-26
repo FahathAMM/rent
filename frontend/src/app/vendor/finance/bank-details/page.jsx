@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorBankDetailService } from "@/services/vendorBankDetailService";
 import { useAuthStore } from "@/store/authStore";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -100,13 +99,11 @@ export default function BankDetailsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Bank Details"
-          description="Where your payouts are sent. Only the shop owner can view or change this."
-          action={canEdit && (
+        {canEdit && (
+          <div className="mb-4 flex justify-end">
             <Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> Add Bank Detail</Button>
-          )}
-        />
+          </div>
+        )}
 
         <DataTable columns={columns} data={details} loading={isLoading} />
       </HomePageWrapper>
