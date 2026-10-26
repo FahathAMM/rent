@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { publicService } from "@/services/publicService";
 import { VehicleCard } from "@/components/marketplace/VehicleCard";
+import { ColourSwatch } from "@/components/marketplace/ColourSwatch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   Search as SearchIcon, Loader2, CarFront, SlidersHorizontal, X,
-  MapPin, Tag, Gauge, Fuel, Users, Truck, Wallet, Sparkles,
+  MapPin, Tag, Gauge, Fuel, Users, Truck, Wallet, Sparkles, BadgeCheck, Layers, Palette,
 } from "lucide-react";
 
 const TRANSMISSION_OPTIONS = [
@@ -65,7 +66,7 @@ function FilterSection({ icon: Icon, title, children }) {
   );
 }
 
-function FilterSidebarContent({ params, setParam, setDistrict, cities, categories, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll }) {
+function FilterSidebarContent({ params, setParam, setDistrict, setBrand, cities, categories, brands, models, colours, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll }) {
   const selectedDistrict = params.get("district") ?? "";
   const districts = Array.from(new Set((cities ?? []).map((c) => c.district).filter(Boolean))).sort();
   const visibleCities = selectedDistrict ? cities?.filter((c) => c.district === selectedDistrict) : cities;
@@ -112,6 +113,48 @@ function FilterSidebarContent({ params, setParam, setDistrict, cities, categorie
           ))}
         </div>
       </FilterSection>
+
+      {brands?.length > 0 && (
+        <FilterSection icon={BadgeCheck} title="Brand">
+          <div className="flex flex-wrap gap-2">
+            <Pill active={!params.get("brand_id")} onClick={() => setBrand("")}>All</Pill>
+            {brands.map((b) => (
+              <Pill key={b.id} active={params.get("brand_id") === String(b.id)} onClick={() => setBrand(String(b.id))}>
+                {b.name}
+              </Pill>
+            ))}
+          </div>
+        </FilterSection>
+      )}
+
+      {params.get("brand_id") && models?.length > 0 && (
+        <FilterSection icon={Layers} title="Model">
+          <div className="flex flex-wrap gap-2">
+            <Pill active={!params.get("model_id")} onClick={() => setParam("model_id", "")}>All</Pill>
+            {models.map((m) => (
+              <Pill key={m.id} active={params.get("model_id") === String(m.id)} onClick={() => setParam("model_id", String(m.id))}>
+                {m.name}
+              </Pill>
+            ))}
+          </div>
+        </FilterSection>
+      )}
+
+      {colours?.length > 0 && (
+        <FilterSection icon={Palette} title="Colour">
+          <div className="flex flex-wrap gap-2">
+            <Pill active={!params.get("colour_id")} onClick={() => setParam("colour_id", "")}>All</Pill>
+            {colours.map((c) => (
+              <Pill key={c.id} active={params.get("colour_id") === String(c.id)} onClick={() => setParam("colour_id", String(c.id))}>
+                <span className="inline-flex items-center gap-1.5">
+                  <ColourSwatch hex={c.hex} className="size-3" />
+                  {c.name}
+                </span>
+              </Pill>
+            ))}
+          </div>
+        </FilterSection>
+      )}
 
       <FilterSection icon={Wallet} title="Price per day">
         <div className="flex items-center gap-2">
@@ -180,6 +223,9 @@ function BrowseVehiclesPageContent() {
   const filters = {
     q: params.get("q") ?? undefined,
     category_id: params.get("category_id") ?? undefined,
+    brand_id: params.get("brand_id") ?? undefined,
+    model_id: params.get("model_id") ?? undefined,
+    colour_id: params.get("colour_id") ?? undefined,
     district: params.get("district") ?? undefined,
     city: params.get("city") ?? undefined,
     transmission: params.get("transmission") ?? undefined,
@@ -202,6 +248,26 @@ function BrowseVehiclesPageContent() {
     queryFn: () => publicService.categories().then((r) => r.data.data),
   });
 
+  // Only brands someone is actually renting out — an empty filter option helps nobody.
+  const { data: brands } = useQuery({
+    queryKey: ["public-brands"],
+    queryFn: () => publicService.brands().then((r) => r.data.data),
+    select: (all) => all.filter((b) => b.vehicles_count > 0),
+  });
+
+  const brandId = params.get("brand_id");
+  const { data: models } = useQuery({
+    queryKey: ["public-models", brandId],
+    queryFn: () => publicService.models(brandId).then((r) => r.data.data),
+    enabled: !!brandId,
+    select: (all) => all.filter((m) => m.vehicles_count > 0),
+  });
+
+  const { data: colours } = useQuery({
+    queryKey: ["public-colours"],
+    queryFn: () => publicService.colours().then((r) => r.data.data),
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["public-vehicles", "browse", filters],
     queryFn: () => publicService.vehicles(filters).then((r) => r.data),
@@ -211,6 +277,15 @@ function BrowseVehiclesPageContent() {
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
+    next.delete("page");
+    router.push(`/browse?${next.toString()}`);
+  };
+
+  // A model belongs to one brand - switching brand clears the model filter.
+  const setBrand = (value) => {
+    const next = new URLSearchParams(params.toString());
+    if (value) next.set("brand_id", value); else next.delete("brand_id");
+    next.delete("model_id");
     next.delete("page");
     router.push(`/browse?${next.toString()}`);
   };
@@ -243,10 +318,10 @@ function BrowseVehiclesPageContent() {
     setParam("q", q);
   };
 
-  const activeFilterCount = ["category_id", "district", "city", "transmission", "fuel_type", "seats_min", "delivery", "price_min", "price_max"]
+  const activeFilterCount = ["category_id", "brand_id", "model_id", "colour_id", "district", "city", "transmission", "fuel_type", "seats_min", "delivery", "price_min", "price_max"]
     .filter((k) => params.get(k)).length;
 
-  const filterProps = { params, setParam, setDistrict, cities, categories, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll };
+  const filterProps = { params, setParam, setDistrict, setBrand, cities, categories, brands, models, colours, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll };
 
   return (
     <div>

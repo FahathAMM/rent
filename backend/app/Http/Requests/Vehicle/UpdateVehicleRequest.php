@@ -12,16 +12,23 @@ class UpdateVehicleRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('vehicle')?->id;
+        $vehicle = $this->route('vehicle');
+        $id = $vehicle?->id;
+        // A partial update may change the model without resending the brand (or vice versa).
+        $brandId = $this->input('brand_id', $vehicle?->brand_id);
+        $modelId = $this->input('model_id', $vehicle?->model_id);
 
         return [
             'category_id' => ['sometimes', 'required', 'integer', 'exists:vehicle_categories,id'],
+            'brand_id' => ['sometimes', 'required', 'integer', Rule::exists('vehicle_brands', 'id')->where('is_active', true)],
             'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'make' => ['sometimes', 'required', 'string', 'max:100'],
-            'model' => ['sometimes', 'required', 'string', 'max:100'],
+            'model_id' => [
+                Rule::requiredIf(fn () => $this->has('brand_id')), 'integer',
+                Rule::exists('vehicle_models', 'id')->where('is_active', true)->where('brand_id', $brandId),
+            ],
             'year' => ['sometimes', 'required', 'integer', 'min:1980', 'max:' . (date('Y') + 1)],
-            'variant' => ['nullable', 'string', 'max:100'],
-            'colour' => ['nullable', 'string', 'max:50'],
+            'variant_id' => ['nullable', 'integer', Rule::exists('vehicle_variants', 'id')->where('is_active', true)->where('model_id', $modelId)],
+            'colour_id' => ['nullable', 'integer', Rule::exists('vehicle_colours', 'id')->where('is_active', true)],
             'registration_number' => [
                 'sometimes', 'required', 'string', 'max:20',
                 Rule::unique('vehicles', 'registration_number')->where('shop_id', VendorContext::shopId())->ignore($id),

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/iconMap";
-import { Check, ChevronDown, Store, X, Linkedin, Globe } from "lucide-react";
+import { Check, ChevronDown, Store, X, Linkedin, Globe, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
@@ -138,7 +138,7 @@ function NavLink({ item, pathname, depth, onNavigate }) {
 }
 
 // ── Sidebar — Start-menu-style tile grid for the active module's pages ───────
-export function Sidebar({ activeModule, navigation, open = false, onClose, topSlot, brandHref = "/vendor/dashboard" }) {
+export function Sidebar({ activeModule, navigation, open = false, onClose, topSlot, brandHref = "/" }) {
   const pathname = usePathname();
   const standaloneItems = navigation?.filter((item) => item.route_name) ?? [];
 
@@ -172,10 +172,14 @@ export function Sidebar({ activeModule, navigation, open = false, onClose, topSl
       >
         {/* Brand */}
         <div className="flex items-center justify-between gap-2 border-b border-sidebar-border p-3">
+          {/* The app name opens the public site in a new tab, keeping the dashboard open. */}
           <Link
             href={brandHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open the public website"
             onClick={onClose}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 shadow-sm transition-colors hover:bg-sidebar-accent/50"
+            className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 shadow-sm transition-colors hover:bg-sidebar-accent/50"
           >
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -185,10 +189,11 @@ export function Sidebar({ activeModule, navigation, open = false, onClose, topSl
                 <Store className="h-4 w-4 text-sidebar-primary-foreground" />
               </div>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-semibold text-sm tracking-tight truncate">{brandName}</p>
               <p className="text-[10px] text-sidebar-foreground/60 truncate">{tagline}</p>
             </div>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
           </Link>
           <button type="button" onClick={onClose} className="lg:hidden p-2 rounded-md hover:bg-sidebar-accent/50 shrink-0">
             <X className="h-5 w-5" />

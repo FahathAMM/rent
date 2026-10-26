@@ -1,12 +1,12 @@
 import { Suspense } from "react";
-import LoginPageClient from "@/app/(auth)/login/LoginPageClient";
-import { getInitialBrand } from "@/app/(auth)/getInitialBrand";
+import VendorLoginPageClient from "../_auth/VendorLoginPageClient";
+import { getInitialBrand } from "../_auth/getInitialBrand";
 
 export default async function VendorRegisterPage() {
   const initialBrand = await getInitialBrand();
   return (
     <Suspense>
-      <LoginPageClient initialBrand={initialBrand} initialView="register" audience="vendor" />
+      <VendorLoginPageClient initialBrand={initialBrand} initialView="register" />
     </Suspense>
   );
 }

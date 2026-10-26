@@ -36,7 +36,7 @@ class PublicVehicleQuery
 
     /**
      * @param array{
-     *   q?: string, category_id?: int, district?: string, city?: string,
+     *   q?: string, category_id?: int, brand_id?: int, model_id?: int, colour_id?: int, district?: string, city?: string,
      *   pickup_at?: string, return_at?: string,
      *   price_min?: float, price_max?: float,
      *   transmission?: string, fuel_type?: string, seats_min?: int,
@@ -45,7 +45,7 @@ class PublicVehicleQuery
      */
     public static function search(array $filters): Builder
     {
-        $query = self::base()->with(['category', 'shop', 'pricing', 'images' => fn ($q) => $q->orderBy('sort_order')->with('attachment')]);
+        $query = self::base()->with(['category', 'brand', 'shop', 'pricing', 'images' => fn ($q) => $q->orderBy('sort_order')->with('attachment')]);
 
         if (!empty($filters['q'])) {
             $term = $filters['q'];
@@ -58,6 +58,18 @@ class PublicVehicleQuery
 
         if (!empty($filters['category_id'])) {
             $query->where('category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['brand_id'])) {
+            $query->where('brand_id', $filters['brand_id']);
+        }
+
+        if (!empty($filters['model_id'])) {
+            $query->where('model_id', $filters['model_id']);
+        }
+
+        if (!empty($filters['colour_id'])) {
+            $query->where('colour_id', $filters['colour_id']);
         }
 
         if (!empty($filters['district'])) {
@@ -126,7 +138,7 @@ class PublicVehicleQuery
     public static function findBySlug(string $slug): ?Vehicle
     {
         return self::base()
-            ->with(['category', 'shop', 'pricing', 'pickupLocations.location', 'images' => fn ($q) => $q->orderBy('sort_order')->with('attachment')])
+            ->with(['category', 'brand', 'vehicleColour', 'shop', 'pricing', 'pickupLocations.location', 'images' => fn ($q) => $q->orderBy('sort_order')->with('attachment')])
             ->where('slug', $slug)
             ->first();
     }

@@ -14,15 +14,15 @@ import {
 
 function StatTile({ label, value, sub, icon: Icon, tone }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
+    <Card className="h-full">
+      <CardContent className="flex h-full items-center gap-4 p-5">
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-2xl font-bold leading-tight">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+          <p className="truncate text-2xl font-bold leading-tight">{value}</p>
+          <p className="mt-0.5 text-xs font-medium text-muted-foreground">{label}</p>
+          {sub && <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{sub}</p>}
         </div>
       </CardContent>
     </Card>
@@ -49,21 +49,21 @@ export default function VendorDashboardPage() {
   const breadcrumbItems = [{ label: "Home", href: "/vendor/dashboard", icon: <Home className="size-4" /> }];
 
   return (
-    <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <div className="space-y-5">
-        <div>
-          <h1 className="text-xl font-bold">Welcome back, {user?.name?.split(" ")[0]}</h1>
-          <p className="text-sm text-muted-foreground">Here&apos;s what&apos;s happening with your vehicles.</p>
+    <HomePageWrapper breadcrumb={breadcrumbItems} className="p-4 sm:p-6 lg:p-8">
+      <div className="space-y-6">
+        <div className="border-b pb-5">
+          <h1 className="text-xl font-bold sm:text-2xl">Welcome back, {user?.name?.split(" ")[0]}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Here&apos;s what&apos;s happening with your vehicles.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile label="Total Listings" value={isLoading ? "—" : listings.total ?? 0} sub={isLoading ? undefined : `${listings.available_now ?? 0} available now`} icon={Car} tone="bg-blue-100 text-blue-700" />
           <StatTile label="Pending Requests" value={isLoading ? "—" : bookings.pending ?? 0} sub={isLoading ? undefined : `${bookings.awaiting_payment ?? 0} awaiting payment`} icon={Clock} tone="bg-amber-100 text-amber-700" />
           <StatTile label="Active Rentals" value={isLoading ? "—" : bookings.active ?? 0} sub={isLoading ? undefined : `${bookings.confirmed_upcoming ?? 0} confirmed upcoming`} icon={CalendarCheck} tone="bg-sky-100 text-sky-700" />
           <StatTile label="Completed Rentals" value={isLoading ? "—" : bookings.completed ?? 0} sub={isLoading ? undefined : `${bookings.no_show ?? 0} no-show`} icon={CheckCircle2} tone="bg-emerald-100 text-emerald-700" />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile label="Rental Revenue" value={isLoading ? "—" : format(revenue.rental_revenue)} icon={Wallet} tone="bg-indigo-100 text-indigo-700" />
           <StatTile label="Platform Commission" value={isLoading ? "—" : format(revenue.platform_commission)} icon={Percent} tone="bg-rose-100 text-rose-700" />
           <StatTile
@@ -82,9 +82,9 @@ export default function VendorDashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
           <Card>
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" /> Fleet Utilisation (30 days)</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Gauge className="h-4 w-4 text-muted-foreground" /> Fleet Utilisation (30 days)</CardTitle></CardHeader>
             <CardContent>
               {isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading...</p>
@@ -102,7 +102,7 @@ export default function VendorDashboardPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Star className="h-4 w-4 text-amber-500" /> Customer Reviews</CardTitle></CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Star className="h-4 w-4 text-amber-500" /> Customer Reviews</CardTitle></CardHeader>
             <CardContent>
               {isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading...</p>
@@ -126,7 +126,7 @@ export default function VendorDashboardPage() {
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Eye className="h-4 w-4 text-muted-foreground" /> Top Listings by Bookings</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Eye className="h-4 w-4 text-muted-foreground" /> Top Listings by Bookings</CardTitle></CardHeader>
           <CardContent>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
@@ -135,9 +135,9 @@ export default function VendorDashboardPage() {
             ) : (
               <ul className="divide-y">
                 {performance.map((v) => (
-                  <li key={v.id} className="flex items-center justify-between py-2.5 text-sm">
-                    <span className="font-medium">{v.title}</span>
-                    <span className="text-xs text-muted-foreground">
+                  <li key={v.id} className="flex flex-col gap-1 py-3 text-sm first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <span className="truncate font-medium">{v.title}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
                       {v.view_count} views · {v.inquiry_count} inquiries · {v.booking_count} bookings · {v.conversion_pct}% conversion
                     </span>
                   </li>
@@ -148,7 +148,7 @@ export default function VendorDashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-base">Get started</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">

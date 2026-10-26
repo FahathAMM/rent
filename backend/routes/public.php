@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\Public\BrandController;
 use App\Http\Controllers\Api\Public\CategoryController;
+use App\Http\Controllers\Api\Public\VehicleCatalogueController;
 use App\Http\Controllers\Api\Public\DistrictController;
 use App\Http\Controllers\Api\Public\InquiryController;
 use App\Http\Controllers\Api\Public\LocationController;
@@ -29,8 +31,13 @@ Route::prefix('public')->group(function () {
     Route::get('shops', [ShopController::class, 'index']);
     Route::get('shops/{slug}', [ShopController::class, 'show']);
     Route::get('shops/{slug}/vehicles', [ShopController::class, 'vehicles']);
+    Route::get('shops/{slug}/reviews', [ShopController::class, 'reviews']);
 
     Route::get('categories', [CategoryController::class, 'index']);
+    Route::get('brands', [BrandController::class, 'index']);
+    Route::get('models', [VehicleCatalogueController::class, 'models']);     // ?brand_id=
+    Route::get('variants', [VehicleCatalogueController::class, 'variants']); // ?model_id=
+    Route::get('colours', [VehicleCatalogueController::class, 'colours']);
     Route::get('locations', [LocationController::class, 'index']);
     Route::get('districts', [DistrictController::class, 'index']);
 

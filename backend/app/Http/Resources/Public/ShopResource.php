@@ -27,17 +27,17 @@ class ShopResource extends JsonResource
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'operating_hours' => $this->operating_hours,
-            'pickup_instructions' => $this->pickup_instructions,
-            'return_instructions' => $this->return_instructions,
-            'rental_terms' => $this->rental_terms,
-            'cancellation_policy' => $this->cancellation_policy,
-            'logo' => $this->logo,
-            'cover_image' => $this->cover_image,
+            'policies' => $this->policies ?? [],
+            'logo' => $this->logo_url,
+            'cover_image' => $this->cover_image_url,
             'is_verified' => $this->isVerified(),
             'rating_avg' => $this->rating_avg,
             'rating_count' => $this->rating_count,
             'completed_bookings_count' => $this->completed_bookings_count,
             'response_rate' => $this->response_rate,
+            'member_since' => $this->created_at?->toDateString(),
+            // Only set by the directory listing (PublicShopQuery::fleetStats).
+            $this->mergeWhen(isset($this->fleet_stats), fn () => $this->fleet_stats),
         ];
     }
 }

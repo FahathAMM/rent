@@ -34,6 +34,7 @@ class ShopOnboardingService
                 'status' => RentalShop::STATUS_PENDING_REVIEW,
                 'verification_status' => RentalShop::VERIFICATION_UNVERIFIED,
                 'is_published' => false,
+                'policies' => RentalShop::DEFAULT_POLICIES,
             ]);
 
             ShopMember::create([

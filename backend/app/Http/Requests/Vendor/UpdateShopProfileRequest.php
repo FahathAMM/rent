@@ -24,10 +24,9 @@ class UpdateShopProfileRequest extends FormRequest
             'district' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'operating_hours' => ['nullable', 'array'],
-            'pickup_instructions' => ['nullable', 'string', 'max:2000'],
-            'return_instructions' => ['nullable', 'string', 'max:2000'],
-            'rental_terms' => ['nullable', 'string', 'max:5000'],
-            'cancellation_policy' => ['nullable', 'string', 'max:5000'],
+            'policies' => ['nullable', 'array', 'max:20'],
+            'policies.*.title' => ['required', 'string', 'max:120'],
+            'policies.*.body' => ['required', 'string', 'max:5000'],
         ];
     }
 }

@@ -20,6 +20,7 @@ export default function FavoritesPage() {
     mutationFn: (vehicleId) => favoriteService.remove(vehicleId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-favorites"] });
+      qc.invalidateQueries({ queryKey: ["my-favorite-ids"] });
       toast.success("Removed from favorites");
     },
   });

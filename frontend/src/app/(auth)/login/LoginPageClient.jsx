@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
 import { visitService } from "@/services/visitService";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { LoginPanel } from "@/components/auth/LoginPanel";
 import { RegisterPanel } from "@/components/auth/RegisterPanel";
-import { VendorLoginPanel } from "@/components/auth/VendorLoginPanel";
-import { VendorRegisterPanel } from "@/components/auth/VendorRegisterPanel";
 import { cn } from "@/lib/utils";
 
-export default function LoginPageClient({ initialBrand, initialView = "login", audience = "customer" }) {
+/** The customer login/register shell — see app/vendor/_auth/VendorLoginPageClient for the separate vendor/owner/staff one. */
+export default function LoginPageClient({ initialBrand, initialView = "login" }) {
   const [view, setView] = useState(initialView);
   const [direction, setDirection] = useState("forward");
 
@@ -59,15 +59,17 @@ export default function LoginPageClient({ initialBrand, initialView = "login", a
       </div>
 
       <div className="relative flex h-full flex-col px-5 py-4 sm:px-12 sm:py-6 lg:px-14 lg:py-8">
-        <header className="flex items-center gap-2.5 shrink-0 animate-in fade-in slide-in-from-top-4 duration-700">
-          <BrandLogo
-            logoUrl={logoUrl}
-            brandName={brandName}
-            imgClassName="h-8 w-auto object-contain"
-            fallbackClassName="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg"
-            iconClassName="size-4"
-          />
-          <span className="text-sm font-semibold tracking-tight">{brandName}</span>
+        <header className="flex items-center shrink-0 animate-in fade-in slide-in-from-top-4 duration-700">
+          <Link href="/" aria-label={`${brandName} home`} className="flex items-center gap-2.5 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <BrandLogo
+              logoUrl={logoUrl}
+              brandName={brandName}
+              imgClassName="h-8 w-auto object-contain"
+              fallbackClassName="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg"
+              iconClassName="size-4"
+            />
+            <span className="text-sm font-semibold tracking-tight">{brandName}</span>
+          </Link>
         </header>
 
         <main className="mx-auto flex w-full max-w-6xl flex-1 min-h-0 [align-items:safe_center] py-2">
@@ -106,13 +108,7 @@ export default function LoginPageClient({ initialBrand, initialView = "login", a
                 )}
               >
                 {view === "login" ? (
-                  audience === "vendor" ? (
-                    <VendorLoginPanel brandName={brandName} logoUrl={logoUrl} onSwitchToRegister={() => switchTo("register")} />
-                  ) : (
-                    <LoginPanel brandName={brandName} logoUrl={logoUrl} onSwitchToRegister={() => switchTo("register")} />
-                  )
-                ) : audience === "vendor" ? (
-                  <VendorRegisterPanel brandName={brandName} logoUrl={logoUrl} onSwitchToLogin={() => switchTo("login")} />
+                  <LoginPanel brandName={brandName} logoUrl={logoUrl} onSwitchToRegister={() => switchTo("register")} />
                 ) : (
                   <RegisterPanel brandName={brandName} logoUrl={logoUrl} onSwitchToLogin={() => switchTo("login")} />
                 )}

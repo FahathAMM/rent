@@ -1,7 +1,7 @@
-import LoginPageClient from "@/app/(auth)/login/LoginPageClient";
-import { getInitialBrand } from "@/app/(auth)/getInitialBrand";
+import VendorLoginPageClient from "../_auth/VendorLoginPageClient";
+import { getInitialBrand } from "../_auth/getInitialBrand";
 
 export default async function VendorLoginPage() {
   const initialBrand = await getInitialBrand();
-  return <LoginPageClient initialBrand={initialBrand} initialView="login" audience="vendor" />;
+  return <VendorLoginPageClient initialBrand={initialBrand} initialView="login" />;
 }

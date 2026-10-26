@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
         $this->call(PlatformSeeder::class);
         $this->call(AutomationSeeder::class);
         $this->call(VehicleCategorySeeder::class);
+        $this->call(VehicleBrandSeeder::class);
+        $this->call(VehicleColourSeeder::class);
         $this->call(PlatformSettingSeeder::class);
         $this->call(SriLankaLocationSeeder::class);
 

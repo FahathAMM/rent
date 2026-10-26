@@ -8,6 +8,10 @@ use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
+use App\Http\Controllers\Api\Platform\BrandController as PlatformBrandController;
+use App\Http\Controllers\Api\Platform\VehicleColourController;
+use App\Http\Controllers\Api\Platform\VehicleModelController;
+use App\Http\Controllers\Api\Platform\VehicleVariantController;
 use App\Http\Controllers\Api\Platform\CategoryController as PlatformCategoryController;
 use App\Http\Controllers\Api\Platform\CityController as PlatformCityController;
 use App\Http\Controllers\Api\Platform\CommissionController as PlatformCommissionController;
@@ -159,6 +163,15 @@ Route::prefix('platform')->group(function () {
         // Vehicle categories — platform-managed, feeds the public search
         // facets and VehicleCategoryController's commission-base lookups.
         Route::apiResource('categories', PlatformCategoryController::class)->parameters(['categories' => 'category']);
+
+        // Vehicle brands — platform-managed list vendors pick from. Logo
+        // uploads are multipart, so updates go through POST + _method=PUT.
+        Route::apiResource('brands', PlatformBrandController::class)->parameters(['brands' => 'brand']);
+
+        // The rest of the vehicle hierarchy: brand -> model -> variant, plus colours.
+        Route::apiResource('vehicle-models', VehicleModelController::class)->except('show')->parameters(['vehicle-models' => 'model']);
+        Route::apiResource('vehicle-variants', VehicleVariantController::class)->except('show')->parameters(['vehicle-variants' => 'variant']);
+        Route::apiResource('vehicle-colours', VehicleColourController::class)->except('show')->parameters(['vehicle-colours' => 'colour']);
 
         // Sri Lanka District/City reference data — feeds the owner/shop
         // onboarding forms' location dropdowns. Districts are fixed

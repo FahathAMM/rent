@@ -2,16 +2,20 @@ import Link from "next/link";
 import { Users, Fuel, Gauge, ShieldCheck } from "lucide-react";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { VEHICLE_PLACEHOLDER_IMAGE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 /** A single vehicle tile for the public search grid and homepage — Http\Resources\Public\VehicleResource's shape. */
-export function VehicleCard({ vehicle }) {
+export function VehicleCard({ vehicle, className }) {
   const { format } = useCurrencyFormat();
   const image = vehicle.images?.find((i) => i.is_primary)?.url ?? vehicle.images?.[0]?.url ?? VEHICLE_PLACEHOLDER_IMAGE;
 
   return (
     <Link
       href={`/vehicles/${vehicle.slug}`}
-      className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+      className={cn(
+        "group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg",
+        className
+      )}
     >
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
