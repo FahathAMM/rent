@@ -88,6 +88,7 @@ class MenuSeeder extends Seeder
             'children' => [
                 ['key' => 'list', 'name' => 'My Vehicles', 'route_name' => '/vendor/vehicles', 'icon' => 'Car', 'sort_order' => 1],
                 ['key' => 'calendar', 'name' => 'Calendar', 'route_name' => '/vendor/vehicles/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2],
+                ['key' => 'categories', 'name' => 'Categories', 'route_name' => '/vendor/vehicles/categories', 'icon' => 'Tag', 'sort_order' => 3],
             ],
         ],
         [
@@ -185,6 +186,7 @@ class MenuSeeder extends Seeder
             'dashboard'          => ['view'],
             'vehicles-list'      => ['view', 'create', 'edit', 'delete'],
             'vehicles-calendar'  => ['view', 'edit'],
+            'vehicles-categories' => ['view'],
             'bookings'           => ['view', 'create', 'edit'],
             'reviews'            => ['view', 'edit'],
             'inquiries'          => ['view', 'edit'],
@@ -201,6 +203,7 @@ class MenuSeeder extends Seeder
             'dashboard'          => ['view'],
             'vehicles-list'      => ['view', 'create', 'edit', 'delete'],
             'vehicles-calendar'  => ['view', 'edit'],
+            'vehicles-categories' => ['view'],
             'bookings'           => ['view', 'create', 'edit'],
             'reviews'            => ['view', 'edit'],
             'inquiries'          => ['view', 'edit'],
@@ -217,6 +220,7 @@ class MenuSeeder extends Seeder
             'dashboard'          => ['view'],
             'vehicles-list'      => ['view', 'edit'],
             'vehicles-calendar'  => ['view', 'edit'],
+            'vehicles-categories' => ['view'],
             'bookings'           => ['view', 'edit'],
             'reviews'            => ['view', 'edit'],
             'inquiries'          => ['view', 'edit'],
