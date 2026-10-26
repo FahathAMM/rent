@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Column allow-list for anonymous/public consumption. Deliberately never
  * includes registration_number, condition_notes, shop email/phone/tax_id,
- * or anything from owner_profiles/owner_verifications - see
+ * or anything from shop_verifications - see
  * app-doc/marketplace/02-data-model.md "vehicles" (PUB markers) and
  * app-doc/marketplace/05-ui-and-api-map.md "Response-shaping rule".
  */

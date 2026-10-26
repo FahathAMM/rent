@@ -17,7 +17,6 @@ use App\Http\Controllers\Api\Platform\DisputeController as PlatformDisputeContro
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
-use App\Http\Controllers\Api\Platform\OwnerVerificationController;
 use App\Http\Controllers\Api\Platform\PaymentController as PlatformPaymentController;
 use App\Http\Controllers\Api\Platform\PayoutController as PlatformPayoutController;
 use App\Http\Controllers\Api\Platform\ReconciliationController as PlatformReconciliationController;
@@ -94,18 +93,8 @@ Route::prefix('platform')->group(function () {
         Route::post('impersonation/start', [ImpersonationController::class, 'start']);
         Route::post('impersonation/stop',  [ImpersonationController::class, 'stop']);
 
-        // Individual-owner applications — see
-        // app-doc/marketplace/01-phase1-architecture.md section 3.1:
-        // approving one auto-provisions the applicant's personal shop.
-        Route::get('owner-applications',                      [OwnerVerificationController::class, 'index']);
-        Route::get('owner-applications/{ownerProfile}',        [OwnerVerificationController::class, 'show']);
-        Route::post('owner-applications/{ownerProfile}/approve', [OwnerVerificationController::class, 'approve']);
-        Route::post('owner-applications/{ownerProfile}/reject',  [OwnerVerificationController::class, 'reject']);
-        Route::post('owner-applications/{ownerProfile}/request-info', [OwnerVerificationController::class, 'requestInfo']);
-        Route::post('owner-applications/{ownerProfile}/suspend', [OwnerVerificationController::class, 'suspend']);
-        Route::get('owner-applications/documents/{verification}/download', [OwnerVerificationController::class, 'downloadDocument']);
-
-        // Business shop verification and publication status.
+        // Shop verification and publication status — verifying a shop is
+        // also what grants its owner the shop-owner role.
         Route::get('shops',                      [ShopVerificationController::class, 'index']);
         Route::get('shops/{rentalShop}',          [ShopVerificationController::class, 'show']);
         Route::post('shops/{rentalShop}/verify',  [ShopVerificationController::class, 'verify']);

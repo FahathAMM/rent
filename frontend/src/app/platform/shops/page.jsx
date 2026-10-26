@@ -93,7 +93,6 @@ export default function PlatformShopsPage() {
         </div>
       ),
     },
-    { key: "shop_type", header: "Type", render: (row) => <span className="capitalize">{row.shop_type}</span> },
     { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
     { key: "verification_status", header: "Verification", render: (row) => <StatusBadge status={row.verification_status} /> },
     { key: "created_at", header: "Registered", render: (row) => formatDateTime(row.created_at) },
@@ -167,7 +166,6 @@ export default function PlatformShopsPage() {
                 <div><p className="text-muted-foreground">Owner</p><p>{detail.owner?.name} ({detail.owner?.email})</p></div>
                 <div><p className="text-muted-foreground">Phone</p><p>{detail.phone ?? "—"}</p></div>
                 <div><p className="text-muted-foreground">Business Reg. No.</p><p>{detail.business_registration_no ?? "—"}</p></div>
-                <div><p className="text-muted-foreground">Shop Type</p><p className="capitalize">{detail.shop_type}</p></div>
                 <div className="col-span-2"><p className="text-muted-foreground">Address</p><p>{[detail.address_line_1, detail.city, detail.district].filter(Boolean).join(", ") || "—"}</p></div>
               </div>
 

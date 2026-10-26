@@ -21,7 +21,7 @@ class UserFactory extends Factory
         ];
     }
 
-    /** Assign a marketplace role (customer, vehicle-owner, shop-owner, shop-staff). */
+    /** Assign a marketplace role (customer, shop-owner, shop-staff). */
     public function role(string $name): static
     {
         return $this->afterCreating(function (User $user) use ($name) {

@@ -12,8 +12,8 @@ use Laravel\Sanctum\PersonalAccessToken;
 /**
  * Every account starts as a plain customer - see
  * app-doc/marketplace/01-phase1-architecture.md "Identity & ownership
- * model". Becoming a vehicle owner or shop owner is a separate onboarding
- * flow (owner_profiles / rental_shops), not part of registration.
+ * model". Becoming a shop owner is a separate onboarding flow (registering
+ * a rental shop), not part of registration.
  */
 class AuthService
 {

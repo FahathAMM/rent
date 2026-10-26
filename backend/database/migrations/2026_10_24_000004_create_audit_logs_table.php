@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('system_admin_id')->nullable()->constrained('system_admins')->nullOnDelete();
             $table->unsignedBigInteger('shop_id')->nullable();
             $table->string('action'); // create, update, delete, approve, reject, suspend, ...
-            $table->string('form'); // controller/module name, e.g. "OwnerVerification"
+            $table->string('form'); // controller/module name, e.g. "ShopVerification"
             $table->unsignedBigInteger('record_id')->nullable();
             $table->string('record')->nullable(); // record label, e.g. vehicle title or booking reference
             $table->json('before')->nullable();

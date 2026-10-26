@@ -3,7 +3,6 @@
 namespace App\Models\Administration;
 
 use App\Helpers\Media;
-use App\Models\OwnerProfile;
 use App\Models\RentalShop;
 use App\Models\ShopMember;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,8 +21,8 @@ use Spatie\Permission\Traits\HasRoles;
  * had that, confusingly duplicating what the separate SystemAdmin/
  * `platform` guard already does - see app-doc/marketplace/03-permissions-
  * model.md "Layer 0"). Platform admin powers live exclusively in
- * SystemAdmin; a marketplace user's roles (customer, vehicle-owner,
- * shop-owner, shop-staff) are additive and never grant platform access.
+ * SystemAdmin; a marketplace user's roles (customer, shop-owner,
+ * shop-staff) are additive and never grant platform access.
  */
 class User extends Authenticatable
 {
@@ -55,11 +54,6 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
-    }
-
-    public function ownerProfile(): HasOne
-    {
-        return $this->hasOne(OwnerProfile::class);
     }
 
     public function shopMemberships(): HasMany

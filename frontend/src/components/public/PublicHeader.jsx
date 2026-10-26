@@ -80,7 +80,7 @@ export function PublicHeader() {
               asChild
               className="hidden gap-1.5 border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 text-foreground hover:border-orange-500/40 hover:from-orange-500/15 hover:via-pink-500/15 hover:to-violet-500/15 sm:flex"
             >
-              <Link href="/vendor/register?next=owner"><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
+              <Link href="/vendor/register"><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
             </Button>
           )}
 
@@ -108,7 +108,7 @@ export function PublicHeader() {
                 </DropdownMenuItem>
                 {showBecomeVendor && (
                   <DropdownMenuItem asChild className="sm:hidden">
-                    <Link href="/vendor/register?next=owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
+                    <Link href="/vendor/register"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -142,7 +142,7 @@ export function PublicHeader() {
               {showBecomeVendor && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link href="/vendor/register?next=owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/vendor/register"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
                 </>
               )}
               {!isAuthenticated && (

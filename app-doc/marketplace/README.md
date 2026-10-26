@@ -24,7 +24,7 @@ Multi-vendor vehicle rental marketplace for Sri Lanka, built on the existing Lar
 
 ## The four ideas that shape everything else
 
-1. **An individual owner gets an auto-provisioned personal shop.** So `vehicles.shop_id` is the single ownership FK, and every authorization check, scope, payout and report has exactly one shape instead of two.
+1. **Only registered rental shops list vehicles.** So `vehicles.shop_id` is the single ownership FK, and every authorization check, scope, payout and report has exactly one shape.
 2. **`users.shop_id` is removed; membership moves to `shop_members`.** That is what lets one account be a customer, an owner and staff at two shops at once — the requirement's "no duplicate accounts" falls out for free.
 3. **`booking_pricing` and `booking_financials` are separate tables.** One is the immutable quote; the other is what money actually moved. Merging them loses the ability to prove what was promised versus what was settled.
 4. **Double-booking protection is both a row lock and a unique index.** The lock gives a clean 409; `unique(vehicle_id, date)` means a future code path that forgets the lock still cannot double-book.

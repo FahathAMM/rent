@@ -27,10 +27,9 @@ frontend/src/app/
 │   ├── disputes/page.jsx · disputes/[ref]
 │   ├── notifications/page.jsx
 │   ├── profile/page.jsx                       /account/profile        + driving-licence upload
-│   ├── become-owner/page.jsx                  /account/become-owner   onboarding wizard (Stepper.jsx)
 │   └── shops/new/page.jsx                     /account/shops/new      shop registration wizard
 │
-├── (vendor)/                      auth:sanctum · vehicle-owner | shop-owner | shop-staff
+├── (vendor)/                      auth:sanctum · shop-owner | shop-staff
 │   │                              layout renders the ShopSwitcher when memberships > 1
 │   ├── dashboard/page.jsx                     /vendor/dashboard
 │   ├── onboarding/page.jsx                    /vendor/onboarding      application status / resubmit
@@ -82,7 +81,6 @@ Deleted: `app/pos`, `app/pos_bk`, `(dashboard)/{customers,products,units,vendors
 |---|---|
 | `/search` filters + results | `SearchBar`, `SectionBox`, `Pagination`, `DateRangePicker`, `SelectInput` |
 | `/vehicles/{slug}` booking widget | `DateRangePicker`, `Calendar`, `MapPicker`, `StatusBadge`, `RichContent` |
-| `/account/become-owner` wizard | `Stepper`, `Fieldset`, `FormField`, `AttachmentPanel` |
 | `/vendor/bookings` queue | `ServerDataTable`, `SortableHeader`, `ActionButton`, `ConfirmDialog`, `TableToolbar` |
 | `/vendor/dashboard` tiles | `OptionCard`, `tileColors.js`, `recharts` (already a dependency) |
 | `/vendor/vehicles/[id]/edit` | `Tabs`, `FormField`, `AttachmentPanel`, `RichTextEditor`, `GoogleMapPicker` |
@@ -200,8 +198,6 @@ POST   /platform/login     POST /platform/logout     GET /platform/me
 GET    /platform/dashboard · /analytics
 
 GET    /platform/customers · customers/{user}   POST customers/{user}/suspend · activate
-GET    /platform/owner-applications · owner-applications/{profile}
-POST   /platform/owner-applications/{profile}/approve · reject · request-info · suspend
 GET    /platform/shops · shops/{shop}   POST shops/{shop}/verify · reject · suspend · activate · publish
 GET    /platform/verifications/{id}/document      signed, audited private download
 

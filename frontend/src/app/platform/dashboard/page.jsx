@@ -7,7 +7,7 @@ import { PageWrapper } from "@/components/shared/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Wallet, CalendarCheck, Percent, Banknote, UserCheck, Building2, Car, Clock, Home,
+  Wallet, CalendarCheck, Percent, Banknote, Building2, Car, Clock, Home,
 } from "lucide-react";
 
 function format(amount) {
@@ -119,8 +119,7 @@ export default function PlatformDashboardPage() {
 
         <div className="mt-6">
           <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Review Queues</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <QueueCard label="Owner Applications" count={isLoading ? "—" : queues.owner_applications ?? 0} href="/platform/owners" Icon={UserCheck} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <QueueCard label="Shop Verifications" count={isLoading ? "—" : queues.shop_verifications ?? 0} href="/platform/shops" Icon={Building2} />
             <QueueCard label="Listing Moderation" count={isLoading ? "—" : queues.listing_moderation ?? 0} href="/platform/listings" Icon={Car} />
             <QueueCard label="Payout Approvals" count={isLoading ? "—" : queues.payout_approvals ?? 0} href="/platform/payouts" Icon={Clock} />

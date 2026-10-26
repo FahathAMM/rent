@@ -22,16 +22,15 @@ Unchanged from the existing app and the reason it was worth inheriting. `users` 
 | Role | Granted when | Marketplace-wide capability |
 |---|---|---|
 | `customer` | on registration, to **everyone** | browse, favourite, request bookings, pay, review, raise disputes |
-| `vehicle-owner` | `owner_profiles.status` becomes `approved` for an individual applicant | create/manage their own personal shop and its vehicles |
-| `shop-owner` | a business `rental_shop` is approved | create/manage that shop, its vehicles and its staff |
+| `shop-owner` | a platform admin **verifies** a `rental_shop` the user registered (not at registration — until then they are only the shop's `owner` member, enough to upload documents and submit) | manage that shop, its vehicles and its staff |
 | `shop-staff` | an invited `shop_members` row is accepted | act for a shop, limited by Layer 3 |
 | `super-admin` | platform only | bypasses every permission check (existing behaviour, kept) |
 
-**Additive is the whole point.** One `users` row can hold `customer` + `vehicle-owner` + `shop-staff` simultaneously. That is the required *"a person can be both a customer and an owner without creating duplicate accounts"*, and it falls out for free because spatie roles are a pivot, not a column.
+**Additive is the whole point.** One `users` row can hold `customer` + `shop-owner` + `shop-staff` simultaneously. That is the required *"a person can be both a customer and an owner without creating duplicate accounts"*, and it falls out for free because spatie roles are a pivot, not a column.
 
 The old tenant roles (`owner`, `admin`, `sales`, `accountant`, `staff`) are dropped — they described positions inside one company, which is now Layer 3's job.
 
-**A role never, on its own, grants access to a row.** `vehicle-owner` means "may own vehicles", not "may see vehicle 47".
+**A role never, on its own, grants access to a row.** `shop-owner` means "may run a shop", not "may see vehicle 47".
 
 ---
 

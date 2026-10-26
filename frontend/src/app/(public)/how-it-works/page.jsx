@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { HowItWorksSection } from "@/components/public/HowItWorksSection";
 import { ShieldCheck, Wallet, Clock, ArrowRight } from "lucide-react";
 
-const FOR_OWNERS = [
-  { title: "Apply", body: "Tell us about yourself (or your shop) and the vehicle — verification is quick." },
-  { title: "Get approved", body: "Our team reviews your documents and publishes your listing once verified." },
+const FOR_SHOPS = [
+  { title: "Register your shop", body: "Tell us about your rental business and upload your business registration — it only takes a few minutes." },
+  { title: "Get verified", body: "Our team reviews your documents and publishes your shop once verified." },
   { title: "Get booked & paid", body: "Accept booking requests, hand the vehicle over, and get paid out automatically." },
 ];
 
@@ -20,7 +20,7 @@ export default function HowItWorksPage() {
         <div className="relative mx-auto max-w-6xl px-4 py-16 text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">How it works</h1>
           <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-            Renting a vehicle — or listing your own — only takes a few steps.
+            Renting a vehicle — or listing your shop&apos;s fleet — only takes a few steps.
           </p>
         </div>
       </section>
@@ -32,9 +32,9 @@ export default function HowItWorksPage() {
 
       <div className="border-y bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 py-14">
-          <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">For owners</h2>
+          <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">For rental shops</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {FOR_OWNERS.map(({ title, body }, i) => (
+            {FOR_SHOPS.map(({ title, body }, i) => (
               <div key={title} className="rounded-2xl border bg-card p-6 shadow-sm">
                 <p className="text-xs font-semibold text-muted-foreground">STEP {i + 1}</p>
                 <h3 className="mt-1 font-semibold">{title}</h3>
@@ -44,7 +44,7 @@ export default function HowItWorksPage() {
           </div>
           <div className="mt-8 flex justify-center">
             <Button asChild size="lg" className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              <Link href="/vendor/register?next=owner">Become an owner <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link href="/vendor/register">Register your shop <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
         </div>
@@ -55,8 +55,8 @@ export default function HowItWorksPage() {
           <div className="flex items-start gap-3 rounded-2xl border bg-card p-5">
             <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
             <div>
-              <h3 className="font-semibold">Verified owners & shops</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Every rental company and individual owner is verified before they can publish a listing.</p>
+              <h3 className="font-semibold">Verified shops</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Every rental shop is verified before it can publish a listing.</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-2xl border bg-card p-5">
@@ -70,7 +70,7 @@ export default function HowItWorksPage() {
             <Clock className="h-5 w-5 shrink-0 text-primary" />
             <div>
               <h3 className="font-semibold">Fast booking requests</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Owners typically respond within hours, not days.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Shops typically respond within hours, not days.</p>
             </div>
           </div>
         </div>

@@ -33,21 +33,24 @@ function UnauthorizedView({ title }) {
   );
 }
 
-function NoShopView() {
+// `pending` = the user owns a shop that hasn't been verified yet, so they
+// have no vendor role (and no vendor nav) until a platform admin approves it.
+function NoShopView({ pending }) {
   return (
     <div className="flex flex-col items-center justify-center h-full py-24 gap-4 text-center px-4">
       <div className="rounded-full bg-muted p-4">
         <Store className="h-8 w-8 text-muted-foreground" />
       </div>
       <div>
-        <h2 className="text-xl font-semibold">No shop yet</h2>
+        <h2 className="text-xl font-semibold">{pending ? "Shop not verified yet" : "No shop yet"}</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          You don&apos;t own or staff any rental shop yet. Apply to become a vehicle owner
-          or register a rental shop to get started.
+          {pending
+            ? "Your rental shop is still being set up or reviewed. You'll get full access once it's verified."
+            : "You don't own or staff any rental shop yet. Register a rental shop to get started."}
         </p>
       </div>
       <Button asChild size="sm">
-        <Link href="/vendor/become-owner">Become an owner</Link>
+        <Link href="/vendor/shops/new">{pending ? "View shop status" : "Register a rental shop"}</Link>
       </Button>
     </div>
   );
@@ -60,7 +63,7 @@ const ALWAYS_ACCESSIBLE_ROUTES = ["/vendor/profile", "/vendor/audit-logs"];
 // A freshly vendor-registered account has no shop and no nav yet — these
 // onboarding routes must still require auth, but skip the shop-count gate
 // and the module-tile chrome entirely (there's nothing to show tiles for).
-const ONBOARDING_ROUTES = ["/vendor/become-owner", "/vendor/shops/new"];
+const ONBOARDING_ROUTES = ["/vendor/shops/new"];
 
 /** Flatten a nested menu tree into a flat array of route_name strings. */
 function flattenRoutes(menus) {
@@ -91,7 +94,7 @@ function getTitleFromNav(menus, pathname) {
 }
 
 export default function VendorLayout({ children }) {
-  const { user, isAuthenticated, _hasHydrated, updateUser } = useAuthStore();
+  const { user, isAuthenticated, _hasHydrated, updateUser, isVendor } = useAuthStore();
   const { shops, activeShopId, setShops } = useShopStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -165,6 +168,7 @@ export default function VendorLayout({ children }) {
   }
 
   if (!shops?.length) return <NoShopView />;
+  if (!isVendor()) return <NoShopView pending />;
 
   const hasPageAccess = !accessibleRoutes.length
     ? true

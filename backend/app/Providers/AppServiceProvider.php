@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Contracts\PaymentGateway;
 use App\Models\Expense;
-use App\Models\OwnerProfile;
 use App\Models\RentalShop;
 use App\Models\Vehicle;
 use App\Services\Payments\PayHereGateway;
@@ -31,7 +30,6 @@ class AppServiceProvider extends ServiceProvider
         // map, and User is intentionally not in it.
         Relation::morphMap([
             'expense' => Expense::class,
-            'owner_profile' => OwnerProfile::class,
             'rental_shop' => RentalShop::class,
             'vehicle' => Vehicle::class,
         ]);

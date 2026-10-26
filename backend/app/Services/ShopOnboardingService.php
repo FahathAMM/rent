@@ -14,11 +14,12 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Business shop registration - a shop_type = business RentalShop starts
- * unverified and unpublished (see app-doc/marketplace/01-phase1-
- * architecture.md section 3.1: unapproved owners/shops cannot publish
- * publicly visible listings unless the platform explicitly allows it).
- * A platform admin verifies it separately before it can go live.
+ * Rental shop registration - the only way to become a vendor. A new shop
+ * starts unverified and unpublished (see app-doc/marketplace/01-phase1-
+ * architecture.md section 3.1). Its creator is the owner member from the
+ * start (so they can upload documents and submit), but the shop-owner
+ * role - and with it the vendor app's permissions - is only granted once
+ * a platform admin verifies the shop.
  */
 class ShopOnboardingService
 {
@@ -29,7 +30,6 @@ class ShopOnboardingService
         return DB::transaction(function () use ($user, $data) {
             $shop = RentalShop::create($data + [
                 'owner_user_id' => $user->id,
-                'shop_type' => RentalShop::TYPE_BUSINESS,
                 'slug' => Str::slug($data['name']) . '-' . Str::lower(Str::random(5)),
                 'status' => RentalShop::STATUS_PENDING_REVIEW,
                 'verification_status' => RentalShop::VERIFICATION_UNVERIFIED,
@@ -58,8 +58,6 @@ class ShopOnboardingService
                 ]);
             }
 
-            $user->assignRole('shop-owner');
-
             return $shop->fresh();
         });
     }
@@ -85,15 +83,19 @@ class ShopOnboardingService
 
     public function verify(SystemAdmin $admin, RentalShop $shop): RentalShop
     {
-        $shop->update([
-            'verification_status' => RentalShop::VERIFICATION_VERIFIED,
-            'verified_at' => now(),
-            'verified_by' => $admin->id,
-            'status' => RentalShop::STATUS_ACTIVE,
-            'is_published' => true,
-            'published_at' => $shop->published_at ?: now(),
-            'suspended_reason' => null,
-        ]);
+        DB::transaction(function () use ($shop, $admin) {
+            $shop->update([
+                'verification_status' => RentalShop::VERIFICATION_VERIFIED,
+                'verified_at' => now(),
+                'verified_by' => $admin->id,
+                'status' => RentalShop::STATUS_ACTIVE,
+                'is_published' => true,
+                'published_at' => $shop->published_at ?: now(),
+                'suspended_reason' => null,
+            ]);
+
+            $shop->owner?->assignRole('shop-owner');
+        });
 
         AuditService::edit('RentalShop', $shop->id, $shop->name, null, ['verification_status' => 'verified', 'decided_by_admin_id' => $admin->id]);
 

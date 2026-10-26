@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingFinancial;
 use App\Models\OwnerPayout;
-use App\Models\OwnerProfile;
 use App\Models\RentalShop;
 use App\Models\Vehicle;
 use App\Traits\JsonResponse as JsonResponseTrait;
@@ -89,7 +88,6 @@ class DashboardController extends Controller
     private function queues(): array
     {
         return [
-            'owner_applications' => OwnerProfile::where('status', 'submitted')->count(),
             'shop_verifications' => RentalShop::where('verification_status', 'pending')->count(),
             'listing_moderation' => Vehicle::whereIn('moderation_status', [Vehicle::MODERATION_PENDING, Vehicle::MODERATION_FLAGGED])->count(),
             'payout_approvals' => OwnerPayout::where('status', OwnerPayout::STATUS_PENDING_APPROVAL)->count(),

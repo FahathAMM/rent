@@ -11,19 +11,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * A vendor workspace - either an individual owner's auto-provisioned
- * personal shop (shop_type = individual) or a registered rental business
- * (shop_type = business). Every vehicle belongs to exactly one row here -
- * see app-doc/marketplace/01-phase1-architecture.md section 3.1.
+ * A registered rental business - the only kind of vendor workspace. Every
+ * vehicle belongs to exactly one row here - see
+ * app-doc/marketplace/01-phase1-architecture.md section 3.1.
  *
  * Deliberately has no BelongsToShop - a shop does not belong to itself.
  */
 class RentalShop extends Model
 {
     use HasFactory, SoftDeletes;
-
-    public const TYPE_INDIVIDUAL = 'individual';
-    public const TYPE_BUSINESS = 'business';
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PENDING_REVIEW = 'pending_review';
@@ -37,7 +33,7 @@ class RentalShop extends Model
     public const VERIFICATION_REJECTED = 'rejected';
 
     protected $fillable = [
-        'owner_user_id', 'shop_type', 'name', 'slug', 'description', 'tagline',
+        'owner_user_id', 'name', 'slug', 'description', 'tagline',
         'email', 'phone', 'whatsapp', 'website',
         'address_line_1', 'address_line_2', 'city', 'district', 'postal_code',
         'latitude', 'longitude', 'operating_hours',

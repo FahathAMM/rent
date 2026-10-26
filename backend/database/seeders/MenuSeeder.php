@@ -14,7 +14,7 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Seeds the marketplace's two data-driven navigation trees (customer and
  * vendor - see app-doc/marketplace/03-permissions-model.md "The navigation
- * menu becomes three trees") plus the four marketplace roles. The platform
+ * menu becomes three trees") plus the three marketplace roles. The platform
  * admin app's nav is NOT data-driven here - platform admins authorize via
  * SystemAdmin::admin_role, never spatie permissions, so there is no
  * 'platform' audience content to seed yet.
@@ -149,10 +149,9 @@ class MenuSeeder extends Seeder
      * one audience's slugs, so a single map suffices.
      */
     private array $roleAudience = [
-        'customer'      => 'customer',
-        'vehicle-owner' => 'vendor',
-        'shop-owner'    => 'vendor',
-        'shop-staff'    => 'vendor',
+        'customer'   => 'customer',
+        'shop-owner' => 'vendor',
+        'shop-staff' => 'vendor',
     ];
 
     private array $rolePermissions = [
@@ -163,23 +162,6 @@ class MenuSeeder extends Seeder
             'reviews'            => ['view', 'create'],
             'disputes'           => ['view', 'create'],
             'profile'            => ['view', 'edit'],
-        ],
-        'vehicle-owner' => [
-            'dashboard'          => ['view'],
-            'vehicles-list'      => ['view', 'create', 'edit', 'delete'],
-            'vehicles-calendar'  => ['view', 'edit'],
-            'vehicles-categories' => ['view'],
-            'vehicles-bookings'  => ['view', 'create', 'edit'],
-            'vehicles-reviews'   => ['view', 'edit'],
-            'vehicles-inquiries' => ['view', 'edit'],
-            'finance-earnings'   => ['view'],
-            'finance-payouts'    => ['view'],
-            'finance-bank_details' => ['view', 'edit'],
-            'expense-expenses'   => ['view', 'create', 'edit', 'delete'],
-            'expense-categories' => ['view', 'create', 'edit', 'delete'],
-            'staff'              => ['view', 'create', 'edit', 'delete'],
-            'settings-shop'      => ['view', 'edit'],
-            'settings-locations' => ['view', 'create', 'edit', 'delete'],
         ],
         'shop-owner' => [
             'dashboard'          => ['view'],

@@ -136,15 +136,12 @@ Two rules, enforced by a test rather than by convention:
 
 ### 3.1 Every vehicle belongs to exactly one shop
 
-The requirement says a vehicle belongs to "one authorized owner **or** rental shop". Modelling that as a polymorphic owner would mean two ownership code paths, two authorization paths, and two sets of bugs.
+**Only registered rental shops can list vehicles** — there is no individual-owner flow. One FK — `vehicles.shop_id` — is the single ownership link, and every authorization check, scope, payout and report has exactly one shape.
 
-Instead: **an approved individual owner is auto-provisioned a personal shop** with `shop_type = individual`. One FK — `vehicles.shop_id` — covers both cases, and every authorization check, scope, payout and report then has exactly one shape.
+A user becomes a vendor by registering a shop: they are its `owner` member immediately (so they can upload documents and submit for verification), but the `shop-owner` role — and with it the vendor app — is only granted when a platform admin verifies the shop.
 
 ```
-users ---1:1--> owner_profiles          (identity + KYC + approval state)
-  |               +--1:N--> owner_verifications --> attachments (private)
-  |
-  +---1:1--> customer_profiles          (driving licence, NIC — needed to rent)
+users ---1:1--> customer_profiles          (driving licence, NIC — needed to rent)
   |
   +---M:N--> rental_shops   via  shop_members (role + JSON abilities)
                  |

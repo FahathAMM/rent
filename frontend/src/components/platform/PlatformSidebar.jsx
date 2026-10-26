@@ -18,7 +18,6 @@ import {
 const NAV_ITEMS = [
   { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/platform/customers", label: "Customers", icon: UserCheck },
-  { href: "/platform/owners", label: "Owner Applications", icon: UserCheck },
   { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/listings", label: "Listing Moderation", icon: Car },
   { href: "/platform/categories", label: "Categories", icon: Tag },

@@ -7,12 +7,12 @@ use App\Models\Booking;
 use App\Models\BookingFinancial;
 use App\Models\BookingPricing;
 use App\Models\BookingStatusHistory;
+use App\Models\Customer;
 use App\Models\CustomerProfile;
 use App\Models\Location;
 use App\Models\OwnerBankDetail;
 use App\Models\OwnerPayout;
 use App\Models\OwnerPayoutItem;
-use App\Models\OwnerProfile;
 use App\Models\Payment;
 use App\Models\PlatformCommission;
 use App\Models\RentalShop;
@@ -30,8 +30,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * Sri Lankan demo dataset: 3 registered rental shops, 2 individual
- * owners, ~15 vehicles across them, 5 customers, and bookings covering
+ * Sri Lankan demo dataset: 3 registered rental shops, ~15 vehicles
+ * across them, 5 customers, and bookings covering
  * every lifecycle state - see app-doc/marketplace/06-plan-and-risks.md
  * step 10. Gated to non-production by DatabaseSeeder; safe to re-run
  * (skips if a shop already exists rather than duplicating).
@@ -53,13 +53,11 @@ class MarketplaceDemoSeeder extends Seeder
 
         $this->seedGlobalCommission();
         $customers = $this->seedCustomers();
-        $businessShops = $this->seedBusinessShops();
-        $individualShops = $this->seedIndividualOwners();
-        $vehicles = $this->seedVehicles($businessShops, $individualShops);
+        $shops = $this->seedShops();
+        $vehicles = $this->seedVehicles($shops);
         $this->seedBookings($vehicles, $customers);
 
-        $shopCount = count($businessShops) + count($individualShops);
-        $this->command?->info("Seeded {$shopCount} shops, " . count($vehicles)
+        $this->command?->info('Seeded ' . count($shops) . ' shops, ' . count($vehicles)
             . ' vehicles, ' . count($customers) . ' customers, and demo bookings.');
     }
 
@@ -78,7 +76,7 @@ class MarketplaceDemoSeeder extends Seeder
         ]);
     }
 
-    /** @return User[] */
+    /** @return Customer[] - the separate customer identity, not a role on User */
     private function seedCustomers(): array
     {
         $names = [
@@ -91,11 +89,17 @@ class MarketplaceDemoSeeder extends Seeder
 
         $customers = [];
         foreach ($names as [$name, $email]) {
-            $user = $this->makeUser($name, $email);
-            $user->assignRole('customer');
+            $customer = Customer::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make(self::PASSWORD),
+                'phone' => '0' . fake()->numerify('#########'),
+                'status' => Customer::STATUS_ACTIVE,
+                'registration_source' => 'demo_seeder',
+            ]);
 
             CustomerProfile::create([
-                'user_id' => $user->id,
+                'user_id' => $customer->id,
                 'licence_country' => 'Sri Lanka',
                 'licence_issued_on' => now()->subYears(5)->toDateString(),
                 'licence_expiry' => now()->addYears(3)->toDateString(),
@@ -105,14 +109,14 @@ class MarketplaceDemoSeeder extends Seeder
                 'verified_at' => now(),
             ]);
 
-            $customers[] = $user;
+            $customers[] = $customer;
         }
 
         return $customers;
     }
 
     /** @return RentalShop[] */
-    private function seedBusinessShops(): array
+    private function seedShops(): array
     {
         $defs = [
             [
@@ -140,7 +144,6 @@ class MarketplaceDemoSeeder extends Seeder
 
             $shop = RentalShop::create([
                 'owner_user_id' => $owner->id,
-                'shop_type' => RentalShop::TYPE_BUSINESS,
                 'name' => $def['name'],
                 'slug' => Str::slug($def['name']),
                 'description' => "{$def['name']} is a trusted vehicle rental business operating in {$def['city']}, Sri Lanka.",
@@ -207,90 +210,15 @@ class MarketplaceDemoSeeder extends Seeder
         return $shops;
     }
 
-    /** @return RentalShop[] auto-provisioned personal shops, one per individual owner */
-    private function seedIndividualOwners(): array
-    {
-        $defs = [
-            ['Nimal Perera', 'nimal.perera@example.com'],
-            ['Kamal Jayasuriya', 'kamal.jayasuriya@example.com'],
-        ];
-
-        $shops = [];
-        foreach ($defs as [$name, $email]) {
-            $owner = $this->makeUser($name, $email);
-            $owner->assignRole(['customer', 'vehicle-owner']);
-
-            OwnerProfile::create([
-                'user_id' => $owner->id,
-                'applicant_type' => 'individual',
-                'full_name' => $name,
-                'nic_number' => fake()->numerify('############'),
-                'date_of_birth' => now()->subYears(35)->toDateString(),
-                'contact_phone' => '0' . fake()->numerify('#########'),
-                'city' => fake()->randomElement(['Negombo', 'Matara']),
-                'district' => fake()->randomElement(['Gampaha', 'Matara']),
-                'status' => OwnerProfile::STATUS_APPROVED,
-                'submitted_at' => now()->subDays(30),
-                'approved_at' => now()->subDays(25),
-                'terms_accepted_at' => now()->subDays(30),
-            ]);
-
-            // Auto-provisioned personal shop — see
-            // app-doc/marketplace/01-phase1-architecture.md section 3.1.
-            $shop = RentalShop::create([
-                'owner_user_id' => $owner->id,
-                'shop_type' => RentalShop::TYPE_INDIVIDUAL,
-                'name' => "{$name}'s Vehicles",
-                'slug' => Str::slug($name) . '-vehicles',
-                'description' => "Individually owned vehicles listed by {$name}.",
-                'email' => $email,
-                'phone' => '0' . fake()->numerify('#########'),
-                'city' => fake()->randomElement(['Negombo', 'Matara']),
-                'status' => RentalShop::STATUS_ACTIVE,
-                'verification_status' => RentalShop::VERIFICATION_VERIFIED,
-                'is_published' => true,
-                'payout_schedule' => 'manual',
-            ]);
-
-            ShopMember::create([
-                'shop_id' => $shop->id, 'user_id' => $owner->id, 'role' => ShopMember::ROLE_OWNER,
-                'status' => ShopMember::STATUS_ACTIVE, 'accepted_at' => now(),
-            ]);
-
-            ShopSettings::createFor($shop->id);
-
-            OwnerBankDetail::create([
-                'shop_id' => $shop->id,
-                'account_holder_name' => $name,
-                'bank_name' => 'Peoples Bank',
-                'account_number' => fake()->numerify('##########'),
-                'account_number_last4' => fake()->numerify('####'),
-                'is_primary' => true,
-                'verification_status' => 'verified',
-                'verified_at' => now(),
-            ]);
-
-            Location::create([
-                'shop_id' => $shop->id, 'name' => 'Pickup Point', 'type' => 'pickup_point',
-                'city' => $shop->city, 'country' => 'Sri Lanka', 'is_active' => true,
-            ]);
-
-            $shops[] = $shop;
-        }
-
-        return $shops;
-    }
-
     /**
-     * @param RentalShop[] $businessShops
-     * @param RentalShop[] $individualShops
+     * @param RentalShop[] $shops
      * @return Vehicle[]
      */
-    private function seedVehicles(array $businessShops, array $individualShops): array
+    private function seedVehicles(array $shops): array
     {
         $categories = VehicleCategory::pluck('id', 'slug');
 
-        // [shop index into businessShops (0-2) or 'ind0'/'ind1', make, model, category slug, transmission, fuel, seats, daily_rate, deposit]
+        // [shop index into $shops (0-2), make, model, category slug, transmission, fuel, seats, daily_rate, deposit]
         $specs = [
             [0, 'Toyota', 'Aqua', 'car', 'automatic', 'hybrid', 5, 6500, 30000],
             [0, 'Toyota', 'Premio', 'car', 'automatic', 'petrol', 5, 7500, 35000],
@@ -304,14 +232,14 @@ class MarketplaceDemoSeeder extends Seeder
             [2, 'Toyota', 'Premio', 'car', 'automatic', 'petrol', 5, 7200, 35000],
             [2, 'Suzuki', 'Wagon R', 'car', 'automatic', 'petrol', 5, 5300, 25000],
             [2, 'Toyota', 'KDH', 'van', 'manual', 'diesel', 14, 11800, 50000],
-            ['ind0', 'Suzuki', 'Alto', 'car', 'manual', 'petrol', 4, 4200, 20000],
-            ['ind1', 'Toyota', 'Aqua', 'car', 'automatic', 'hybrid', 5, 6500, 30000],
-            ['ind1', 'Honda', 'Vezel', 'suv', 'automatic', 'hybrid', 5, 15000, 60000],
+            [2, 'Suzuki', 'Alto', 'car', 'manual', 'petrol', 4, 4200, 20000],
+            [2, 'Toyota', 'Aqua', 'car', 'automatic', 'hybrid', 5, 6500, 30000],
+            [1, 'Honda', 'Vezel', 'suv', 'automatic', 'hybrid', 5, 15000, 60000],
         ];
 
         $vehicles = [];
-        foreach ($specs as $i => [$shopKey, $make, $model, $catSlug, $transmission, $fuel, $seats, $dailyRate, $deposit]) {
-            $shop = is_int($shopKey) ? $businessShops[$shopKey] : $individualShops[(int) substr($shopKey, 3)];
+        foreach ($specs as $i => [$shopIndex, $make, $model, $catSlug, $transmission, $fuel, $seats, $dailyRate, $deposit]) {
+            $shop = $shops[$shopIndex];
             $title = "{$make} {$model} - " . ucfirst($shop->city ?? 'Sri Lanka');
             $slug = Str::slug("{$title}-{$i}") . '-' . fake()->unique()->numerify('###');
 
@@ -376,7 +304,7 @@ class MarketplaceDemoSeeder extends Seeder
 
     /**
      * @param Vehicle[] $vehicles
-     * @param User[] $customers
+     * @param Customer[] $customers
      */
     private function seedBookings(array $vehicles, array $customers): void
     {

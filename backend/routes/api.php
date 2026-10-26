@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ReportController;
@@ -74,17 +73,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('menus/navigation', [MenuController::class, 'navigation']);
     Route::get('menus/flat',       [MenuController::class, 'flat']);
 
-    // Owner/shop onboarding — deliberately NOT behind shop.context: an
-    // individual owner has no shop until approval auto-provisions one,
-    // and shop registration is how the first one is created at all. See
+    // Shop onboarding — deliberately NOT behind shop.context: shop
+    // registration is how the first shop is created at all, and an
+    // unverified shop's owner has no vendor role yet. See
     // app-doc/marketplace/01-phase1-architecture.md section 3.1.
     Route::prefix('onboarding')->group(function () {
-        Route::get('owner',             [OwnerOnboardingController::class, 'show']);
-        Route::post('owner',            [OwnerOnboardingController::class, 'store']);
-        Route::post('owner/documents',  [OwnerOnboardingController::class, 'uploadDocument']);
-        Route::get('owner/documents/{verification}/download', [OwnerOnboardingController::class, 'downloadDocument']);
-        Route::post('owner/submit',     [OwnerOnboardingController::class, 'submit']);
-
         Route::get('shops',                       [ShopOnboardingController::class, 'index']);
         Route::post('shops',                      [ShopOnboardingController::class, 'store']);
         Route::post('shops/{shop}/documents',     [ShopOnboardingController::class, 'uploadDocument']);

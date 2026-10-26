@@ -5,12 +5,11 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * A vendor workspace - either an individual owner's auto-provisioned
- * personal shop (shop_type = individual) or a registered rental business
- * (shop_type = business). Every vehicle belongs to exactly one row here;
- * see app-doc/marketplace/01-phase1-architecture.md section 3.1 for why
- * modelling it this way (rather than a polymorphic owner) keeps every
- * authorization check, scope, payout and report to one shape.
+ * A registered rental business - the only kind of vendor workspace.
+ * Every vehicle belongs to exactly one row here; see
+ * app-doc/marketplace/01-phase1-architecture.md section 3.1 for why
+ * modelling it this way keeps every authorization check, scope, payout
+ * and report to one shape.
  */
 return new class extends Migration
 {
@@ -19,7 +18,6 @@ return new class extends Migration
         Schema::create('rental_shops', function (Blueprint $table) {
             $table->id();
             $table->foreignId('owner_user_id')->constrained('users')->restrictOnDelete();
-            $table->enum('shop_type', ['individual', 'business']);
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();

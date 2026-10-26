@@ -20,25 +20,17 @@ No role column — roles are spatie rows, and a user holds several at once.
 
 Renting a vehicle legally requires a licence, so this is not optional decoration. A shop sees licence **validity flags** on a booking it owns, not the raw number.
 
-### `owner_profiles`
-`user_id` unique → users · `applicant_type` enum(`individual`,`business`) · `full_name` · `nic_number` **PII** · `date_of_birth` · `contact_phone` · `alt_phone` · `address_line_1/2` · `city` · `district` · `postal_code` · `latitude` · `longitude` ·
-`status` enum(`draft`,`submitted`,`under_review`,`info_requested`,`approved`,`rejected`,`suspended`) ·
-`submitted_at` · `reviewed_at` · `reviewed_by` → system_admins · `rejection_reason` · `info_requested_note` · `info_requested_at` · `approved_at` · `suspended_at` · `suspension_reason` · `terms_accepted_at` · soft deletes
-
-Indexes: `(status, submitted_at)` for the admin verification queue.
-
-### `owner_verifications`
-`owner_profile_id` → owner_profiles · `document_type` enum(`nic_front`,`nic_back`,`selfie_with_nic`,`proof_of_address`,`driving_licence`,`vehicle_registration`,`insurance_certificate`,`revenue_licence`,`other`) · `attachment_id` → attachments (private disk) · `status` enum(`pending`,`verified`,`rejected`) · `reviewed_by` → system_admins · `reviewed_at` · `rejection_reason` · `expires_at`
-
 ### `shop_verifications`
-Same shape, keyed on `shop_id`, with `document_type` enum(`business_registration`,`tax_identification`,`bank_statement`,`insurance_policy`,`trade_licence`,`lease_agreement`,`other`).
+`shop_id` → rental_shops · `document_type` enum(`business_registration`,`tax_identification`,`bank_statement`,`insurance_policy`,`trade_licence`,`lease_agreement`,`other`) · `attachment_id` → attachments (private disk) · `status` enum(`pending`,`verified`,`rejected`) · `reviewed_by` → system_admins · `reviewed_at` · `rejection_reason` · `expires_at`
+
+This is the only vendor KYC — there is no individual-owner flow (see 01-phase1-architecture.md §3.1).
 
 ---
 
 ## 2. Vendor (shop) tables
 
 ### `rental_shops` *(was `companies`)*
-`owner_user_id` → users (the creator) · `shop_type` enum(`individual`,`business`) · `name` · `slug` unique **PUB** · `description` **PUB** · `tagline` **PUB** ·
+`owner_user_id` → users (the creator) · `name` · `slug` unique **PUB** · `description` **PUB** · `tagline` **PUB** ·
 contact: `email` · `phone` **PUB** · `whatsapp` **PUB** · `website` ·
 location: `address_line_1/2` **PUB** · `city` **PUB** · `district` **PUB** · `postal_code` · `latitude` **PUB** · `longitude` **PUB** ·
 `operating_hours` json **PUB** (`{mon:{open:"08:30",close:"18:00",closed:false}, …}`) ·

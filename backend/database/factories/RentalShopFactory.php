@@ -16,7 +16,6 @@ class RentalShopFactory extends Factory
 
         return [
             'owner_user_id' => User::factory(),
-            'shop_type'     => 'business',
             'name'          => $name,
             'slug'          => str()->slug($name) . '-' . fake()->unique()->numerify('###'),
             'email'         => fake()->unique()->companyEmail(),
@@ -28,10 +27,5 @@ class RentalShopFactory extends Factory
             'is_published'  => true,
             'payout_schedule' => 'monthly',
         ];
-    }
-
-    public function individual(): static
-    {
-        return $this->state(['shop_type' => 'individual']);
     }
 }
