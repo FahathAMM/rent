@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { RegisterFormFields } from "@/components/auth/RegisterFormFields";
 import { DevCredit } from "@/components/auth/DevCredit";
@@ -16,7 +16,7 @@ const EMPTY_FORM = {
 };
 
 export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
-  const { register } = useAuth();
+  const { register } = useCustomerAuth();
   const router = useRouter();
 
   const [form, setForm] = useState(EMPTY_FORM);

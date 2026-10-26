@@ -47,8 +47,8 @@ export function PublicFooter() {
         <div>
           <p className="text-sm font-semibold">For owners</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/account/become-owner" className="hover:text-foreground">List your vehicle</Link></li>
-            <li><Link href="/account/shops/new" className="hover:text-foreground">Register a rental business</Link></li>
+            <li><Link href="/vendor/register?next=owner" className="hover:text-foreground">List your vehicle</Link></li>
+            <li><Link href="/vendor/register?next=shop" className="hover:text-foreground">Register a rental business</Link></li>
           </ul>
         </div>
 

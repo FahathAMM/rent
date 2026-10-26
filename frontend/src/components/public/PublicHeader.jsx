@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +29,10 @@ function isActive(pathname, href) {
 /** The one top bar shared by every (public) page — logo, primary nav, and sign-in/sign-up links. */
 export function PublicHeader() {
   const pathname = usePathname();
-  const { isAuthenticated, user, logout, isVendor } = useAuth();
-  const showBecomeVendor = !isAuthenticated || !isVendor();
+  const { isAuthenticated, customer, logout } = useCustomerAuth();
+  // No "already a vendor" concept for a customer account anymore — vendor
+  // sign-up is a fully separate account, so this is always shown.
+  const showBecomeVendor = true;
 
   const { data: brand } = useQuery({
     queryKey: ["platform-details"],
@@ -78,7 +80,7 @@ export function PublicHeader() {
               asChild
               className="hidden gap-1.5 border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 text-foreground hover:border-orange-500/40 hover:from-orange-500/15 hover:via-pink-500/15 hover:to-violet-500/15 sm:flex"
             >
-              <Link href="/account/become-owner"><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
+              <Link href="/vendor/register?next=owner"><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
             </Button>
           )}
 
@@ -90,15 +92,15 @@ export function PublicHeader() {
                   className="flex shrink-0 items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-3 shadow-sm transition-colors hover:border-primary/40"
                 >
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-xs font-semibold text-white">
-                    {getInitials(user?.name) || "U"}
+                    {getInitials(customer?.name) || "U"}
                   </span>
-                  <span className="max-w-[9rem] truncate text-sm font-medium">{user?.name ?? "My Account"}</span>
+                  <span className="max-w-[9rem] truncate text-sm font-medium">{customer?.name ?? "My Account"}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="truncate text-sm font-semibold">{user?.name ?? "My Account"}</span>
-                  <span className="truncate text-xs font-normal text-muted-foreground">{user?.email}</span>
+                  <span className="truncate text-sm font-semibold">{customer?.name ?? "My Account"}</span>
+                  <span className="truncate text-xs font-normal text-muted-foreground">{customer?.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
@@ -106,7 +108,7 @@ export function PublicHeader() {
                 </DropdownMenuItem>
                 {showBecomeVendor && (
                   <DropdownMenuItem asChild className="sm:hidden">
-                    <Link href="/account/become-owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
+                    <Link href="/vendor/register?next=owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -140,7 +142,7 @@ export function PublicHeader() {
               {showBecomeVendor && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link href="/account/become-owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/vendor/register?next=owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
                 </>
               )}
               {!isAuthenticated && (

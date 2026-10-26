@@ -217,7 +217,7 @@ export default function HomePage() {
               List it here and start earning from renters near you — verification is quick and payouts are handled for you.
             </p>
             <Button asChild size="lg" className="mt-6 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              <Link href="/account/become-owner">Become an owner <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link href="/vendor/register?next=owner">Become an owner <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
         </div>

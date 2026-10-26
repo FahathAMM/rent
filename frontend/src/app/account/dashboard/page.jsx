@@ -1,13 +1,12 @@
 "use client";
 
-import { useAuthStore } from "@/store/authStore";
-import { Card, CardContent } from "@/components/ui/card";
+import { useCustomerAuthStore } from "@/store/customerAuthStore";
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, Heart, Search, UserPlus, Store, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function AccountDashboardPage() {
-  const { user, isVendor } = useAuthStore();
+  const { customer } = useCustomerAuthStore();
 
   return (
     <div className="space-y-6">
@@ -19,7 +18,7 @@ export default function AccountDashboardPage() {
         </div>
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {user?.name?.split(" ")[0]}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {customer?.name?.split(" ")[0]}</h1>
             <p className="mt-1 text-sm text-muted-foreground">Find a vehicle, track your bookings, and manage your account.</p>
           </div>
           <Button asChild size="lg" className="shrink-0 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
@@ -58,53 +57,39 @@ export default function AccountDashboardPage() {
       </div>
 
       {/* ── Vendor / owner CTA ───────────────────────────────────────────── */}
-      {isVendor() ? (
-        <Card className="overflow-hidden rounded-2xl border shadow-sm">
-          <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold">You have a vendor account</p>
-              <p className="text-sm text-muted-foreground">Manage your vehicles, bookings and earnings from your vendor dashboard.</p>
+      <div>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold tracking-tight">List your own vehicles</h2>
+          <p className="text-sm text-muted-foreground">Turn an idle vehicle into income — pick whichever fits how you want to operate.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="group relative isolate overflow-hidden rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
+            <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent blur-2xl" />
+            <span className="relative inline-flex items-center rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-700">For individuals</span>
+            <div className="relative mt-4 flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
+              <UserPlus className="h-6 w-6" />
             </div>
-            <Button asChild variant="outline" className="shrink-0">
-              <Link href="/vendor/dashboard">Go to vendor dashboard <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <h3 className="relative mt-4 font-semibold">Become a Vehicle Owner</h3>
+            <p className="relative mt-1.5 text-sm text-muted-foreground">List your own car or bike individually and start earning.</p>
+            <Button asChild className="relative mt-5 w-fit bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
+              <Link href="/vendor/register?next=owner">Get started <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
             </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold tracking-tight">List your own vehicles</h2>
-            <p className="text-sm text-muted-foreground">Turn an idle vehicle into income — pick whichever fits how you want to operate.</p>
           </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="group relative isolate overflow-hidden rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
-              <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-orange-500/20 via-pink-500/20 to-transparent blur-2xl" />
-              <span className="relative inline-flex items-center rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-700">For individuals</span>
-              <div className="relative mt-4 flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
-                <UserPlus className="h-6 w-6" />
-              </div>
-              <h3 className="relative mt-4 font-semibold">Become a Vehicle Owner</h3>
-              <p className="relative mt-1.5 text-sm text-muted-foreground">List your own car or bike individually and start earning.</p>
-              <Button asChild className="relative mt-5 w-fit bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-                <Link href="/account/become-owner">Get started <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
-              </Button>
-            </div>
 
-            <div className="group relative isolate overflow-hidden rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
-              <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/20 via-pink-500/20 to-transparent blur-2xl" />
-              <span className="relative inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700">For businesses</span>
-              <div className="relative mt-4 flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
-                <Store className="h-6 w-6" />
-              </div>
-              <h3 className="relative mt-4 font-semibold">Register a Rental Shop</h3>
-              <p className="relative mt-1.5 text-sm text-muted-foreground">Run a business with multiple vehicles and staff? Register your shop.</p>
-              <Button asChild className="relative mt-5 w-fit bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-                <Link href="/account/shops/new">Get started <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
-              </Button>
+          <div className="group relative isolate overflow-hidden rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
+            <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/20 via-pink-500/20 to-transparent blur-2xl" />
+            <span className="relative inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700">For businesses</span>
+            <div className="relative mt-4 flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm">
+              <Store className="h-6 w-6" />
             </div>
+            <h3 className="relative mt-4 font-semibold">Register a Rental Shop</h3>
+            <p className="relative mt-1.5 text-sm text-muted-foreground">Run a business with multiple vehicles and staff? Register your shop.</p>
+            <Button asChild className="relative mt-5 w-fit bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
+              <Link href="/vendor/register?next=shop">Get started <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
+            </Button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

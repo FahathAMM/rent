@@ -2,13 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
-import { useNavigationMenu } from "@/hooks/useMenus";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomerAuthStore } from "@/store/customerAuthStore";
+import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { AccountSidebar } from "@/components/account/AccountSidebar";
-import { NotificationBell } from "@/components/shared/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Loader2, Menu } from "lucide-react";
+
+// A plain customer account has no permission variation — every customer
+// sees exactly these items (mirrors MenuSeeder's customerModules), so
+// there's no need to fetch this from /menus/navigation, which still only
+// resolves the old vendor/owner/staff guard (AuthUser::user()) and would
+// reject a customer-guard token outright.
+const CUSTOMER_NAV_ITEMS = [
+  { id: "dashboard", name: "Dashboard", route_name: "/account/dashboard", icon: "LayoutDashboard" },
+  { id: "bookings", name: "My Bookings", route_name: "/account/bookings", icon: "CalendarCheck" },
+  { id: "favorites", name: "Favorites", route_name: "/account/favorites", icon: "Heart" },
+  { id: "reviews", name: "My Reviews", route_name: "/account/reviews", icon: "Star" },
+  { id: "disputes", name: "Disputes", route_name: "/account/disputes", icon: "AlertTriangle" },
+  { id: "profile", name: "Profile", route_name: "/account/profile", icon: "User" },
+];
 
 /**
  * The customer-facing account app — a sidebar (AccountSidebar) instead
@@ -17,10 +29,9 @@ import { Loader2, Menu } from "lucide-react";
  * the site's theme when they log in.
  */
 export default function AccountLayout({ children }) {
-  const { user, isAuthenticated, isVendor, _hasHydrated } = useAuthStore();
-  const { logout } = useAuth();
+  const { customer, isAuthenticated, _hasHydrated } = useCustomerAuthStore();
+  const { logout } = useCustomerAuth();
   const router = useRouter();
-  const { data: navigation, isLoading: navLoading } = useNavigationMenu("customer");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -28,7 +39,7 @@ export default function AccountLayout({ children }) {
     if (!isAuthenticated) router.replace("/login");
   }, [isAuthenticated, _hasHydrated, router]);
 
-  if (!_hasHydrated || !isAuthenticated || navLoading) {
+  if (!_hasHydrated || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -39,10 +50,10 @@ export default function AccountLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-muted/30">
       <AccountSidebar
-        navigation={navigation ?? []}
-        user={user}
+        navigation={CUSTOMER_NAV_ITEMS}
+        user={customer}
         onLogout={logout}
-        isVendor={isVendor()}
+        isVendor={false}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -52,12 +63,7 @@ export default function AccountLayout({ children }) {
           <Button variant="outline" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-4 w-4" />
           </Button>
-          <NotificationBell />
         </header>
-
-        <div className="sticky top-0 z-20 hidden justify-end border-b bg-background px-6 py-3 lg:flex">
-          <NotificationBell />
-        </div>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">{children}</div>

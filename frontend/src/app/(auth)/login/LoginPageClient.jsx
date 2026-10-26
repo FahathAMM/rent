@@ -7,9 +7,11 @@ import { visitService } from "@/services/visitService";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { LoginPanel } from "@/components/auth/LoginPanel";
 import { RegisterPanel } from "@/components/auth/RegisterPanel";
+import { VendorLoginPanel } from "@/components/auth/VendorLoginPanel";
+import { VendorRegisterPanel } from "@/components/auth/VendorRegisterPanel";
 import { cn } from "@/lib/utils";
 
-export default function LoginPageClient({ initialBrand, initialView = "login" }) {
+export default function LoginPageClient({ initialBrand, initialView = "login", audience = "customer" }) {
   const [view, setView] = useState(initialView);
   const [direction, setDirection] = useState("forward");
 
@@ -104,7 +106,13 @@ export default function LoginPageClient({ initialBrand, initialView = "login" })
                 )}
               >
                 {view === "login" ? (
-                  <LoginPanel brandName={brandName} logoUrl={logoUrl} onSwitchToRegister={() => switchTo("register")} />
+                  audience === "vendor" ? (
+                    <VendorLoginPanel brandName={brandName} logoUrl={logoUrl} onSwitchToRegister={() => switchTo("register")} />
+                  ) : (
+                    <LoginPanel brandName={brandName} logoUrl={logoUrl} onSwitchToRegister={() => switchTo("register")} />
+                  )
+                ) : audience === "vendor" ? (
+                  <VendorRegisterPanel brandName={brandName} logoUrl={logoUrl} onSwitchToLogin={() => switchTo("login")} />
                 ) : (
                   <RegisterPanel brandName={brandName} logoUrl={logoUrl} onSwitchToLogin={() => switchTo("login")} />
                 )}

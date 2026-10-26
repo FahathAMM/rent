@@ -44,7 +44,7 @@ export default function HowItWorksPage() {
           </div>
           <div className="mt-8 flex justify-center">
             <Button asChild size="lg" className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              <Link href="/account/become-owner">Become an owner <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link href="/vendor/register?next=owner">Become an owner <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
         </div>

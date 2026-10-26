@@ -47,7 +47,7 @@ function NoShopView() {
         </p>
       </div>
       <Button asChild size="sm">
-        <Link href="/account/become-owner">Become an owner</Link>
+        <Link href="/vendor/become-owner">Become an owner</Link>
       </Button>
     </div>
   );
@@ -56,6 +56,11 @@ function NoShopView() {
 // Personal account pages every authenticated vendor can reach regardless of
 // their menu/permission access — they aren't module nav items.
 const ALWAYS_ACCESSIBLE_ROUTES = ["/vendor/profile", "/vendor/audit-logs"];
+
+// A freshly vendor-registered account has no shop and no nav yet — these
+// onboarding routes must still require auth, but skip the shop-count gate
+// and the module-tile chrome entirely (there's nothing to show tiles for).
+const ONBOARDING_ROUTES = ["/vendor/become-owner", "/vendor/shops/new"];
 
 /** Flatten a nested menu tree into a flat array of route_name strings. */
 function flattenRoutes(menus) {
@@ -94,10 +99,13 @@ export default function VendorLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeModuleId, setActiveModuleId] = useState(null);
 
+  const isAuthRoute = pathname === "/vendor/login" || pathname === "/vendor/register";
+  const isOnboardingRoute = ONBOARDING_ROUTES.some((route) => pathname.startsWith(route));
+
   useEffect(() => {
-    if (!_hasHydrated) return;
-    if (!isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, _hasHydrated, router]);
+    if (isAuthRoute || !_hasHydrated) return;
+    if (!isAuthenticated) router.replace("/vendor/login");
+  }, [isAuthRoute, isAuthenticated, _hasHydrated, router]);
 
   // Roles/permissions/shop memberships are only ever written to the
   // persisted store at login time, so a browser tab left logged in across
@@ -148,7 +156,13 @@ export default function VendorLayout({ children }) {
 
   const accessibleRoutes = useMemo(() => flattenRoutes(navigation ?? []), [navigation]);
 
+  if (isAuthRoute) return children;
+
   if (!_hasHydrated || !isAuthenticated || navLoading) return loading;
+
+  if (isOnboardingRoute) {
+    return <div className="min-h-screen bg-slate-50">{children}</div>;
+  }
 
   if (!shops?.length) return <NoShopView />;
 

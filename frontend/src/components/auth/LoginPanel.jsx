@@ -2,19 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { LoginFormFields } from "@/components/auth/LoginFormFields";
 import { DevCredit } from "@/components/auth/DevCredit";
 
-/**
- * A vehicle-owner/shop-owner/shop-staff lands on the vendor dashboard;
- * every other account (plain customer) lands on their account overview —
- * see app-doc/marketplace/01-phase1-architecture.md "Identity & ownership
- * model" for why a single login can mean either.
- */
+/** The customer login — see VendorLoginPanel for the separate vendor/owner/staff login. */
 export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
-  const { login } = useAuth();
+  const { login } = useCustomerAuth();
   const router = useRouter();
 
   const [form, setForm] = useState({ email: "", password: "" });
@@ -26,9 +21,8 @@ export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
     setErrors({});
     setLoading(true);
     try {
-      const user = await login(form);
-      const isVendor = (user.roles ?? []).some((r) => ["vehicle-owner", "shop-owner", "shop-staff"].includes(r));
-      router.push(isVendor ? "/vendor/dashboard" : "/account/dashboard");
+      await login(form);
+      router.push("/account/dashboard");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Login failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });
