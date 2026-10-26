@@ -25,9 +25,14 @@ class LocationController extends Controller
         $this->middleware('can:vendor-settings-locations-delete')->only('destroy');
     }
 
+    /** {record, message, status} — ServerDataTable's expected shape, same as ExpenseCategoryController::index(). */
     public function index(Request $request): JsonResponse
     {
-        return $this->response('Locations retrieved', $this->repo->getData($request));
+        return response()->json([
+            'record' => $this->repo->getData($request),
+            'message' => 'Locations retrieved successfully',
+            'status' => true,
+        ]);
     }
 
     public function store(StoreLocationRequest $request): JsonResponse

@@ -11,6 +11,7 @@ use App\Services\AuditService;
 use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -38,15 +39,27 @@ class StaffController extends Controller
         abort_unless(VendorContext::membership()?->role === ShopMember::ROLE_OWNER, 403, 'Only the shop owner can manage staff.');
     }
 
-    public function index(): JsonResponse
+    /** {record, message, status} — ServerDataTable's expected shape, same as Api\LocationController::index(). */
+    public function index(Request $request): JsonResponse
     {
+        $sortable = ['role', 'status', 'created_at'];
+        $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'role';
+        $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+
         $members = ShopMember::where('shop_id', VendorContext::shopId())
             ->whereIn('status', [ShopMember::STATUS_ACTIVE, ShopMember::STATUS_SUSPENDED, ShopMember::STATUS_INVITED])
             ->with('user:id,name,email')
-            ->orderBy('role')
-            ->get();
+            ->when($request->search, fn ($q) => $q->whereHas('user', fn ($u) => $u
+                ->where('name', 'like', "%{$request->search}%")
+                ->orWhere('email', 'like', "%{$request->search}%")))
+            ->orderBy($sort, $dir)
+            ->paginate(min((int) $request->get('perPage', 20), 100));
 
-        return $this->response('Staff retrieved', $members);
+        return response()->json([
+            'record' => $members,
+            'message' => 'Staff retrieved successfully',
+            'status' => true,
+        ]);
     }
 
     public function store(InviteStaffRequest $request): JsonResponse

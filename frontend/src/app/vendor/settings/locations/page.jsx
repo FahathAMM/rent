@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { locationService } from "@/services/locationService";
 import { useAuthStore } from "@/store/authStore";
-import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { DataTable } from "@/components/shared/DataTable";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { SortableHeader } from "@/components/Datatable/SortableHeader";
+import { ActionButton } from "@/components/Datatable/ActionButton";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { Fieldset } from "@/components/forms/Fieldset";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, Plus, Home, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Home, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_OPTIONS = [
@@ -33,30 +35,23 @@ const emptyForm = {
 };
 
 export default function LocationsSettingsPage() {
-  const qc = useQueryClient();
   const { can } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendor-locations"],
-    queryFn: () => locationService.getAll().then((r) => r.data.data),
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["vendor-locations"] });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const save = useMutation({
     mutationFn: (payload) => editing ? locationService.update(editing.id, payload) : locationService.create(payload),
-    onSuccess: () => { invalidate(); toast.success(editing ? "Location updated" : "Location added"); setOpen(false); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success(editing ? "Location updated" : "Location added"); setOpen(false); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const remove = useMutation({
     mutationFn: (id) => locationService.delete(id),
-    onSuccess: () => { invalidate(); toast.success("Location deleted"); setDeleteTarget(null); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Location deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
 
@@ -81,23 +76,30 @@ export default function LocationsSettingsPage() {
     save.mutate(form);
   };
 
-  const locations = data?.data ?? [];
-
-  const columns = [
-    { key: "name", header: "Name", render: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "type", header: "Type", render: (row) => <span className="capitalize">{row.type?.replace("_", " ")}</span> },
-    { key: "city", header: "City", render: (row) => row.city ?? "—" },
-    { key: "vehicle_pickup_locations_count", header: "Vehicles", render: (row) => row.vehicle_pickup_locations_count ?? 0 },
-    { key: "is_active", header: "Status", render: (row) => <StatusBadge status={row.is_active} /> },
+  const columns = ({ sortField, sortOrder, handleSort }) => [
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
-        <div className="flex gap-1.5">
+      accessorKey: "name",
+      header: () => <SortableHeader label="Name" column="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <span className="font-medium">{row.name}</span>,
+    },
+    { accessorKey: "type", header: "Type", cell: (row) => <span className="capitalize">{row.type?.replace("_", " ")}</span> },
+    { accessorKey: "city", header: "City", cell: (row) => row.city ?? "—" },
+    { accessorKey: "vehicle_pickup_locations_count", header: "Vehicles", cell: (row) => row.vehicle_pickup_locations_count ?? 0 },
+    {
+      accessorKey: "is_active",
+      header: () => <SortableHeader label="Status" column="is_active" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <StatusBadge status={row.is_active} />,
+    },
+    {
+      accessorKey: "actions",
+      header: "Actions",
+      cell: (row) => (
+        <div className="flex gap-1">
           {can("vendor-settings-locations-edit") && (
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
+            <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit location" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
           )}
           {can("vendor-settings-locations-delete") && (
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(row)}><Trash2 className="h-4 w-4" /></Button>
+            <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete location" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
       ),
@@ -112,13 +114,17 @@ export default function LocationsSettingsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        {can("vendor-settings-locations-create") && (
-          <div className="mb-4 flex justify-end">
-            <Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> New Location</Button>
-          </div>
-        )}
-
-        <DataTable columns={columns} data={locations} loading={isLoading} />
+        <ServerDataTable
+          key={refreshKey}
+          endpoint="/locations"
+          columns={columns}
+          breadcrumb={[]}
+          defualtSortField="name"
+          defaultSortOrder="asc"
+          isSheet={can("vendor-settings-locations-create")}
+          openSheet={openCreate}
+          model="Location"
+        />
       </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -153,18 +159,15 @@ export default function LocationsSettingsPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete &quot;{deleteTarget?.name}&quot;?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone. A location still assigned to vehicles cannot be deleted.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => remove.mutate(deleteTarget.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={() => setDeleteTarget(null)}
+        title="Delete Location"
+        description={`Delete "${deleteTarget?.name}"? A location still assigned to vehicles cannot be deleted.`}
+        onConfirm={() => remove.mutate(deleteTarget.id)}
+        loading={remove.isPending}
+        confirmText="Delete"
+      />
     </div>
   );
 }

@@ -1,21 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { vendorBankDetailService } from "@/services/vendorBankDetailService";
 import { useAuthStore } from "@/store/authStore";
-import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { DataTable } from "@/components/shared/DataTable";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { ActionButton } from "@/components/Datatable/ActionButton";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { Fieldset } from "@/components/forms/Fieldset";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Star, Plus, Home, Loader2, Trash2 } from "lucide-react";
+import { Star, Home, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const emptyForm = {
@@ -24,35 +25,28 @@ const emptyForm = {
 };
 
 export default function BankDetailsPage() {
-  const qc = useQueryClient();
   const { can } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendor-bank-details"],
-    queryFn: () => vendorBankDetailService.getAll().then((r) => r.data.data),
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["vendor-bank-details"] });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const save = useMutation({
     mutationFn: (payload) => vendorBankDetailService.create(payload),
-    onSuccess: () => { invalidate(); toast.success("Bank detail added"); setOpen(false); setForm(emptyForm); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Bank detail added"); setOpen(false); setForm(emptyForm); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const makePrimary = useMutation({
     mutationFn: (id) => vendorBankDetailService.makePrimary(id),
-    onSuccess: () => { invalidate(); toast.success("Primary bank detail updated"); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Primary bank detail updated"); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed"),
   });
 
   const remove = useMutation({
     mutationFn: (id) => vendorBankDetailService.delete(id),
-    onSuccess: () => { invalidate(); toast.success("Bank detail deleted"); setDeleteTarget(null); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Bank detail deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
 
@@ -67,24 +61,24 @@ export default function BankDetailsPage() {
   };
 
   const canEdit = can("vendor-finance-bank_details-edit");
-  const details = data ?? [];
 
-  const columns = [
-    { key: "bank_name", header: "Bank", render: (row) => <span className="font-medium">{row.bank_name}</span> },
-    { key: "account_holder_name", header: "Account Holder" },
-    { key: "account_number_last4", header: "Account No.", render: (row) => `•••• ${row.account_number_last4}` },
-    { key: "verification_status", header: "Status", render: (row) => <StatusBadge status={row.verification_status} /> },
+  const columns = () => [
+    { accessorKey: "bank_name", header: "Bank", cell: (row) => <span className="font-medium">{row.bank_name}</span> },
+    { accessorKey: "account_holder_name", header: "Account Holder" },
+    { accessorKey: "account_number_last4", header: "Account No.", cell: (row) => `•••• ${row.account_number_last4}` },
+    { accessorKey: "verification_status", header: "Status", cell: (row) => <StatusBadge status={row.verification_status} /> },
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
-        <div className="flex items-center gap-1.5">
+      accessorKey: "actions",
+      header: "Actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1">
           {row.is_primary ? (
             <span className="flex items-center gap-1 text-xs font-medium text-amber-600"><Star className="h-3.5 w-3.5 fill-current" /> Primary</span>
           ) : canEdit && (
-            <Button size="sm" variant="outline" onClick={() => makePrimary.mutate(row.id)} disabled={makePrimary.isPending}>Make primary</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => makePrimary.mutate(row.id)} disabled={makePrimary.isPending}>Make primary</Button>
           )}
           {canEdit && (
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(row)}><Trash2 className="h-4 w-4" /></Button>
+            <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete bank detail" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
       ),
@@ -99,13 +93,17 @@ export default function BankDetailsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        {canEdit && (
-          <div className="mb-4 flex justify-end">
-            <Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> Add Bank Detail</Button>
-          </div>
-        )}
-
-        <DataTable columns={columns} data={details} loading={isLoading} />
+        <ServerDataTable
+          key={refreshKey}
+          endpoint="/vendor/bank-details"
+          columns={columns}
+          breadcrumb={[]}
+          defualtSortField="is_primary"
+          defaultSortOrder="desc"
+          isSheet={canEdit}
+          openSheet={openCreate}
+          model="Bank Detail"
+        />
       </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -135,18 +133,15 @@ export default function BankDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this bank detail?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => remove.mutate(deleteTarget.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={() => setDeleteTarget(null)}
+        title="Delete Bank Detail"
+        description="This cannot be undone."
+        onConfirm={() => remove.mutate(deleteTarget.id)}
+        loading={remove.isPending}
+        confirmText="Delete"
+      />
     </div>
   );
 }

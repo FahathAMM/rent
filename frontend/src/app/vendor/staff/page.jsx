@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { vendorStaffService } from "@/services/vendorStaffService";
 import { useAuthStore } from "@/store/authStore";
-import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { DataTable } from "@/components/shared/DataTable";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { SortableHeader } from "@/components/Datatable/SortableHeader";
+import { ActionButton } from "@/components/Datatable/ActionButton";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
-import { Pencil, Trash2, Plus, Home, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Home, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_OPTIONS = [
@@ -25,36 +27,29 @@ const ROLE_OPTIONS = [
 const emptyInvite = { email: "", role: "staff" };
 
 export default function StaffPage() {
-  const qc = useQueryClient();
   const { can } = useAuthStore();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyInvite);
   const [errors, setErrors] = useState({});
   const [removeTarget, setRemoveTarget] = useState(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendor-staff"],
-    queryFn: () => vendorStaffService.getAll().then((r) => r.data.data),
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["vendor-staff"] });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const invite = useMutation({
     mutationFn: (payload) => vendorStaffService.invite(payload),
-    onSuccess: () => { invalidate(); toast.success("Staff member added"); setOpen(false); setForm(emptyInvite); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Staff member added"); setOpen(false); setForm(emptyInvite); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const updateRole = useMutation({
     mutationFn: ({ id, data }) => vendorStaffService.update(id, data),
-    onSuccess: () => { invalidate(); toast.success("Staff member updated"); setOpen(false); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Staff member updated"); setOpen(false); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const remove = useMutation({
     mutationFn: (id) => vendorStaffService.remove(id),
-    onSuccess: () => { invalidate(); toast.success("Staff member removed"); setRemoveTarget(null); },
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Staff member removed"); setRemoveTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to remove"); setRemoveTarget(null); },
   });
 
@@ -68,24 +63,31 @@ export default function StaffPage() {
     else invite.mutate({ email: form.email, role: form.role });
   };
 
-  const members = data ?? [];
-
-  const columns = [
-    { key: "name", header: "Name", render: (row) => row.user?.name ?? "—" },
-    { key: "email", header: "Email", render: (row) => row.user?.email ?? "—" },
-    { key: "role", header: "Role", render: (row) => <span className="capitalize">{row.role}</span> },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+  const columns = ({ sortField, sortOrder, handleSort }) => [
+    { accessorKey: "name", header: "Name", cell: (row) => row.user?.name ?? "—" },
+    { accessorKey: "email", header: "Email", cell: (row) => row.user?.email ?? "—" },
     {
-      key: "actions", header: "Actions",
-      render: (row) => row.role === "owner" ? (
+      accessorKey: "role",
+      header: () => <SortableHeader label="Role" column="role" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <span className="capitalize">{row.role}</span>,
+    },
+    {
+      accessorKey: "status",
+      header: () => <SortableHeader label="Status" column="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      accessorKey: "actions",
+      header: "Actions",
+      cell: (row) => row.role === "owner" ? (
         <span className="text-xs text-muted-foreground">—</span>
       ) : (
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           {can("vendor-staff-edit") && (
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
+            <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit staff member" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
           )}
           {can("vendor-staff-delete") && (
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setRemoveTarget(row)}><Trash2 className="h-4 w-4" /></Button>
+            <ActionButton onClick={() => setRemoveTarget(row)} icon={Trash2} label="Remove staff member" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
       ),
@@ -100,13 +102,17 @@ export default function StaffPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        {can("vendor-staff-create") && (
-          <div className="mb-4 flex justify-end">
-            <Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> Add Staff</Button>
-          </div>
-        )}
-
-        <DataTable columns={columns} data={members} loading={isLoading} />
+        <ServerDataTable
+          key={refreshKey}
+          endpoint="/vendor/staff"
+          columns={columns}
+          breadcrumb={[]}
+          defualtSortField="role"
+          defaultSortOrder="asc"
+          isSheet={can("vendor-staff-create")}
+          openSheet={openCreate}
+          model="Staff Member"
+        />
       </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -127,18 +133,15 @@ export default function StaffPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!removeTarget} onOpenChange={(v) => !v && setRemoveTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove {removeTarget?.user?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>They will immediately lose access to this shop.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => remove.mutate(removeTarget.id)} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={() => setRemoveTarget(null)}
+        title="Remove Staff Member"
+        description={`Remove ${removeTarget?.user?.name}? They will immediately lose access to this shop.`}
+        onConfirm={() => remove.mutate(removeTarget.id)}
+        loading={remove.isPending}
+        confirmText="Remove"
+      />
     </div>
   );
 }
