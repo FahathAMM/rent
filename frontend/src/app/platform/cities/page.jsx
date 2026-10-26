@@ -79,21 +79,23 @@ export default function PlatformCitiesPage() {
       </PageWrapper>
 
       <Dialog open={!!editingDistrict} onOpenChange={(v) => !v && setEditingDistrictId(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {editingDistrict?.name}</DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-64 space-y-1.5 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto">
             {editingDistrict?.cities.length ? (
-              editingDistrict.cities.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-                  {c.name}
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteTarget(c)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {editingDistrict.cities.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                    <span className="truncate">{c.name}</span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-destructive" onClick={() => setDeleteTarget(c)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">No cities added yet.</p>
             )}
