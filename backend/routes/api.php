@@ -222,6 +222,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('bank-details/{bankDetail}', [VendorBankDetailController::class, 'destroy']);
 
             Route::get('staff', [VendorStaffController::class, 'index']);
+            Route::get('staff/abilities', [VendorStaffController::class, 'abilities']);
             Route::post('staff', [VendorStaffController::class, 'store']);
             Route::put('staff/{staff}', [VendorStaffController::class, 'update']);
             Route::delete('staff/{staff}', [VendorStaffController::class, 'destroy']);

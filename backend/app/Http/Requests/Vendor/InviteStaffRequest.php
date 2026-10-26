@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Vendor;
 
+use App\Support\ShopAbilities;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class InviteStaffRequest extends FormRequest
 {
@@ -14,7 +16,10 @@ class InviteStaffRequest extends FormRequest
             'email' => ['required', 'email', 'exists:users,email'],
             'role' => ['required', 'in:manager,staff'],
             'abilities' => ['nullable', 'array'],
-            'abilities.*' => ['string'],
+            'abilities.*' => [Rule::in(ShopAbilities::all())],
+            'employee_id' => ['nullable', 'string', 'max:50'],
+            'joining_date' => ['nullable', 'date'],
+            'emergency_contact' => ['nullable', 'string', 'max:255'],
         ];
     }
 

@@ -25,12 +25,14 @@ class ShopMember extends Model
 
     protected $fillable = [
         'shop_id', 'user_id', 'role', 'abilities', 'status',
+        'employee_id', 'joining_date', 'emergency_contact',
         'invited_by', 'invite_token', 'invite_expires_at', 'invited_at',
         'accepted_at', 'revoked_at',
     ];
 
     protected $casts = [
         'abilities' => 'array',
+        'joining_date' => 'date',
         'invite_expires_at' => 'datetime',
         'invited_at' => 'datetime',
         'accepted_at' => 'datetime',
