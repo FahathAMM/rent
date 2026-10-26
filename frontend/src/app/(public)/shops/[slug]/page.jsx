@@ -12,6 +12,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ShopCover } from "@/components/marketplace/ShopCover";
 import { toast } from "sonner";
 import {
   ShieldCheck, Star, MapPin, Phone, Globe, Loader2, ArrowLeft, Building2, CarFront, CalendarCheck,
@@ -147,15 +148,7 @@ export default function ShopProfilePage() {
     <div className="pb-16">
       {/* ── Cover ──────────────────────────────────────────────────────── */}
       <section className="relative h-56 overflow-hidden sm:h-72 lg:h-80">
-        {shop.cover_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={shop.cover_image} alt="" aria-hidden="true" className="h-full w-full object-cover" />
-        ) : (
-          <div className="relative h-full w-full bg-gradient-to-br from-orange-500/30 via-pink-500/25 to-violet-500/30" aria-hidden="true">
-            <div className="aurora-blob aurora-blob-1" />
-            <div className="aurora-blob aurora-blob-3" />
-          </div>
-        )}
+        <ShopCover shop={shop} variant="hero" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/20" aria-hidden="true" />
         <div className="absolute inset-x-0 top-0">
           <div className="mx-auto max-w-6xl px-4 py-4">
@@ -224,11 +217,11 @@ export default function ShopProfilePage() {
                 </Button>
               )}
               {shop.website && (
-                <Button asChild variant="outline" size="icon" title="Website">
+                <Button asChild variant="outline" size="icon" className="h-10 w-10" title="Website">
                   <a href={shop.website} target="_blank" rel="noopener noreferrer" aria-label="Website"><Globe className="h-4 w-4" /></a>
                 </Button>
               )}
-              <Button variant="outline" size="icon" onClick={share} title="Share" aria-label="Share"><Share2 className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={share} title="Share" aria-label="Share"><Share2 className="h-4 w-4" /></Button>
             </div>
           </div>
 

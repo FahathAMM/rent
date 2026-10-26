@@ -24,6 +24,7 @@ import {
 import { SelectInput } from "@/components/forms/SelectInput";
 import { publicService } from "@/services/publicService";
 import { cn } from "@/lib/utils";
+import { ShopCover } from "@/components/marketplace/ShopCover";
 import {
   Loader2,
   Home,
@@ -326,20 +327,11 @@ function BrandingSection({ shop, canEdit }) {
           </div>
         </div>
         <div className="group relative aspect-[16/5] overflow-hidden rounded-xl border bg-muted">
-          {shop.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={shop.cover_image_url}
-              alt="Cover banner"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-orange-500/15 via-pink-500/15 to-violet-500/15 text-muted-foreground">
-              <ImageIcon className="h-8 w-8" />
-              <p className="text-xs">
-                No banner yet — a gradient is shown instead
-              </p>
-            </div>
+          <ShopCover shop={shop} variant="compact" alt="Cover banner" />
+          {!shop.cover_image_url && (
+            <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+              Default brand banner — upload your own to replace it
+            </span>
           )}
           {busy === "cover_image" && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/60">
@@ -600,20 +592,7 @@ export default function ShopProfileSettingsPage() {
       {/* ── Profile header (live preview of banner + logo) ───────────── */}
       <Card className="overflow-hidden">
         <div className="relative h-28 sm:h-36">
-          {shop.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={shop.cover_image_url}
-              alt=""
-              aria-hidden="true"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div
-              className="h-full w-full bg-gradient-to-br from-orange-500/25 via-pink-500/20 to-violet-500/25"
-              aria-hidden="true"
-            />
-          )}
+          <ShopCover shop={shop} variant="compact" />
           {canEdit && (
             <button
               type="button"
