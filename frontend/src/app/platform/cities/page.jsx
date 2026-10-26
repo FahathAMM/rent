@@ -8,21 +8,18 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { TextInput, ValidationError } from "@/components/forms/FormField";
-import { SelectInput } from "@/components/forms/SelectInput";
-import { Trash2, Plus, Home, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Pencil, Trash2, Plus, Home, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
-
-const emptyForm = { district_id: "", name: "" };
 
 export default function PlatformCitiesPage() {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState({});
+  const [editingDistrictId, setEditingDistrictId] = useState(null);
+  const [newCityName, setNewCityName] = useState("");
+  const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data: districts, isLoading } = useQuery({
@@ -34,8 +31,8 @@ export default function PlatformCitiesPage() {
 
   const save = useMutation({
     mutationFn: (payload) => platformCityService.create(payload),
-    onSuccess: () => { invalidate(); toast.success("City added"); setOpen(false); setForm(emptyForm); },
-    onError: (err) => setErrors(err.response?.data?.errors ?? {}),
+    onSuccess: () => { invalidate(); toast.success("City added"); setNewCityName(""); setError(""); },
+    onError: (err) => setError(err.response?.data?.errors?.name?.[0] ?? "Failed to add city"),
   });
 
   const remove = useMutation({
@@ -44,24 +41,23 @@ export default function PlatformCitiesPage() {
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
 
-  const openCreate = () => { setForm(emptyForm); setErrors({}); setOpen(true); };
+  const editingDistrict = (districts ?? []).find((d) => d.id === editingDistrictId) ?? null;
 
-  const handleSubmit = (e) => {
+  const handleAddCity = (e) => {
     e.preventDefault();
-    setErrors({});
-    save.mutate({ district_id: Number(form.district_id), name: form.name });
+    if (!newCityName.trim()) return;
+    save.mutate({ district_id: editingDistrictId, name: newCityName.trim() });
   };
 
-  const districtOptions = (districts ?? []).map((d) => ({ value: String(d.id), label: d.name }));
-  const cities = (districts ?? []).flatMap((d) => d.cities.map((c) => ({ ...c, district_name: d.name })));
-
   const columns = [
-    { key: "district_name", header: "District", render: (row) => <span className="font-medium">{row.district_name}</span> },
-    { key: "name", header: "City" },
+    { key: "name", header: "District", render: (row) => <span className="font-medium">{row.name}</span> },
+    { key: "cities_count", header: "Cities", render: (row) => row.cities.length },
     {
       key: "actions", header: "Actions",
       render: (row) => (
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(row)}><Trash2 className="h-4 w-4" /></Button>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEditingDistrictId(row.id); setNewCityName(""); setError(""); }}>
+          <Pencil className="h-3.5 w-3.5" /> Edit
+        </Button>
       ),
     },
   ];
@@ -76,27 +72,42 @@ export default function PlatformCitiesPage() {
       <PageWrapper breadcrumb={breadcrumbItems}>
         <PageHeader
           title="Districts & Cities"
-          description="Sri Lanka's 25 districts are fixed — add the cities that feed the owner/shop onboarding location dropdowns."
-          action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> New City</Button>}
+          description="Sri Lanka's 25 districts are fixed. Edit a district to add the cities that feed the owner/shop onboarding location dropdowns."
         />
 
-        <DataTable columns={columns} data={cities} loading={isLoading} />
+        <DataTable columns={columns} data={districts ?? []} loading={isLoading} />
       </PageWrapper>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={!!editingDistrict} onOpenChange={(v) => !v && setEditingDistrictId(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>New City</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <ValidationError errors={errors} />
-            <SelectInput label="District" required placeholder="Select district" options={districtOptions} value={form.district_id} onChange={(v) => setForm({ ...form, district_id: v })} error={errors.district_id?.[0]} />
-            <TextInput label="City name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name?.[0]} />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={save.isPending || !form.district_id || !form.name}>
-                {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save
-              </Button>
-            </DialogFooter>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {editingDistrict?.name}</DialogTitle>
+          </DialogHeader>
+
+          <div className="max-h-64 space-y-1.5 overflow-y-auto">
+            {editingDistrict?.cities.length ? (
+              editingDistrict.cities.map((c) => (
+                <div key={c.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                  {c.name}
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteTarget(c)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">No cities added yet.</p>
+            )}
+          </div>
+
+          <form onSubmit={handleAddCity} className="flex items-start gap-2 border-t pt-3">
+            <div className="flex-1 space-y-1">
+              <Input placeholder="New city name" value={newCityName} onChange={(e) => setNewCityName(e.target.value)} />
+              {error && <p className="text-xs text-destructive">{error}</p>}
+            </div>
+            <Button type="submit" disabled={save.isPending || !newCityName.trim()} className="gap-1.5">
+              {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Add
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
