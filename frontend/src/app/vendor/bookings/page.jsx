@@ -11,7 +11,9 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { InspectionDialog } from "@/components/vendor/InspectionDialog";
 import { Button } from "@/components/ui/button";
-import { SelectInput } from "@/components/forms/SelectInput";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,8 +21,10 @@ import { Home, Phone, Mail } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
+const ALL_STATUSES = "all";
+
 const STATUS_OPTIONS = [
-  { value: "", label: "All bookings" },
+  { value: ALL_STATUSES, label: "All bookings" },
   { value: "pending", label: "Pending" },
   { value: "accepted", label: "Accepted — awaiting payment" },
   { value: "confirmed", label: "Confirmed" },
@@ -135,10 +139,6 @@ export default function VendorBookingsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        <div className="mb-4 w-56">
-          <SelectInput label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
-        </div>
-
         <ServerDataTable
           key={refreshKey}
           endpoint="/vendor/bookings"
@@ -146,8 +146,15 @@ export default function VendorBookingsPage() {
           breadcrumb={[]}
           defualtSortField="created_at"
           defaultSortOrder="desc"
-          filters={{ status: status || undefined }}
-        />
+          filters={{ status: status === ALL_STATUSES ? undefined : status }}
+        >
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </ServerDataTable>
       </HomePageWrapper>
 
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
