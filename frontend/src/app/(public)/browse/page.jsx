@@ -17,8 +17,6 @@ import {
   MapPin, Tag, Gauge, Fuel, Users, Truck, Wallet, Sparkles,
 } from "lucide-react";
 
-const ALL_OPTION = "all";
-
 const TRANSMISSION_OPTIONS = [
   { value: "", label: "Any" },
   { value: "automatic", label: "Automatic" },
@@ -83,25 +81,23 @@ function FilterSidebarContent({ params, setParam, setDistrict, cities, categorie
         <div className="space-y-3">
           <div>
             <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">District</p>
-            <Select value={selectedDistrict || ALL_OPTION} onValueChange={(v) => setDistrict(v === ALL_OPTION ? "" : v)}>
-              <SelectTrigger className="h-9 bg-card text-sm"><SelectValue placeholder="All districts" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_OPTION}>All districts</SelectItem>
-                {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              <Pill active={!selectedDistrict} onClick={() => setDistrict("")}>All districts</Pill>
+              {districts.map((d) => (
+                <Pill key={d} active={selectedDistrict === d} onClick={() => setDistrict(d)}>{d}</Pill>
+              ))}
+            </div>
           </div>
           <div>
             <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">City</p>
-            <Select value={params.get("city") || ALL_OPTION} onValueChange={(v) => setParam("city", v === ALL_OPTION ? "" : v)}>
-              <SelectTrigger className="h-9 bg-card text-sm"><SelectValue placeholder="All cities" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_OPTION}>All cities</SelectItem>
-                {visibleCities?.map((c) => (
-                  <SelectItem key={c.city} value={c.city}>{c.city} ({c.vehicle_count})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              <Pill active={!params.get("city")} onClick={() => setParam("city", "")}>All cities</Pill>
+              {visibleCities?.map((c) => (
+                <Pill key={c.city} active={params.get("city") === c.city} onClick={() => setParam("city", c.city)}>
+                  {c.city} <span className="opacity-70">({c.vehicle_count})</span>
+                </Pill>
+              ))}
+            </div>
           </div>
         </div>
       </FilterSection>
