@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { vendorEarningsService } from "@/services/vendorEarningsService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,8 +55,6 @@ export default function EarningsPage() {
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Earnings" description="Revenue, commission and payout totals, booking by booking." />
-
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">Pickup from</label>

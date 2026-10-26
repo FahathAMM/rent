@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorShopProfileService } from "@/services/vendorShopProfileService";
 import { useAuthStore } from "@/store/authStore";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
@@ -58,8 +57,6 @@ export default function ShopProfileSettingsPage() {
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Shop Profile" description="How your shop appears to customers across the public marketplace." />
-
       <Card>
         <CardHeader className="flex-row items-center gap-3 space-y-0">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Building2 className="h-4 w-4" /></div>

@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorAvailabilityService } from "@/services/vendorAvailabilityService";
 import { useAuthStore } from "@/store/authStore";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { cn } from "@/lib/utils";
@@ -99,8 +98,6 @@ export default function VehicleCalendarPage() {
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Calendar" description="Click an available day to block it, or a blocked day to free it up again. Booked days are read-only." />
-
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <SelectInput
           className="w-64"

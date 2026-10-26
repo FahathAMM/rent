@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorInquiryService } from "@/services/vendorInquiryService";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,8 +58,6 @@ export default function VendorInquiriesPage() {
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Inquiries" description="Questions from prospective renters about your vehicles." />
-
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : !inquiries.length ? (

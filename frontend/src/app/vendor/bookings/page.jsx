@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorBookingService } from "@/services/vendorBookingService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
@@ -131,8 +130,6 @@ export default function VendorBookingsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader title="Bookings" description="Respond to booking requests for your vehicles." />
-
         <div className="mb-4 w-56">
           <SelectInput label="Status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
         </div>

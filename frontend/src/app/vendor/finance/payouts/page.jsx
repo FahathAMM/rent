@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { vendorPayoutService } from "@/services/vendorPayoutService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -39,8 +38,6 @@ export default function PayoutsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader title="Payouts" description="Your settlement history — built and paid by the platform's finance team." />
-
         <DataTable columns={columns} data={records} loading={isLoading} />
 
         {data && data.last_page > 1 && (

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorReviewService } from "@/services/vendorReviewService";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextareaInput } from "@/components/forms/FormField";
@@ -68,8 +67,6 @@ export default function VendorReviewsPage() {
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Reviews" description="Published customer reviews for your vehicles — reply to build trust." />
-
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : !reviews.length ? (
