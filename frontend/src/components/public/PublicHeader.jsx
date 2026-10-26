@@ -84,9 +84,12 @@ export function PublicHeader() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105"
+                  className="flex shrink-0 items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-3 shadow-sm transition-colors hover:border-primary/40"
                 >
-                  {getInitials(user?.name) || "U"}
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-xs font-semibold text-white">
+                    {getInitials(user?.name) || "U"}
+                  </span>
+                  <span className="max-w-[9rem] truncate text-sm font-medium">{user?.name ?? "My Account"}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
