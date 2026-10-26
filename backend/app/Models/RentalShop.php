@@ -32,20 +32,31 @@ class RentalShop extends Model
     public const VERIFICATION_VERIFIED = 'verified';
     public const VERIFICATION_REJECTED = 'rejected';
 
+    /** Starter policy sections every new shop gets - the owner edits or removes them under Settings -> Shop Profile -> Policies. */
+    public const DEFAULT_POLICIES = [
+        ['title' => 'Pickup instructions', 'body' => 'Please bring your NIC/passport and driving licence for verification at pickup.'],
+        ['title' => 'Return instructions', 'body' => 'Return the vehicle with the same fuel level as at pickup.'],
+        ['title' => 'Rental terms', 'body' => 'Minimum rental age 21. Full-to-full fuel policy unless otherwise agreed.'],
+        ['title' => 'Cancellation policy', 'body' => 'Free cancellation up to 48 hours before pickup.'],
+    ];
+
     protected $fillable = [
         'owner_user_id', 'name', 'slug', 'description', 'tagline',
         'email', 'phone', 'whatsapp', 'website',
         'address_line_1', 'address_line_2', 'city', 'district', 'postal_code',
         'latitude', 'longitude', 'operating_hours',
-        'pickup_instructions', 'return_instructions', 'rental_terms', 'cancellation_policy',
+        'policies',
         'logo', 'cover_image', 'business_registration_no', 'tax_id',
         'status', 'verification_status', 'is_published', 'published_at', 'suspended_reason',
         'verified_at', 'verified_by',
         'commission_rate_override', 'payout_schedule', 'min_payout_threshold',
     ];
 
+    protected $appends = ['logo_url', 'cover_image_url'];
+
     protected $casts = [
         'operating_hours' => 'array',
+        'policies' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'is_published' => 'boolean',
@@ -57,6 +68,26 @@ class RentalShop extends Model
         'response_rate' => 'decimal:2',
         'tax_id' => 'encrypted',
     ];
+
+    /** Same-origin path - Next.js rewrites /storage/* to the backend (see PlatformDetailResource). */
+    public function getLogoUrlAttribute(): ?string
+    {
+        return self::storageUrl($this->logo);
+    }
+
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        return self::storageUrl($this->cover_image);
+    }
+
+    private static function storageUrl(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        return str_starts_with($path, 'http') || str_starts_with($path, '/') ? $path : '/storage/' . $path;
+    }
 
     public function owner(): BelongsTo
     {

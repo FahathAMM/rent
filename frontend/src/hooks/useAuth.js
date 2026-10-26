@@ -45,7 +45,7 @@ export function useAuth() {
     } catch {}
     storeLogout();
     clearShops();
-    router.push("/login");
+    router.push("/vendor/login");
     toast.success("Logged out successfully");
   };
 

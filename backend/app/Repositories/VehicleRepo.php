@@ -6,6 +6,10 @@ use App\Http\Requests\Vehicle\StoreVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehicleRequest;
 use App\Models\ListingModerationHistory;
 use App\Models\Vehicle;
+use App\Models\VehicleBrand;
+use App\Models\VehicleColour;
+use App\Models\VehicleModel;
+use App\Models\VehicleVariant;
 use App\Services\AuthUser;
 use App\Support\VendorContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -47,12 +51,13 @@ class VehicleRepo
             $data['created_by'] = AuthUser::id();
             $data['status'] = Vehicle::STATUS_DRAFT;
             $data['moderation_status'] = Vehicle::MODERATION_PENDING;
+            $data = $this->withCatalogueNames($data);
 
             $vehicle = $this->model->create($data);
 
             $this->history($vehicle, null, Vehicle::STATUS_DRAFT, 'submitted');
 
-            return $vehicle->fresh(['category']);
+            return $vehicle->fresh(['category', 'brand']);
         });
     }
 
@@ -64,9 +69,16 @@ class VehicleRepo
             $data['slug'] = $this->uniqueSlug($data['title'], $vehicle->id);
         }
 
+        // A variant belongs to one model - drop it if the model changes without a new one.
+        if (isset($data['model_id']) && (int) $data['model_id'] !== $vehicle->model_id && !array_key_exists('variant_id', $data)) {
+            $data['variant_id'] = null;
+        }
+
+        $data = $this->withCatalogueNames($data);
+
         $vehicle->update($data);
 
-        return $vehicle->fresh(['category', 'pricing']);
+        return $vehicle->fresh(['category', 'brand', 'pricing']);
     }
 
     public function destroy(Vehicle $vehicle): void
@@ -99,6 +111,30 @@ class VehicleRepo
         $this->history($vehicle, $from, Vehicle::STATUS_ARCHIVED, 'archived');
 
         return $vehicle->fresh();
+    }
+
+    /**
+     * Copy the chosen brand / model / variant / colour names into the
+     * denormalised make / model / variant / colour columns, so search and
+     * every "Toyota Aqua G" display keep reading plain strings. Only keys
+     * present in $data are touched (partial updates).
+     */
+    private function withCatalogueNames(array $data): array
+    {
+        if (!empty($data['brand_id'])) {
+            $data['make'] = VehicleBrand::findOrFail($data['brand_id'])->name;
+        }
+        if (!empty($data['model_id'])) {
+            $data['model'] = VehicleModel::findOrFail($data['model_id'])->name;
+        }
+        if (array_key_exists('variant_id', $data)) {
+            $data['variant'] = $data['variant_id'] ? VehicleVariant::findOrFail($data['variant_id'])->name : null;
+        }
+        if (array_key_exists('colour_id', $data)) {
+            $data['colour'] = $data['colour_id'] ? VehicleColour::findOrFail($data['colour_id'])->name : null;
+        }
+
+        return $data;
     }
 
     private function history(Vehicle $vehicle, ?string $from, string $to, string $action): void

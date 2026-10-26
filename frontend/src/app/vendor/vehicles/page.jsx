@@ -37,12 +37,12 @@ const FUEL_TYPES = [
 
 const defaultForm = {
   category_id: "",
+  brand_id: "",
   title: "",
-  make: "",
-  model: "",
+  model_id: "",
   year: new Date().getFullYear(),
-  variant: "",
-  colour: "",
+  variant_id: "",
+  colour_id: "",
   registration_number: "",
   transmission: "automatic",
   fuel_type: "petrol",
@@ -83,6 +83,29 @@ export default function VehiclesPage() {
   const { data: categories } = useQuery({
     queryKey: ["public-categories"],
     queryFn: () => publicService.categories().then((r) => r.data.data),
+  });
+
+  const { data: brands } = useQuery({
+    queryKey: ["public-brands"],
+    queryFn: () => publicService.brands().then((r) => r.data.data),
+  });
+
+  // Brand -> Model -> Variant cascade: each list loads once its parent is picked.
+  const { data: models } = useQuery({
+    queryKey: ["public-models", form.brand_id],
+    queryFn: () => publicService.models(form.brand_id).then((r) => r.data.data),
+    enabled: !!form.brand_id,
+  });
+
+  const { data: variants } = useQuery({
+    queryKey: ["public-variants", form.model_id],
+    queryFn: () => publicService.variants(form.model_id).then((r) => r.data.data),
+    enabled: !!form.model_id,
+  });
+
+  const { data: colours } = useQuery({
+    queryKey: ["public-colours"],
+    queryFn: () => publicService.colours().then((r) => r.data.data),
   });
 
   const create = useMutation({
@@ -153,6 +176,9 @@ export default function VehiclesPage() {
 
   const f = (k) => (val) => setForm((p) => ({ ...p, [k]: val }));
   const fi = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  // Changing a parent clears its children - a model belongs to one brand, a variant to one model.
+  const selectBrand = (val) => setForm((p) => ({ ...p, brand_id: val, model_id: "", variant_id: "" }));
+  const selectModel = (val) => setForm((p) => ({ ...p, model_id: val, variant_id: "" }));
   const pf = (k) => (val) => setPricingForm((p) => ({ ...p, [k]: val }));
   const pfi = (k) => (e) => setPricingForm((p) => ({ ...p, [k]: e.target.value }));
 
@@ -167,12 +193,12 @@ export default function VehiclesPage() {
     setEditing(vehicle);
     setForm({
       category_id: vehicle.category_id ? String(vehicle.category_id) : "",
+      brand_id: vehicle.brand_id ? String(vehicle.brand_id) : "",
       title: vehicle.title ?? "",
-      make: vehicle.make ?? "",
-      model: vehicle.model ?? "",
+      model_id: vehicle.model_id ? String(vehicle.model_id) : "",
       year: vehicle.year ?? new Date().getFullYear(),
-      variant: vehicle.variant ?? "",
-      colour: vehicle.colour ?? "",
+      variant_id: vehicle.variant_id ? String(vehicle.variant_id) : "",
+      colour_id: vehicle.colour_id ? String(vehicle.colour_id) : "",
       registration_number: vehicle.registration_number ?? "",
       transmission: vehicle.transmission ?? "automatic",
       fuel_type: vehicle.fuel_type ?? "petrol",
@@ -218,8 +244,8 @@ export default function VehiclesPage() {
       engine_capacity_cc: form.engine_capacity_cc || null,
       luggage_capacity: form.luggage_capacity || null,
       doors: form.doors || null,
-      variant: form.variant || null,
-      colour: form.colour || null,
+      variant_id: form.variant_id || null,
+      colour_id: form.colour_id || null,
     };
     if (editing) update.mutate({ id: editing.id, data: payload });
     else create.mutate(payload);
@@ -232,6 +258,10 @@ export default function VehiclesPage() {
   };
 
   const categoryOptions = (categories ?? []).map((c) => ({ value: String(c.id), label: c.name }));
+  const brandOptions = (brands ?? []).map((b) => ({ value: String(b.id), label: b.name }));
+  const modelOptions = (models ?? []).map((m) => ({ value: String(m.id), label: m.name }));
+  const variantOptions = [{ value: "", label: "None" }, ...(variants ?? []).map((v) => ({ value: String(v.id), label: v.name }))];
+  const colourOptions = [{ value: "", label: "Not specified" }, ...(colours ?? []).map((c) => ({ value: String(c.id), label: c.name }))];
 
   const columns = ({ sortField, sortOrder, handleSort }) => [
     {
@@ -311,11 +341,28 @@ export default function VehiclesPage() {
           <Fieldset legend="Identity" grid={2}>
             <SelectInput label="Category" value={form.category_id} onChange={f("category_id")} options={categoryOptions} required error={errors.category_id?.[0]} />
             <TextInput label="Listing Title" value={form.title} onChange={fi("title")} placeholder="e.g. Toyota Aqua - Colombo" required error={errors.title?.[0]} />
-            <TextInput label="Make" value={form.make} onChange={fi("make")} required error={errors.make?.[0]} />
-            <TextInput label="Model" value={form.model} onChange={fi("model")} required error={errors.model?.[0]} />
+            <SelectInput label="Brand" placeholder="Select brand" value={form.brand_id} onChange={selectBrand} options={brandOptions} required error={errors.brand_id?.[0]} />
+            <SelectInput
+              label="Model"
+              placeholder={form.brand_id ? "Select model" : "Select a brand first"}
+              value={form.model_id}
+              onChange={selectModel}
+              options={modelOptions}
+              disabled={!form.brand_id}
+              required
+              error={errors.model_id?.[0]}
+            />
             <TextInput label="Year" type="number" value={form.year} onChange={fi("year")} required error={errors.year?.[0]} />
-            <TextInput label="Variant" value={form.variant} onChange={fi("variant")} error={errors.variant?.[0]} />
-            <TextInput label="Colour" value={form.colour} onChange={fi("colour")} error={errors.colour?.[0]} />
+            <SelectInput
+              label="Variant"
+              placeholder={form.model_id ? (variants?.length ? "Select variant" : "No variants for this model") : "Select a model first"}
+              value={form.variant_id}
+              onChange={f("variant_id")}
+              options={variantOptions}
+              disabled={!form.model_id || !variants?.length}
+              error={errors.variant_id?.[0]}
+            />
+            <SelectInput label="Colour" placeholder="Select colour" value={form.colour_id} onChange={f("colour_id")} options={colourOptions} error={errors.colour_id?.[0]} />
             <TextInput label="Registration Number" value={form.registration_number} onChange={fi("registration_number")} required error={errors.registration_number?.[0]} />
           </Fieldset>
 

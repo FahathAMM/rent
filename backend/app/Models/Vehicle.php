@@ -37,7 +37,7 @@ class Vehicle extends Model
     public const MODERATION_FLAGGED = 'flagged';
 
     protected $fillable = [
-        'shop_id', 'category_id', 'created_by',
+        'shop_id', 'category_id', 'brand_id', 'model_id', 'variant_id', 'colour_id', 'created_by',
         'title', 'slug', 'make', 'model', 'year', 'variant', 'colour', 'registration_number',
         'transmission', 'fuel_type', 'engine_capacity_cc', 'seating_capacity', 'luggage_capacity',
         'doors', 'air_conditioned', 'features', 'description', 'condition_notes',
@@ -59,6 +59,26 @@ class Vehicle extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(VehicleCategory::class, 'category_id');
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(VehicleBrand::class, 'brand_id');
+    }
+
+    public function vehicleModel(): BelongsTo
+    {
+        return $this->belongsTo(VehicleModel::class, 'model_id');
+    }
+
+    public function vehicleVariant(): BelongsTo
+    {
+        return $this->belongsTo(VehicleVariant::class, 'variant_id');
+    }
+
+    public function vehicleColour(): BelongsTo
+    {
+        return $this->belongsTo(VehicleColour::class, 'colour_id');
     }
 
     public function createdBy(): BelongsTo

@@ -20,7 +20,7 @@ class VehicleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only([
-            'q', 'category_id', 'district', 'city', 'transmission', 'fuel_type',
+            'q', 'category_id', 'brand_id', 'model_id', 'colour_id', 'district', 'city', 'transmission', 'fuel_type',
             'seats_min', 'delivery', 'price_min', 'price_max', 'sort',
         ]);
 

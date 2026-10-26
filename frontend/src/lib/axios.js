@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "@/store/authStore";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "/api",
@@ -35,9 +36,13 @@ api.interceptors.response.use(
       error.networkError = `Cannot reach API at ${(process.env.NEXT_PUBLIC_API_URL || "/api")}. Is the backend running?`;
     }
     if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("pos_token");
-      localStorage.removeItem("pos_user");
-      window.location.href = "/login";
+      // This client is the vendor/owner/staff identity (pos_token) — a stale
+      // or expired token belongs on the vendor sign-in, not the customer
+      // /login. Reset the persisted session too, so the vendor layout stops
+      // treating the visitor as logged in.
+      useAuthStore.getState().logout();
+      const onVendorAuthPage = ["/vendor/login", "/vendor/register"].includes(window.location.pathname);
+      if (!onVendorAuthPage) window.location.href = "/vendor/login";
     }
     return Promise.reject(error);
   }

@@ -27,7 +27,8 @@ class ReviewResource extends JsonResource
             'owner_replied_at' => $this->owner_replied_at?->toISOString(),
             'is_verified_booking' => $this->is_verified_booking,
             'helpful_count' => $this->helpful_count,
-            'reviewer_name' => $this->whenLoaded('user', fn () => $this->user->name),
+            'reviewer_name' => $this->whenLoaded('user', fn () => $this->user?->name),
+            'vehicle' => $this->whenLoaded('vehicle', fn () => $this->vehicle ? ['title' => $this->vehicle->title, 'slug' => $this->vehicle->slug] : null),
             'created_at' => $this->created_at->toISOString(),
         ];
     }

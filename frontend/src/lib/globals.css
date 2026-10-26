@@ -197,6 +197,22 @@
   .animate-login-card { animation: cardEnter 0.01s ease-out both; }
 }
 
+/* ── Infinite horizontal marquee (homepage trust ticker + shop logos) ──── */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee-scroll 28s linear infinite;
+}
+.group:hover .animate-marquee,
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none !important; }
+}
+
 /* ── Rich-text content (editor + storefront render) ────────────────────── */
 .rich-content p           { margin-bottom: 0.6em; line-height: 1.7; }
 .rich-content h2          { font-size: 1.25rem; font-weight: 700; margin-top: 1.2em; margin-bottom: 0.5em; }

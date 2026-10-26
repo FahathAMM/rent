@@ -19,11 +19,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('shop_id')->constrained('rental_shops')->cascadeOnDelete();
             $table->foreignId('category_id')->constrained('vehicle_categories')->restrictOnDelete();
+            // Nullable so older rows/fixtures stay valid; the vendor form requires it.
+            $table->foreignId('brand_id')->nullable()->constrained('vehicle_brands')->restrictOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
 
             $table->string('title');
             $table->string('slug')->unique();
-            $table->string('make');
+            $table->string('make'); // the brand's name, denormalised from brand_id
             $table->string('model');
             $table->unsignedSmallInteger('year');
             $table->string('variant')->nullable();

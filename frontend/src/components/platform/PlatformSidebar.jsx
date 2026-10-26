@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn, getInitials } from "@/lib/utils";
 import { usePlatformAuth } from "@/hooks/usePlatformAuth";
+import { useQuery } from "@tanstack/react-query";
+import { platformDetailService } from "@/services/platformDetailService";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
-  FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag,
+  FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
   Percent, CreditCard, Undo2, Scale, MapPin,
 } from "lucide-react";
 import {
@@ -21,6 +23,9 @@ const NAV_ITEMS = [
   { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/listings", label: "Listing Moderation", icon: Car },
   { href: "/platform/categories", label: "Categories", icon: Tag },
+  { href: "/platform/brands", label: "Brands", icon: BadgeCheck },
+  { href: "/platform/vehicle-models", label: "Models & Variants", icon: Layers },
+  { href: "/platform/vehicle-colours", label: "Colours", icon: Palette },
   { href: "/platform/cities", label: "Districts & Cities", icon: MapPin },
   { href: "/platform/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/platform/payments", label: "Payments", icon: CreditCard },
@@ -43,6 +48,13 @@ function isActive(pathname, href) {
 }
 
 export function PlatformSidebar({ open = false, onClose }) {
+  // Same public branding the marketing site and vendor sidebar use.
+  const { data: brand = {} } = useQuery({
+    queryKey: ["platform-details"],
+    queryFn: () => platformDetailService.get().then((r) => r.data.data),
+    staleTime: 60_000,
+  });
+  const brandName = brand.name || "RentLanka";
   const pathname = usePathname();
   const { admin, token, logout } = usePlatformAuth();
 
@@ -72,16 +84,29 @@ export function PlatformSidebar({ open = false, onClose }) {
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold leading-none text-white">MyBiz2Flow</p>
+        <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-3 py-4">
+          {/* The app name opens the public site in a new tab, keeping the admin open. */}
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open the public website"
+            className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-800/60"
+          >
+            {brand.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={brand.logo} alt={brandName} className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1" />
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold leading-none text-white">{brandName}</p>
               <p className="text-[11px] text-slate-400 mt-1">Platform Admin</p>
             </div>
-          </div>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
+          </a>
           <button type="button" onClick={onClose} className="lg:hidden rounded-md p-1.5 hover:bg-slate-800">
             <X className="h-5 w-5" />
           </button>

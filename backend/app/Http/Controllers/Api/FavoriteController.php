@@ -38,6 +38,14 @@ class FavoriteController extends Controller
         ]);
     }
 
+    /** Just the saved vehicle ids - lets any page show a filled heart without loading full favorites. */
+    public function ids(): JsonResponse
+    {
+        $ids = Favorite::where('user_id', auth('customer')->id())->pluck('vehicle_id');
+
+        return response()->json(['data' => $ids]);
+    }
+
     public function store(Request $request, int $vehicle): JsonResponse
     {
         abort_unless(DB::table('vehicles')->where('id', $vehicle)->exists(), 404, 'Vehicle not found.');

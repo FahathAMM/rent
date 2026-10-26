@@ -14,12 +14,13 @@ class StoreVehicleRequest extends FormRequest
     {
         return [
             'category_id' => ['required', 'integer', 'exists:vehicle_categories,id'],
+            'brand_id' => ['required', 'integer', Rule::exists('vehicle_brands', 'id')->where('is_active', true)],
             'title' => ['required', 'string', 'max:255'],
-            'make' => ['required', 'string', 'max:100'],
-            'model' => ['required', 'string', 'max:100'],
+            // The model must sit under the chosen brand, the variant under the chosen model.
+            'model_id' => ['required', 'integer', Rule::exists('vehicle_models', 'id')->where('is_active', true)->where('brand_id', $this->input('brand_id'))],
             'year' => ['required', 'integer', 'min:1980', 'max:' . (date('Y') + 1)],
-            'variant' => ['nullable', 'string', 'max:100'],
-            'colour' => ['nullable', 'string', 'max:50'],
+            'variant_id' => ['nullable', 'integer', Rule::exists('vehicle_variants', 'id')->where('is_active', true)->where('model_id', $this->input('model_id'))],
+            'colour_id' => ['nullable', 'integer', Rule::exists('vehicle_colours', 'id')->where('is_active', true)],
             'registration_number' => [
                 'required', 'string', 'max:20',
                 Rule::unique('vehicles', 'registration_number')->where('shop_id', VendorContext::shopId()),

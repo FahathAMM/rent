@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
 import { useCustomerAuth } from "@/hooks/useCustomerAuth";
+import { useAuthStore } from "@/store/authStore";
+import { useShopStore } from "@/store/shopStore";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +15,10 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, getInitials } from "@/lib/utils";
-import { Menu, Store, LayoutDashboard, LogOut } from "lucide-react";
+import { Menu, Store, LayoutDashboard, LogOut, LogIn } from "lucide-react";
 
+// No "Home" item — the brand logo/name links to the home page.
 const NAV_ITEMS = [
-  { href: "/", label: "Home" },
   { href: "/browse", label: "Browse Vehicles" },
   { href: "/locations", label: "Browse by Location" },
   { href: "/shops", label: "Rental Companies" },
@@ -26,13 +29,24 @@ function isActive(pathname, href) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 }
 
-/** The one top bar shared by every (public) page — logo, primary nav, and sign-in/sign-up links. */
+/** The one top bar shared by every (public) page — logo, primary nav, and the customer sign-in link. */
 export function PublicHeader() {
   const pathname = usePathname();
   const { isAuthenticated, customer, logout } = useCustomerAuth();
-  // No "already a vendor" concept for a customer account anymore — vendor
-  // sign-up is a fully separate account, so this is always shown.
-  const showBecomeVendor = true;
+  // Vendor sign-in is a separate account (the pos-auth store), so a vendor
+  // browsing the public site gets a link back to their panel instead of
+  // "Become a Vendor". Read only after mount — the store is persisted in
+  // localStorage, so the server render can't know about it.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const vendorUser = useAuthStore((s) => s.user);
+  const vendorSignedIn = useAuthStore((s) => s.isAuthenticated) && mounted;
+  const { shops, activeShopId } = useShopStore();
+  const activeShop = shops.find((s) => String(s.shop_id) === String(activeShopId)) ?? shops[0];
+  // A vendor who registered but hasn't created a shop yet goes to onboarding.
+  const vendorHref = activeShop ? "/vendor/dashboard" : "/vendor/shops/new";
+  const vendorLabel = activeShop?.shop_name ?? vendorUser?.name ?? "Vendor panel";
+  const showBecomeVendor = !vendorSignedIn;
 
   const { data: brand } = useQuery({
     queryKey: ["platform-details"],
@@ -84,6 +98,22 @@ export function PublicHeader() {
             </Button>
           )}
 
+          {vendorSignedIn && (
+            <Link
+              href={vendorHref}
+              title="Go to your vendor panel"
+              className="hidden shrink-0 items-center gap-2 rounded-full border border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 py-1 pl-1 pr-3 shadow-sm transition-colors hover:border-orange-500/50 sm:flex"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
+                <Store className="h-4 w-4" />
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="max-w-[10rem] truncate text-sm font-medium">{vendorLabel}</span>
+                <span className="text-[11px] text-muted-foreground">{activeShop ? "Vendor panel" : "Finish shop setup"}</span>
+              </span>
+            </Link>
+          )}
+
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -118,12 +148,9 @@ export function PublicHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="hidden items-center gap-2 sm:flex">
-              <Button variant="outline" asChild><Link href="/login">Sign in</Link></Button>
-              <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-                <Link href="/register">Sign up</Link>
-              </Button>
-            </div>
+            <Button asChild className="hidden gap-1.5 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90 sm:flex">
+              <Link href="/login"><LogIn className="h-4 w-4" /> Sign in</Link>
+            </Button>
           )}
 
           {/* ── Mobile menu ────────────────────────────────────────────── */}
@@ -145,11 +172,21 @@ export function PublicHeader() {
                   <DropdownMenuItem asChild><Link href="/vendor/register"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
                 </>
               )}
+              {vendorSignedIn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={vendorHref}>
+                      <Store className="mr-2 h-4 w-4" />
+                      <span className="truncate">{vendorLabel}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
               {!isAuthenticated && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link href="/login">Sign in</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link href="/register">Sign up</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/login"><LogIn className="mr-2 h-4 w-4" /> Sign in</Link></DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>

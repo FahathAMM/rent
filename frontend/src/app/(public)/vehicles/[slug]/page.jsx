@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
@@ -9,6 +9,7 @@ import { favoriteService } from "@/services/favoriteService";
 import { reportService } from "@/services/reportService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { useAuth } from "@/hooks/useAuth";
+import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { BookingRequestWidget } from "@/components/marketplace/BookingRequestWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -150,10 +151,13 @@ export default function VehicleDetailPage() {
   const { slug } = useParams();
   const router = useRouter();
   const { format } = useCurrencyFormat();
-  const { user, isAuthenticated } = useAuth();
+  // Favorites + the contact prefill belong to the customer account. Reports
+  // still go through the vendor (users) API, so that button keeps useAuth.
+  const { customer, isAuthenticated: customerSignedIn } = useCustomerAuth();
+  const { isAuthenticated } = useAuth();
+  const qc = useQueryClient();
   const [contacting, setContacting] = useState(false);
   const [reporting, setReporting] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const requireLogin = () => {
     toast.error("Please log in first");
@@ -165,10 +169,22 @@ export default function VehicleDetailPage() {
     queryFn: () => publicService.vehicle(slug).then((r) => r.data.data),
   });
 
+  // Server truth for the heart, so it survives a refresh.
+  const { data: favoriteIds } = useQuery({
+    queryKey: ["my-favorite-ids"],
+    queryFn: () => favoriteService.ids().then((r) => r.data.data),
+    enabled: customerSignedIn,
+  });
+  const saved = !!vehicle && (favoriteIds ?? []).includes(vehicle.id);
+
   const favorite = useMutation({
-    mutationFn: () => favoriteService.add(vehicle.id),
-    onSuccess: () => { setSaved(true); toast.success("Saved to favorites"); },
-    onError: () => toast.error("Please log in to save favorites"),
+    mutationFn: () => (saved ? favoriteService.remove(vehicle.id) : favoriteService.add(vehicle.id)),
+    onSuccess: () => {
+      toast.success(saved ? "Removed from favorites" : "Saved to favorites");
+      qc.invalidateQueries({ queryKey: ["my-favorite-ids"] });
+      qc.invalidateQueries({ queryKey: ["my-favorites"] });
+    },
+    onError: () => toast.error("Could not update favorites"),
   });
 
   const { data: reviews } = useQuery({
@@ -202,7 +218,7 @@ export default function VehicleDetailPage() {
             <ArrowLeft className="h-4 w-4" /> Back to browse
           </Link>
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" className="gap-1.5 bg-card" onClick={() => (isAuthenticated ? favorite.mutate() : requireLogin())} disabled={favorite.isPending || saved}>
+            <Button variant="outline" size="sm" className="gap-1.5 bg-card" onClick={() => (customerSignedIn ? favorite.mutate() : requireLogin())} disabled={favorite.isPending}>
               <Heart className={`h-4 w-4 ${saved ? "fill-current text-destructive" : ""}`} /> {saved ? "Saved" : "Save"}
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5 bg-card text-muted-foreground" onClick={() => (isAuthenticated ? setReporting(true) : requireLogin())}>
@@ -321,7 +337,7 @@ export default function VehicleDetailPage() {
         </div>
       </div>
 
-      <ContactOwnerDialog open={contacting} onOpenChange={setContacting} vehicle={vehicle} user={isAuthenticated ? user : null} />
+      <ContactOwnerDialog open={contacting} onOpenChange={setContacting} vehicle={vehicle} user={customerSignedIn ? customer : null} />
       <ReportListingDialog open={reporting} onOpenChange={setReporting} vehicle={vehicle} />
     </div>
   );

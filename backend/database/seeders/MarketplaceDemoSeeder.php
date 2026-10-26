@@ -21,7 +21,10 @@ use App\Models\SecurityDeposit;
 use App\Models\ShopMember;
 use App\Models\ShopSettings;
 use App\Models\Vehicle;
+use App\Models\VehicleBrand;
 use App\Models\VehicleCategory;
+use App\Models\VehicleColour;
+use App\Models\VehicleModel;
 use App\Models\VehiclePickupLocation;
 use App\Models\VehiclePricing;
 use App\Support\ShopAbility;
@@ -154,10 +157,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'city' => $def['city'],
                 'district' => $def['district'],
                 'operating_hours' => $this->defaultOperatingHours(),
-                'pickup_instructions' => 'Please bring your NIC/passport and driving licence for verification at pickup.',
-                'return_instructions' => 'Return the vehicle with the same fuel level as at pickup.',
-                'rental_terms' => 'Minimum rental age 21. Full-to-full fuel policy unless otherwise agreed.',
-                'cancellation_policy' => 'Free cancellation up to 48 hours before pickup.',
+                'policies' => RentalShop::DEFAULT_POLICIES,
                 'business_registration_no' => 'PV ' . fake()->numerify('########'),
                 'status' => RentalShop::STATUS_ACTIVE,
                 'verification_status' => RentalShop::VERIFICATION_VERIFIED,
@@ -217,6 +217,10 @@ class MarketplaceDemoSeeder extends Seeder
     private function seedVehicles(array $shops): array
     {
         $categories = VehicleCategory::pluck('id', 'slug');
+        $brands = VehicleBrand::pluck('id', 'name');
+        // "brand_id:Model name" => model, so the same model name under two brands can't collide.
+        $models = VehicleModel::with('variants')->get()->keyBy(fn (VehicleModel $m) => "{$m->brand_id}:{$m->name}");
+        $colours = VehicleColour::whereIn('name', ['White', 'Silver', 'Black', 'Red', 'Blue'])->get();
 
         // [shop index into $shops (0-2), make, model, category slug, transmission, fuel, seats, daily_rate, deposit]
         $specs = [
@@ -240,19 +244,27 @@ class MarketplaceDemoSeeder extends Seeder
         $vehicles = [];
         foreach ($specs as $i => [$shopIndex, $make, $model, $catSlug, $transmission, $fuel, $seats, $dailyRate, $deposit]) {
             $shop = $shops[$shopIndex];
+            $catalogueModel = $models[($brands[$make] ?? 0) . ":{$model}"] ?? null;
+            $variant = $catalogueModel?->variants->isNotEmpty() ? $catalogueModel->variants->random() : null;
+            $colour = $colours->random();
             $title = "{$make} {$model} - " . ucfirst($shop->city ?? 'Sri Lanka');
             $slug = Str::slug("{$title}-{$i}") . '-' . fake()->unique()->numerify('###');
 
             $vehicle = Vehicle::create([
                 'shop_id' => $shop->id,
                 'category_id' => $categories[$catSlug] ?? $categories['car'],
+                'brand_id' => $brands[$make] ?? null,
+                'model_id' => $catalogueModel?->id,
+                'variant_id' => $variant?->id,
+                'colour_id' => $colour->id,
                 'created_by' => $shop->owner_user_id,
                 'title' => $title,
                 'slug' => $slug,
                 'make' => $make,
                 'model' => $model,
+                'variant' => $variant?->name,
                 'year' => fake()->numberBetween(2017, 2024),
-                'colour' => fake()->randomElement(['White', 'Silver', 'Black', 'Red', 'Blue']),
+                'colour' => $colour->name,
                 'registration_number' => fake()->unique()->regexify('[A-Z]{2,3}-[0-9]{4}'),
                 'transmission' => $transmission,
                 'fuel_type' => $fuel,

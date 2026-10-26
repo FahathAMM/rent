@@ -6,7 +6,11 @@ use App\Models\Administration\User;
 use App\Models\RentalShop;
 use App\Models\ShopMember;
 use App\Models\Vehicle;
+use App\Models\VehicleBrand;
 use App\Models\VehicleCategory;
+use App\Models\VehicleColour;
+use App\Models\VehicleModel;
+use App\Models\VehicleVariant;
 use App\Support\ShopAbility;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,12 +31,20 @@ class VehicleAuthorizationTest extends TestCase
 
     private RentalShop $shop;
     private VehicleCategory $category;
+    private VehicleBrand $brand;
+    private VehicleModel $model;
+    private VehicleVariant $variant;
+    private VehicleColour $colour;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->category = VehicleCategory::create(['name' => 'Car', 'slug' => 'car', 'sort_order' => 1, 'is_active' => true]);
+        $this->brand = VehicleBrand::create(['name' => 'Toyota', 'slug' => 'toyota', 'is_active' => true]);
+        $this->model = VehicleModel::create(['brand_id' => $this->brand->id, 'name' => 'Aqua', 'slug' => 'aqua', 'is_active' => true]);
+        $this->variant = VehicleVariant::create(['model_id' => $this->model->id, 'name' => 'G', 'is_active' => true]);
+        $this->colour = VehicleColour::create(['name' => 'White', 'slug' => 'white', 'hex' => '#FFFFFF', 'is_active' => true]);
         $owner = User::factory()->create();
         $this->shop = RentalShop::factory()->create(['owner_user_id' => $owner->id]);
         ShopMember::create(['shop_id' => $this->shop->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active']);
@@ -46,7 +58,7 @@ class VehicleAuthorizationTest extends TestCase
     private function payload(): array
     {
         return [
-            'category_id' => $this->category->id, 'title' => 'New Car', 'make' => 'Toyota', 'model' => 'Aqua',
+            'category_id' => $this->category->id, 'brand_id' => $this->brand->id, 'model_id' => $this->model->id, 'title' => 'New Car', 'make' => 'Toyota', 'model' => 'Aqua',
             'year' => 2021, 'registration_number' => 'ZZZ-' . rand(1000, 9999), 'transmission' => 'automatic',
             'fuel_type' => 'hybrid', 'seating_capacity' => 5,
         ];
@@ -58,6 +70,75 @@ class VehicleAuthorizationTest extends TestCase
             ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertCreated();
+    }
+
+    public function test_make_model_variant_and_colour_names_come_from_the_catalogue_not_the_request(): void
+    {
+        $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->postJson('/api/vehicles', [
+                'make' => 'Typo Motors', 'model' => 'Aqqua',
+                'variant_id' => $this->variant->id, 'colour_id' => $this->colour->id,
+            ] + $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.brand_id', $this->brand->id)
+            ->assertJsonPath('data.make', 'Toyota')
+            ->assertJsonPath('data.model', 'Aqua')
+            ->assertJsonPath('data.variant', 'G')
+            ->assertJsonPath('data.colour', 'White');
+    }
+
+    public function test_a_model_from_another_brand_is_rejected(): void
+    {
+        $suzuki = VehicleBrand::create(['name' => 'Suzuki', 'slug' => 'suzuki', 'is_active' => true]);
+        $alto = VehicleModel::create(['brand_id' => $suzuki->id, 'name' => 'Alto', 'slug' => 'alto', 'is_active' => true]);
+
+        $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->postJson('/api/vehicles', ['model_id' => $alto->id] + $this->payload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('model_id');
+    }
+
+    public function test_a_variant_from_another_model_is_rejected(): void
+    {
+        $premio = VehicleModel::create(['brand_id' => $this->brand->id, 'name' => 'Premio', 'slug' => 'premio', 'is_active' => true]);
+        $premioX = VehicleVariant::create(['model_id' => $premio->id, 'name' => 'X', 'is_active' => true]);
+
+        $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->postJson('/api/vehicles', ['variant_id' => $premioX->id] + $this->payload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('variant_id');
+    }
+
+    public function test_changing_the_model_drops_a_variant_that_belonged_to_the_old_one(): void
+    {
+        $created = $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->postJson('/api/vehicles', ['variant_id' => $this->variant->id] + $this->payload())
+            ->assertCreated();
+
+        $premio = VehicleModel::create(['brand_id' => $this->brand->id, 'name' => 'Premio', 'slug' => 'premio', 'is_active' => true]);
+
+        $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->putJson('/api/vehicles/' . $created->json('data.id'), ['model_id' => $premio->id])
+            ->assertOk()
+            ->assertJsonPath('data.model', 'Premio')
+            ->assertJsonPath('data.variant_id', null)
+            ->assertJsonPath('data.variant', null);
+    }
+
+    public function test_an_inactive_brand_cannot_be_chosen(): void
+    {
+        $this->brand->update(['is_active' => false]);
+
+        $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->postJson('/api/vehicles', $this->payload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('brand_id');
     }
 
     public function test_staff_without_listings_create_ability_is_denied(): void

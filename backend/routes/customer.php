@@ -46,6 +46,7 @@ Route::middleware('customer.auth')->group(function () {
     // never Eloquent-bound, so ShopScope never gets a chance to fail
     // this closed for a customer with no shop context.
     Route::get('favorites', [FavoriteController::class, 'index']);
+    Route::get('favorites/ids', [FavoriteController::class, 'ids']);
     Route::post('favorites/{vehicle}', [FavoriteController::class, 'store']);
     Route::delete('favorites/{vehicle}', [FavoriteController::class, 'destroy']);
 });
