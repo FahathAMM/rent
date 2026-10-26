@@ -8,11 +8,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { Menu, User as UserIcon } from "lucide-react";
+import { cn, getInitials } from "@/lib/utils";
+import { Menu, Store, LayoutDashboard, LogOut } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
@@ -20,7 +20,6 @@ const NAV_ITEMS = [
   { href: "/locations", label: "Browse by Location" },
   { href: "/shops", label: "Rental Companies" },
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/account/become-owner", label: "Become a Vendor" },
 ];
 
 function isActive(pathname, href) {
@@ -30,7 +29,7 @@ function isActive(pathname, href) {
 /** The one top bar shared by every (public) page — logo, primary nav, and sign-in/sign-up links. */
 export function PublicHeader() {
   const pathname = usePathname();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   const { data: brand } = useQuery({
     queryKey: ["platform-details"],
@@ -72,12 +71,42 @@ export function PublicHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            asChild
+            className="hidden gap-1.5 border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 text-foreground hover:border-orange-500/40 hover:from-orange-500/15 hover:via-pink-500/15 hover:to-violet-500/15 sm:flex"
+          >
+            <Link href="/account/become-owner"><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
+          </Button>
+
           {isAuthenticated ? (
-            <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              <Link href="/account/dashboard">
-                <UserIcon className="mr-2 h-4 w-4" /> {user?.name?.split(" ")[0] ?? "My Account"}
-              </Link>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105"
+                >
+                  {getInitials(user?.name) || "U"}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="flex flex-col gap-0.5">
+                  <span className="truncate text-sm font-semibold">{user?.name ?? "My Account"}</span>
+                  <span className="truncate text-xs font-normal text-muted-foreground">{user?.email}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/account/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> My Account</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="sm:hidden">
+                  <Link href="/account/become-owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" /> Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
               <Button variant="outline" asChild><Link href="/login">Sign in</Link></Button>
@@ -100,6 +129,8 @@ export function PublicHeader() {
                   <Link href={item.href}>{item.label}</Link>
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild><Link href="/account/become-owner"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
               {!isAuthenticated && (
                 <>
                   <DropdownMenuSeparator />
