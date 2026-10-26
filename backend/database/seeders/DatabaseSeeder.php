@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
         $this->call(VehicleColourSeeder::class);
         $this->call(PlatformSettingSeeder::class);
         $this->call(SriLankaLocationSeeder::class);
+        $this->call(HeroSlideSeeder::class);
 
         if (!app()->environment('production')) {
             $this->call(MarketplaceDemoSeeder::class);

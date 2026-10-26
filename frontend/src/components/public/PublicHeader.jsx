@@ -54,7 +54,7 @@ export function PublicHeader() {
     staleTime: 60_000,
   });
 
-  const brandName = brand?.name || "RentLanka";
+  const brandName = brand?.name || "LankaLane";
   const logoUrl = brand?.logo || null;
 
   return (

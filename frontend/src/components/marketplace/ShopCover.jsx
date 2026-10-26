@@ -35,7 +35,7 @@ function BrandBanner({ variant, className }) {
     staleTime: 60_000,
   });
 
-  const name = brand?.name || "RentLanka";
+  const name = brand?.name || "LankaLane";
   const tagline = brand?.tagline;
   const logo = brand?.logo || null;
 

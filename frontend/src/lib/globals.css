@@ -239,3 +239,35 @@
   float: left;
   height: 0;
 }
+
+/* Home page locations map (components/public/LocationsMap.jsx) — gradient count bubbles. */
+.ll-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 3px solid #fff;
+  background: linear-gradient(135deg, #f97316, #ec4899 55%, #8b5cf6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px -4px rgb(236 72 153 / 0.55);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ll-pin:hover,
+.ll-pin-active {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 6px rgb(236 72 153 / 0.25), 0 10px 22px -4px rgb(236 72 153 / 0.6);
+}
+/* Keep the (licence-required) OpenStreetMap credit, but small and unobtrusive. */
+.ll-map .leaflet-control-attribution {
+  background: rgb(255 255 255 / 0.6);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 0 4px;
+  border-top-left-radius: 4px;
+}
+.ll-map .leaflet-control-attribution a {
+  color: inherit;
+}

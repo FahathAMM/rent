@@ -33,7 +33,7 @@ export function AccountSidebar({ navigation, user, onLogout, isVendor, open = fa
     queryFn: () => platformDetailService.get().then((r) => r.data.data),
     staleTime: 60_000,
   });
-  const brandName = brand?.name || "RentLanka";
+  const brandName = brand?.name || "LankaLane";
   const logoUrl = brand?.logo || null;
 
   return (

@@ -147,7 +147,7 @@ export function Sidebar({ activeModule, navigation, open = false, onClose, topSl
     queryFn: () => platformDetailService.get().then((r) => r.data.data),
     staleTime: 60_000,
   });
-  const brandName = brand.name || "RentLanka";
+  const brandName = brand.name || "LankaLane";
   const tagline   = brand.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
   const logoUrl   = brand.logo || null;
 

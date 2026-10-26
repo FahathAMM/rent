@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn, getInitials } from "@/lib/utils";
@@ -10,38 +11,73 @@ import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
-  Percent, CreditCard, Undo2, Scale, MapPin,
+  Percent, CreditCard, Undo2, Scale, MapPin, GalleryHorizontal, ChevronDown,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const NAV_ITEMS = [
-  { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/platform/customers", label: "Customers", icon: UserCheck },
-  { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
-  { href: "/platform/listings", label: "Listing Moderation", icon: Car },
-  { href: "/platform/categories", label: "Categories", icon: Tag },
-  { href: "/platform/brands", label: "Brands", icon: BadgeCheck },
-  { href: "/platform/vehicle-models", label: "Models & Variants", icon: Layers },
-  { href: "/platform/vehicle-colours", label: "Colours", icon: Palette },
-  { href: "/platform/cities", label: "Districts & Cities", icon: MapPin },
-  { href: "/platform/bookings", label: "Bookings", icon: CalendarCheck },
-  { href: "/platform/payments", label: "Payments", icon: CreditCard },
-  { href: "/platform/refunds", label: "Refunds", icon: Undo2 },
-  { href: "/platform/payouts", label: "Payouts", icon: Banknote },
-  { href: "/platform/commissions", label: "Commissions", icon: Percent },
-  { href: "/platform/reconciliation", label: "Reconciliation", icon: Scale },
-  { href: "/platform/disputes", label: "Disputes", icon: AlertTriangle },
-  { href: "/platform/abuse-reports", label: "Abuse Reports", icon: Flag },
-  { href: "/platform/reviews", label: "Reviews", icon: Star },
-  { href: "/platform/users", label: "Users", icon: Users },
-  { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
-  // /platform/logs (custom log viewer) temporarily hidden from nav — the
-  // page and its API routes still work if linked to directly.
-  { href: "/platform/settings", label: "Settings", icon: Settings },
+// /platform/logs (custom log viewer) temporarily hidden from nav — the
+// page and its API routes still work if linked to directly. The external
+// Log Viewer link is appended to "System" at render time (needs the token).
+const NAV_GROUPS = [
+  {
+    id: "overview", label: "Overview",
+    items: [{ href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    id: "marketplace", label: "Marketplace",
+    items: [
+      { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
+      { href: "/platform/listings", label: "Listing Moderation", icon: Car },
+      { href: "/platform/customers", label: "Customers", icon: UserCheck },
+      { href: "/platform/bookings", label: "Bookings", icon: CalendarCheck },
+      { href: "/platform/reviews", label: "Reviews", icon: Star },
+    ],
+  },
+  {
+    id: "catalogue", label: "Catalogue",
+    items: [
+      { href: "/platform/categories", label: "Categories", icon: Tag },
+      { href: "/platform/brands", label: "Brands", icon: BadgeCheck },
+      { href: "/platform/vehicle-models", label: "Models & Variants", icon: Layers },
+      { href: "/platform/vehicle-colours", label: "Colours", icon: Palette },
+      { href: "/platform/cities", label: "Districts & Cities", icon: MapPin },
+    ],
+  },
+  {
+    id: "website", label: "Website",
+    items: [{ href: "/platform/hero-slides", label: "Hero Slides", icon: GalleryHorizontal }],
+  },
+  {
+    id: "finance", label: "Finance",
+    items: [
+      { href: "/platform/payments", label: "Payments", icon: CreditCard },
+      { href: "/platform/refunds", label: "Refunds", icon: Undo2 },
+      { href: "/platform/payouts", label: "Payouts", icon: Banknote },
+      { href: "/platform/commissions", label: "Commissions", icon: Percent },
+      { href: "/platform/reconciliation", label: "Reconciliation", icon: Scale },
+    ],
+  },
+  {
+    id: "trust", label: "Trust & Safety",
+    items: [
+      { href: "/platform/disputes", label: "Disputes", icon: AlertTriangle },
+      { href: "/platform/abuse-reports", label: "Abuse Reports", icon: Flag },
+    ],
+  },
+  {
+    id: "system", label: "System",
+    items: [
+      { href: "/platform/users", label: "Users", icon: Users },
+      { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
+      { href: "/platform/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
+
+const COLLAPSED_KEY = "platform-sidebar-collapsed";
 
 function isActive(pathname, href) {
   return pathname === href || pathname.startsWith(href + "/");
@@ -54,7 +90,7 @@ export function PlatformSidebar({ open = false, onClose }) {
     queryFn: () => platformDetailService.get().then((r) => r.data.data),
     staleTime: 60_000,
   });
-  const brandName = brand.name || "RentLanka";
+  const brandName = brand.name || "LankaLane";
   const pathname = usePathname();
   const { admin, token, logout } = usePlatformAuth();
 
@@ -65,10 +101,29 @@ export function PlatformSidebar({ open = false, onClose }) {
   // this first request — RestrictLogViewerToOwner checks it identifies the
   // platform owner, then remembers that in the session for the page's own
   // follow-up AJAX calls.
-  const navItems = [
-    ...NAV_ITEMS,
-    { href: `/log-viewer?token=${encodeURIComponent(token ?? "")}`, label: "Log Viewer", icon: FileSearch, external: true },
-  ];
+  const groups = NAV_GROUPS.map((g) => (g.id !== "system" ? g : {
+    ...g,
+    items: [
+      ...g.items.slice(0, 2),
+      { href: `/log-viewer?token=${encodeURIComponent(token ?? "")}`, label: "Log Viewer", icon: FileSearch, external: true },
+      ...g.items.slice(2),
+    ],
+  }));
+
+  // Collapsed groups are a per-browser convenience; the group holding the
+  // current page is always shown open regardless.
+  const [collapsed, setCollapsed] = useState([]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]");
+      if (Array.isArray(saved)) setCollapsed(saved);
+    } catch {}
+  }, []);
+  const toggleGroup = (id) => setCollapsed((prev) => {
+    const next = prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id];
+    try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch {}
+    return next;
+  });
 
   return (
     <>
@@ -112,32 +167,63 @@ export function PlatformSidebar({ open = false, onClose }) {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto thin-scrollbar px-3 py-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = !item.external && isActive(pathname, item.href);
-            const className = cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              active
-                ? "bg-indigo-500/15 text-indigo-300"
-                : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
-            );
-
-            if (item.external) {
-              return (
-                <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className={className}>
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {item.label}
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 ml-auto opacity-60" />
-                </a>
-              );
-            }
+        <nav className="flex-1 space-y-4 overflow-y-auto thin-scrollbar px-3 py-4">
+          {groups.map((group) => {
+            const hasActive = group.items.some((item) => !item.external && isActive(pathname, item.href));
+            // Single-link groups (Overview, Website) don't collapse.
+            const collapsible = group.items.length > 1;
+            const isOpen = !collapsible || hasActive || !collapsed.includes(group.id);
 
             return (
-              <Link key={item.href} href={item.href} onClick={onClose} className={className}>
-                <Icon className="h-5 w-5 shrink-0" />
-                {item.label}
-              </Link>
+              <div key={group.id}>
+                {collapsible ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.id)}
+                    aria-expanded={isOpen}
+                    className="mb-1 flex w-full items-center gap-2 rounded-md px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-300"
+                  >
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !isOpen && "-rotate-90")} />
+                  </button>
+                ) : (
+                  <p className="mb-1 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{group.label}</p>
+                )}
+
+                {isOpen && (
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = !item.external && isActive(pathname, item.href);
+                      const className = cn(
+                        "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-indigo-500/15 text-indigo-300"
+                          : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+                      );
+                      const marker = active && <span aria-hidden="true" className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-indigo-400" />;
+
+                      if (item.external) {
+                        return (
+                          <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className={className}>
+                            <Icon className="h-[18px] w-[18px] shrink-0" />
+                            {item.label}
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 ml-auto opacity-60" />
+                          </a>
+                        );
+                      }
+
+                      return (
+                        <Link key={item.href} href={item.href} onClick={onClose} className={className} aria-current={active ? "page" : undefined}>
+                          {marker}
+                          <Icon className="h-[18px] w-[18px] shrink-0" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

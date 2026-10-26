@@ -34,6 +34,25 @@ class PlatformVehicleCatalogueTest extends TestCase
         return $this->withHeader('Authorization', "Bearer {$this->token}")->withHeader('Accept', 'application/json');
     }
 
+    public function test_brand_logo_size_type_and_dimensions_are_validated(): void
+    {
+        $post = fn ($logo, $slug) => $this->admin()->post('/api/platform/brands', ['name' => 'X', 'slug' => $slug, 'logo' => $logo]);
+
+        $post(UploadedFile::fake()->image('tiny.png', 32, 32), 'tiny')
+            ->assertStatus(422)->assertJsonValidationErrors(['logo' => 'between 64×64 and 2000×2000']);
+
+        $post(UploadedFile::fake()->image('huge.png', 2400, 800), 'huge')
+            ->assertStatus(422)->assertJsonValidationErrors('logo');
+
+        $post(UploadedFile::fake()->image('heavy.png', 400, 400)->size(3000), 'heavy')
+            ->assertStatus(422)->assertJsonValidationErrors(['logo' => '2 MB']);
+
+        $post(UploadedFile::fake()->create('logo.svg', 4, 'image/svg+xml'), 'svg')
+            ->assertStatus(422)->assertJsonValidationErrors('logo');
+
+        $post(UploadedFile::fake()->image('ok.webp', 400, 400), 'ok')->assertCreated();
+    }
+
     public function test_a_brand_can_be_created_with_a_logo_listed_updated_and_deleted(): void
     {
         $created = $this->admin()->post('/api/platform/brands', [

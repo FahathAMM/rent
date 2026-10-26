@@ -39,7 +39,7 @@ class PlatformSeeder extends Seeder
     private function seedPlatformDetail(): void
     {
         PlatformDetail::firstOrCreate([], [
-            'name'    => 'RentLanka',
+            'name'    => 'LankaLane',
             'tagline' => 'Rent any vehicle, anywhere in Sri Lanka.',
         ]);
     }

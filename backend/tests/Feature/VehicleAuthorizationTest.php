@@ -72,6 +72,34 @@ class VehicleAuthorizationTest extends TestCase
             ->assertCreated();
     }
 
+    /**
+     * The add-vehicle form sends every pricing field, optional ones as ""
+     * (-> null). NOT NULL columns like security_deposit must fall back to
+     * their defaults instead of failing the insert.
+     */
+    public function test_pricing_saves_with_optional_fields_left_empty(): void
+    {
+        $id = $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->postJson('/api/vehicles', $this->payload())
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->as($this->shop->owner)
+            ->withHeader('X-Shop-Id', (string) $this->shop->id)
+            ->putJson("/api/vehicles/{$id}/pricing", [
+                'daily_rate' => '5500',
+                'weekly_rate' => '', 'monthly_rate' => '', 'security_deposit' => '',
+                'deposit_method' => 'cash_on_pickup', 'mileage_allowance_per_day_km' => '',
+                'driver_rate_per_day' => '', 'delivery_available' => false, 'min_rental_days' => '',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('vehicle_pricing', [
+            'vehicle_id' => $id, 'daily_rate' => 5500, 'security_deposit' => 0, 'min_rental_days' => 1,
+        ]);
+    }
+
     public function test_make_model_variant_and_colour_names_come_from_the_catalogue_not_the_request(): void
     {
         $this->as($this->shop->owner)

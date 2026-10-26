@@ -10,6 +10,7 @@ export const publicService = {
   shopVehicles: (slug, params) => api.get(`/public/shops/${slug}/vehicles`, { params }),
   shopReviews: (slug, params) => api.get(`/public/shops/${slug}/reviews`, { params }),
   categories: () => api.get("/public/categories"),
+  heroSlides: () => api.get("/public/hero-slides"),
   brands: () => api.get("/public/brands"),
   models: (brandId) => api.get("/public/models", { params: { brand_id: brandId } }),
   variants: (modelId) => api.get("/public/variants", { params: { model_id: modelId } }),
