@@ -233,3 +233,8 @@ Route::middleware('auth:sanctum')->group(function () {
 // ─── Platform (SaaS Admin) — entirely separate identity/guard from the ───────
 // account app above; moved out to its own file for readability.
 require __DIR__.'/platform.php';
+
+// ─── Customer — entirely separate identity/guard from the account app ───────
+// above (which is actually the vendor/owner/staff `users` table); see
+// routes/customer.php's own docblock.
+require __DIR__.'/customer.php';

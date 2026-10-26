@@ -25,6 +25,15 @@ return [
             'driver'   => 'sanctum',
             'provider' => 'system_admins',
         ],
+
+        // Customer — completely separate from the vendor/owner/staff
+        // (`sanctum`) guard above, same way `platform` is. A customer has
+        // no role; a vendor/owner/staff token is rejected here and vice
+        // versa, enforced by Sanctum's tokenable-model check.
+        'customer' => [
+            'driver'   => 'sanctum',
+            'provider' => 'customers',
+        ],
     ],
 
     'providers' => [
@@ -36,6 +45,11 @@ return [
         'system_admins' => [
             'driver' => 'eloquent',
             'model'  => App\Models\SystemAdmin::class,
+        ],
+
+        'customers' => [
+            'driver' => 'eloquent',
+            'model'  => App\Models\Customer::class,
         ],
     ],
 

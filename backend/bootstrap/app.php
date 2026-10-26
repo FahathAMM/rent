@@ -46,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'platform.admin'     => \App\Http\Middleware\EnsurePlatformAdmin::class,
             'platform.owner'     => \App\Http\Middleware\EnsurePlatformOwner::class,
+            'customer.auth'      => \App\Http\Middleware\EnsureCustomer::class,
             'can'                => \App\Http\Middleware\CheckPermission::class,
             'shop.context'       => \App\Http\Middleware\ResolveShopContext::class,
         ]);
