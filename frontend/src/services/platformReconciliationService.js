@@ -1,6 +1,6 @@
-import api from "@/lib/axios";
+import platformApi from "@/lib/platformAxios";
 
 export const platformReconciliationService = {
-  summary: (params) => api.get("/platform/reconciliation", { params }),
-  export: (params) => api.get("/platform/reconciliation/export", { params, responseType: "blob" }),
+  summary: (params) => platformApi.get("/platform/reconciliation", { params }),
+  export: (params) => platformApi.get("/platform/reconciliation/export", { params, responseType: "blob" }),
 };

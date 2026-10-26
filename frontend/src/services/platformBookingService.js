@@ -1,7 +1,7 @@
-import api from "@/lib/axios";
+import platformApi from "@/lib/platformAxios";
 
 export const platformBookingService = {
-  getAll: (params) => api.get("/platform/bookings", { params }),
-  getOne: (reference) => api.get(`/platform/bookings/${reference}`),
-  cancel: (reference, reason) => api.post(`/platform/bookings/${reference}/cancel`, { reason }),
+  getAll: (params) => platformApi.get("/platform/bookings", { params }),
+  getOne: (reference) => platformApi.get(`/platform/bookings/${reference}`),
+  cancel: (reference, reason) => platformApi.post(`/platform/bookings/${reference}/cancel`, { reason }),
 };

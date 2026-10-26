@@ -1,8 +1,8 @@
-import api from "@/lib/axios";
+import platformApi from "@/lib/platformAxios";
 
 /** Platform-managed Sri Lanka District/City reference data — see routes/platform.php. */
 export const platformCityService = {
-  getAll: () => api.get("/platform/cities"),
-  create: (data) => api.post("/platform/cities", data),
-  delete: (id) => api.delete(`/platform/cities/${id}`),
+  getAll: () => platformApi.get("/platform/cities"),
+  create: (data) => platformApi.post("/platform/cities", data),
+  delete: (id) => platformApi.delete(`/platform/cities/${id}`),
 };

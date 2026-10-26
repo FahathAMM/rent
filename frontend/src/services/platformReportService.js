@@ -1,6 +1,6 @@
-import api from "@/lib/axios";
+import platformApi from "@/lib/platformAxios";
 
 export const platformReportService = {
-  getAll: (params) => api.get("/platform/abuse-reports", { params }),
-  action: (id, data) => api.post(`/platform/abuse-reports/${id}/action`, data),
+  getAll: (params) => platformApi.get("/platform/abuse-reports", { params }),
+  action: (id, data) => platformApi.post(`/platform/abuse-reports/${id}/action`, data),
 };

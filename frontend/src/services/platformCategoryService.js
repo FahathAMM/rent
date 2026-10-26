@@ -1,8 +1,8 @@
-import api from "@/lib/axios";
+import platformApi from "@/lib/platformAxios";
 
 export const platformCategoryService = {
-  getAll: () => api.get("/platform/categories"),
-  create: (data) => api.post("/platform/categories", data),
-  update: (id, data) => api.put(`/platform/categories/${id}`, data),
-  delete: (id) => api.delete(`/platform/categories/${id}`),
+  getAll: () => platformApi.get("/platform/categories"),
+  create: (data) => platformApi.post("/platform/categories", data),
+  update: (id, data) => platformApi.put(`/platform/categories/${id}`, data),
+  delete: (id) => platformApi.delete(`/platform/categories/${id}`),
 };

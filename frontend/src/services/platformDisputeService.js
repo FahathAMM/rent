@@ -1,9 +1,9 @@
-import api from "@/lib/axios";
+import platformApi from "@/lib/platformAxios";
 
 export const platformDisputeService = {
-  getAll: (params) => api.get("/platform/disputes", { params }),
-  getOne: (reference) => api.get(`/platform/disputes/${reference}`),
-  assign: (id, assignedTo) => api.post(`/platform/disputes/${id}/assign`, assignedTo ? { assigned_to: assignedTo } : {}),
-  resolve: (id, data) => api.post(`/platform/disputes/${id}/resolve`, data),
-  addMessage: (id, message, isInternal) => api.post(`/platform/disputes/${id}/messages`, { message, is_internal: isInternal }),
+  getAll: (params) => platformApi.get("/platform/disputes", { params }),
+  getOne: (reference) => platformApi.get(`/platform/disputes/${reference}`),
+  assign: (id, assignedTo) => platformApi.post(`/platform/disputes/${id}/assign`, assignedTo ? { assigned_to: assignedTo } : {}),
+  resolve: (id, data) => platformApi.post(`/platform/disputes/${id}/resolve`, data),
+  addMessage: (id, message, isInternal) => platformApi.post(`/platform/disputes/${id}/messages`, { message, is_internal: isInternal }),
 };
