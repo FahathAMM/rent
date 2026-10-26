@@ -21,11 +21,18 @@ class ReviewController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $sortable = ['rating', 'created_at'];
+        $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
+        $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+
         $reviews = Review::where('shop_id', VendorContext::shopId())
             ->where('status', Review::STATUS_PUBLISHED)
             ->when($request->vehicle_id, fn ($q) => $q->where('vehicle_id', $request->vehicle_id))
+            ->when($request->search, fn ($q) => $q->where('comment', 'like', "%{$request->search}%")
+                ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%"))
+                ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%")))
             ->with('vehicle:id,title', 'user:id,name')
-            ->orderByDesc('created_at')
+            ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
         return response()->json(['record' => $reviews, 'message' => 'Reviews retrieved', 'status' => true]);

@@ -21,10 +21,17 @@ class InquiryController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $sortable = ['status', 'created_at'];
+        $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
+        $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+
         $inquiries = VehicleInquiry::where('shop_id', VendorContext::shopId())
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%")
+                ->orWhere('email', 'like', "%{$request->search}%")
+                ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%")))
             ->with('vehicle:id,title')
-            ->orderByDesc('created_at')
+            ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
         return response()->json(['record' => $inquiries, 'message' => 'Inquiries retrieved', 'status' => true]);

@@ -1,55 +1,58 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { vendorInquiryService } from "@/services/vendorInquiryService";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { SortableHeader } from "@/components/Datatable/SortableHeader";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TextareaInput } from "@/components/forms/FormField";
-import { Loader2, MessageCircle, Home, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, MessageSquareReply, Home } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
-function ReplyBox({ inquiry }) {
-  const qc = useQueryClient();
+export default function VendorInquiriesPage() {
+  const [selected, setSelected] = useState(null);
   const [draft, setDraft] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const reply = useMutation({
-    mutationFn: () => vendorInquiryService.reply(inquiry.id, draft),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendor-inquiries"] }); toast.success("Reply sent"); setDraft(""); },
+    mutationFn: () => vendorInquiryService.reply(selected.id, draft),
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Reply sent"); setSelected(null); setDraft(""); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to reply"),
   });
 
-  if (inquiry.reply_message) {
-    return (
-      <div className="mt-2 rounded-md bg-muted p-2.5 text-sm">
-        <p className="text-xs font-semibold text-muted-foreground">Your reply</p>
-        <p>{inquiry.reply_message}</p>
-      </div>
-    );
-  }
+  const openInquiry = (inquiry) => { setSelected(inquiry); setDraft(""); };
 
-  return (
-    <div className="mt-2 flex items-end gap-2">
-      <TextareaInput className="flex-1" placeholder="Reply..." value={draft} onChange={(e) => setDraft(e.target.value)} />
-      <Button size="sm" onClick={() => reply.mutate()} disabled={!draft.trim() || reply.isPending}>
-        {reply.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reply"}
-      </Button>
-    </div>
-  );
-}
-
-export default function VendorInquiriesPage() {
-  const [page, setPage] = useState(1);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendor-inquiries", page],
-    queryFn: () => vendorInquiryService.getAll({ page }).then((r) => r.data.record),
-  });
-
-  const inquiries = data?.data ?? [];
+  const columns = ({ sortField, sortOrder, handleSort }) => [
+    { accessorKey: "name", header: "Name", cell: (row) => row.name ?? "—" },
+    { accessorKey: "vehicle", header: "Vehicle", cell: (row) => row.vehicle?.title ?? "—" },
+    { accessorKey: "contact", header: "Contact", cell: (row) => row.phone || row.email || "—" },
+    { accessorKey: "message", header: "Message", cell: (row) => <span className="line-clamp-1">{row.message}</span> },
+    {
+      accessorKey: "status",
+      header: () => <SortableHeader label="Status" column="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      accessorKey: "created_at",
+      header: () => <SortableHeader label="Date" column="created_at" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => formatDateTime(row.created_at),
+    },
+    {
+      accessorKey: "actions",
+      header: "Actions",
+      cell: (row) => row.reply_message ? (
+        <span className="text-xs font-medium text-emerald-600">Replied</span>
+      ) : (
+        <ActionButton onClick={() => openInquiry(row)} icon={MessageSquareReply} label="Reply" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
+      ),
+    },
+  ];
 
   const breadcrumbItems = [
     { label: "Home", href: "/vendor/dashboard", icon: <Home className="size-4" /> },
@@ -57,44 +60,39 @@ export default function VendorInquiriesPage() {
   ];
 
   return (
-    <HomePageWrapper breadcrumb={breadcrumbItems}>
-      {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-      ) : !inquiries.length ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-          <div className="rounded-full bg-muted p-4"><MessageCircle className="h-7 w-7 text-muted-foreground" /></div>
-          <p className="text-sm font-medium">No inquiries yet</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {inquiries.map((i) => (
-            <Card key={i.id}>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="font-semibold">{i.name}</p>
-                    <p className="text-xs text-muted-foreground">{i.vehicle?.title} · {i.phone} {i.email && `· ${i.email}`}</p>
-                  </div>
-                  <StatusBadge status={i.status} />
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{i.message}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{formatDateTime(i.created_at)}</p>
-                <ReplyBox inquiry={i} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+    <div>
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          endpoint="/vendor/inquiries"
+          columns={columns}
+          breadcrumb={[]}
+          defualtSortField="created_at"
+          defaultSortOrder="desc"
+        />
+      </HomePageWrapper>
 
-      {data && data.last_page > 1 && (
-        <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-          <span>Page {data.current_page} of {data.last_page}</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= data.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
-        </div>
-      )}
-    </HomePageWrapper>
+      <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{selected?.name}</DialogTitle></DialogHeader>
+          {selected && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                {selected.vehicle?.title} · {selected.phone} {selected.email && `· ${selected.email}`} · {formatDateTime(selected.created_at)}
+              </p>
+              <p className="rounded-md bg-muted p-2.5 text-sm">{selected.message}</p>
+              <TextareaInput label="Your reply" placeholder="Reply..." value={draft} onChange={(e) => setDraft(e.target.value)} />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setSelected(null)}>Cancel</Button>
+                <Button onClick={() => reply.mutate()} disabled={!draft.trim() || reply.isPending}>
+                  {reply.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send Reply
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
