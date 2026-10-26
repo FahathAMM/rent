@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\Media;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class Customer extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, Media, SoftDeletes;
 
     public const STATUS_ACTIVE = 'active';
     public const STATUS_SUSPENDED = 'suspended';

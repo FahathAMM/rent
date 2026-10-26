@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Http\Requests\Customer\UpdateProfileRequest;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -59,5 +61,33 @@ class CustomerAuthService
         if ($token instanceof PersonalAccessToken) {
             $token->delete();
         }
+    }
+
+    public function updateProfile(Customer $customer, UpdateProfileRequest $request): Customer
+    {
+        $data = $request->validated();
+        unset($data['avatar']);
+
+        if ($request->hasFile('avatar')) {
+            if ($customer->avatar) {
+                Storage::disk('public')->delete($customer->avatar);
+            }
+            $customer->imageUpload('avatars', $customer, $request->file('avatar'), 'avatar');
+        }
+
+        $customer->update($data);
+
+        return $customer->fresh();
+    }
+
+    public function changePassword(Customer $customer, string $currentPassword, string $newPassword): void
+    {
+        if (!Hash::check($currentPassword, $customer->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        $customer->update(['password' => $newPassword]);
     }
 }

@@ -14,5 +14,7 @@ Route::prefix('customer')->group(function () {
     Route::middleware('customer.auth')->group(function () {
         Route::post('logout', [CustomerAuthController::class, 'logout']);
         Route::get('me',      [CustomerAuthController::class, 'me']);
+        Route::put('profile',         [CustomerAuthController::class, 'updateProfile']);
+        Route::put('change-password', [CustomerAuthController::class, 'changePassword']);
     });
 });
