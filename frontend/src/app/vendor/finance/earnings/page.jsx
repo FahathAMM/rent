@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { vendorEarningsService } from "@/services/vendorEarningsService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,14 +39,29 @@ export default function EarningsPage() {
   });
 
   const summary = data?.summary ?? {};
-  const recent = data?.recent ?? [];
 
-  const columns = [
-    { key: "booking_reference", header: "Booking", render: (row) => row.booking?.booking_reference ?? "—" },
-    { key: "gross_rental_amount", header: "Gross", render: (row) => format(row.gross_rental_amount) },
-    { key: "commission_amount", header: "Commission", render: (row) => format(row.commission_amount) },
-    { key: "owner_payable_amount", header: "Your Payout", render: (row) => format(row.owner_payable_amount) },
-    { key: "settlement_status", header: "Status", render: (row) => <StatusBadge status={row.settlement_status} /> },
+  const columns = ({ sortField, sortOrder, handleSort }) => [
+    { accessorKey: "booking_reference", header: "Booking", cell: (row) => row.booking?.booking_reference ?? "—" },
+    {
+      accessorKey: "gross_rental_amount",
+      header: () => <SortableHeader label="Gross" column="gross_rental_amount" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => format(row.gross_rental_amount),
+    },
+    {
+      accessorKey: "commission_amount",
+      header: () => <SortableHeader label="Commission" column="commission_amount" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => format(row.commission_amount),
+    },
+    {
+      accessorKey: "owner_payable_amount",
+      header: () => <SortableHeader label="Your Payout" column="owner_payable_amount" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => format(row.owner_payable_amount),
+    },
+    {
+      accessorKey: "settlement_status",
+      header: () => <SortableHeader label="Status" column="settlement_status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <StatusBadge status={row.settlement_status} />,
+    },
   ];
 
   const breadcrumbItems = [
@@ -73,7 +89,14 @@ export default function EarningsPage() {
         <StatTile label="Pending Payout" value={isLoading ? "—" : format(summary.pending_amount ?? 0)} icon={Clock} tone="bg-amber-100 text-amber-700" />
       </div>
 
-      <DataTable columns={columns} data={recent} loading={isLoading} />
+      <ServerDataTable
+        endpoint="/vendor/earnings/bookings"
+        columns={columns}
+        breadcrumb={[]}
+        defualtSortField="created_at"
+        defaultSortOrder="desc"
+        filters={{ from: from || undefined, to: to || undefined }}
+      />
     </HomePageWrapper>
   );
 }

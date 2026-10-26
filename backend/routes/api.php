@@ -214,6 +214,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('shop-profile', [VendorShopProfileController::class, 'update']);
 
             Route::get('earnings', [VendorEarningsController::class, 'index']);
+            Route::get('earnings/bookings', [VendorEarningsController::class, 'bookings']);
 
             Route::get('bank-details', [VendorBankDetailController::class, 'index']);
             Route::post('bank-details', [VendorBankDetailController::class, 'store']);

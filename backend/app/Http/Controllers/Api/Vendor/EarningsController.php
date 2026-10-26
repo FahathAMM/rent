@@ -52,16 +52,39 @@ class EarningsController extends Controller
             ->groupBy('settlement_status')
             ->get();
 
-        $recent = (clone $base)
-            ->with('booking:id,booking_reference,pickup_at,return_at')
-            ->latest('id')
-            ->limit(20)
-            ->get();
-
         return $this->response('Earnings summary retrieved', [
             'summary' => $summary,
             'by_status' => $byStatus,
-            'recent' => $recent,
+        ]);
+    }
+
+    /** {record, message, status} — ServerDataTable's expected shape, same as Api\LocationController::index(). */
+    public function bookings(Request $request): JsonResponse
+    {
+        $sortable = ['gross_rental_amount', 'commission_amount', 'owner_payable_amount', 'settlement_status', 'created_at'];
+        $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
+        $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+
+        $rows = BookingFinancial::query()
+            ->whereHas('booking', function ($q) use ($request) {
+                if ($request->from) {
+                    $q->whereDate('pickup_at', '>=', $request->from);
+                }
+                if ($request->to) {
+                    $q->whereDate('pickup_at', '<=', $request->to);
+                }
+                if ($request->search) {
+                    $q->where('booking_reference', 'like', "%{$request->search}%");
+                }
+            })
+            ->with('booking:id,booking_reference,pickup_at,return_at')
+            ->orderBy($sort, $dir)
+            ->paginate(min((int) $request->get('perPage', 20), 100));
+
+        return response()->json([
+            'record' => $rows,
+            'message' => 'Earnings bookings retrieved successfully',
+            'status' => true,
         ]);
     }
 }
