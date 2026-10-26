@@ -40,7 +40,7 @@ const STATUS_OPTIONS = [
 export default function VendorBookingsPage() {
   const qc = useQueryClient();
   const { format } = useCurrencyFormat();
-  const [status, setStatus] = useState("pending");
+  const [status, setStatus] = useState(ALL_STATUSES);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState(null);
   const [reasonAction, setReasonAction] = useState(null); // 'reject' | 'cancel'
