@@ -12,6 +12,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ShopCover } from "@/components/marketplace/ShopCover";
 import {
   Search as SearchIcon, ShieldCheck, Star, Loader2, Building2, MapPin, Sparkles, CarFront,
   Truck, Phone, MessageCircle, LayoutGrid, List, X, ChevronLeft, ChevronRight, Clock,
@@ -140,14 +141,7 @@ function CategoryChips({ categories, max = 3 }) {
 function Cover({ shop, className }) {
   return (
     <div className={cn("relative overflow-hidden", className)}>
-      {shop.cover_image ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={shop.cover_image} alt="" aria-hidden="true" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-      ) : (
-        <div className="h-full w-full bg-gradient-to-br from-orange-500/25 via-pink-500/20 to-violet-500/25" aria-hidden="true">
-          <CarFront className="absolute -bottom-4 -right-3 h-24 w-24 rotate-[-8deg] text-white/40" />
-        </div>
-      )}
+      <ShopCover shop={shop} variant="card" className="transition-transform duration-500 group-hover:scale-105" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" aria-hidden="true" />
     </div>
   );
@@ -191,8 +185,8 @@ function FromPrice({ shop }) {
   const { format } = useCurrencyFormat();
   if (shop.starting_daily_rate == null) return null;
   return (
-    <p className="text-right leading-tight">
-      <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">From</span>
+    <p className="flex items-baseline gap-1 whitespace-nowrap leading-tight">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">From</span>
       <span className="text-sm font-bold">{format ? format(shop.starting_daily_rate) : `LKR ${shop.starting_daily_rate}`}</span>
       <span className="text-[10px] text-muted-foreground">/day</span>
     </p>
