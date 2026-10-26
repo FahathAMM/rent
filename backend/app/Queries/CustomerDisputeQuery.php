@@ -35,13 +35,15 @@ class CustomerDisputeQuery
             ->first();
     }
 
-    /** Which side of the booking this user is on, or null if they are neither. */
+    /**
+     * Which shop-side role this user holds on the booking, or null if none.
+     * Never 'customer': $userId is a users.id, while bookings.customer_id
+     * is a customers.id - comparing the two would let a vendor whose id
+     * collides with a customer's act as that customer. Customer-raised
+     * disputes need the customer guard plus a raiser-type column first.
+     */
     public static function resolveSide(int $userId, Booking $booking): ?string
     {
-        if ($booking->customer_id === $userId) {
-            return 'customer';
-        }
-
         $member = ShopMember::where('shop_id', $booking->shop_id)
             ->where('user_id', $userId)
             ->where('status', ShopMember::STATUS_ACTIVE)

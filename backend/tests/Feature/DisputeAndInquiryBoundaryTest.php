@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Administration\User;
 use App\Models\Booking;
+use App\Models\Customer;
 use App\Models\Dispute;
 use App\Models\RentalShop;
 use App\Models\ShopMember;
@@ -31,8 +32,8 @@ class DisputeAndInquiryBoundaryTest extends TestCase
     private RentalShop $shopB;
     private User $ownerA;
     private User $ownerB;
-    private User $customerA;
-    private User $strangerCustomer;
+    private Customer $customerA;
+    private User $strangerUser;
     private Booking $bookingA;
 
     protected function setUp(): void
@@ -43,8 +44,8 @@ class DisputeAndInquiryBoundaryTest extends TestCase
 
         $this->ownerA = User::factory()->create();
         $this->ownerB = User::factory()->create();
-        $this->customerA = User::factory()->create();
-        $this->strangerCustomer = User::factory()->create();
+        $this->customerA = Customer::factory()->create();
+        $this->strangerUser = User::factory()->create();
 
         $this->shopA = RentalShop::factory()->create(['owner_user_id' => $this->ownerA->id]);
         $this->shopB = RentalShop::factory()->create(['owner_user_id' => $this->ownerB->id]);
@@ -71,9 +72,9 @@ class DisputeAndInquiryBoundaryTest extends TestCase
         return $this->withHeader('Authorization', 'Bearer ' . $user->createToken('test')->plainTextToken);
     }
 
-    public function test_a_customer_who_is_not_party_to_a_booking_cannot_raise_a_dispute_on_it(): void
+    public function test_an_account_that_is_not_party_to_a_booking_cannot_raise_a_dispute_on_it(): void
     {
-        $this->as($this->strangerCustomer)
+        $this->as($this->strangerUser)
             ->postJson('/api/disputes', [
                 'booking_reference' => $this->bookingA->booking_reference,
                 'against_side' => 'owner',
@@ -84,9 +85,19 @@ class DisputeAndInquiryBoundaryTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_the_bookings_own_customer_can_raise_a_dispute(): void
+    /**
+     * bookings.customer_id is a customers.id; this route authenticates
+     * users. A vendor account whose users.id happens to equal the
+     * booking's customer id must not be treated as that customer.
+     */
+    public function test_a_vendor_whose_user_id_collides_with_the_bookings_customer_id_is_not_treated_as_the_customer(): void
     {
-        $this->as($this->customerA)
+        $collidingId = max(Customer::max('id'), User::max('id')) + 1;
+        $customer = Customer::factory()->create(['id' => $collidingId]);
+        $this->bookingA->update(['customer_id' => $customer->id]);
+        $collider = User::factory()->create(['id' => $collidingId]);
+
+        $this->as($collider)
             ->postJson('/api/disputes', [
                 'booking_reference' => $this->bookingA->booking_reference,
                 'against_side' => 'owner',
@@ -94,8 +105,7 @@ class DisputeAndInquiryBoundaryTest extends TestCase
                 'subject' => 'Disputed damage charge',
                 'description' => 'The charge does not match what was agreed.',
             ])
-            ->assertCreated()
-            ->assertJsonPath('data.raised_by_side', 'customer');
+            ->assertForbidden();
     }
 
     public function test_the_bookings_shop_owner_can_also_raise_a_dispute_through_the_same_route(): void
@@ -116,7 +126,7 @@ class DisputeAndInquiryBoundaryTest extends TestCase
     {
         $dispute = Dispute::create([
             'dispute_reference' => 'DSP-BOUND-001', 'booking_id' => $this->bookingA->id,
-            'raised_by_user_id' => $this->customerA->id, 'raised_by_side' => 'customer', 'against_side' => 'owner',
+            'raised_by_user_id' => $this->ownerA->id, 'raised_by_side' => 'owner', 'against_side' => 'customer',
             'category' => 'damage', 'subject' => 'Test dispute', 'description' => 'Test.',
             'status' => Dispute::STATUS_OPEN, 'priority' => 'normal',
         ]);
@@ -126,16 +136,16 @@ class DisputeAndInquiryBoundaryTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_a_stranger_customer_cannot_message_a_dispute_they_are_not_party_to(): void
+    public function test_a_stranger_cannot_message_a_dispute_they_are_not_party_to(): void
     {
         $dispute = Dispute::create([
             'dispute_reference' => 'DSP-BOUND-002', 'booking_id' => $this->bookingA->id,
-            'raised_by_user_id' => $this->customerA->id, 'raised_by_side' => 'customer', 'against_side' => 'owner',
+            'raised_by_user_id' => $this->ownerA->id, 'raised_by_side' => 'owner', 'against_side' => 'customer',
             'category' => 'damage', 'subject' => 'Test dispute', 'description' => 'Test.',
             'status' => Dispute::STATUS_OPEN, 'priority' => 'normal',
         ]);
 
-        $this->as($this->strangerCustomer)
+        $this->as($this->strangerUser)
             ->postJson("/api/disputes/{$dispute->dispute_reference}/messages", ['message' => 'Butting in'])
             ->assertNotFound();
     }

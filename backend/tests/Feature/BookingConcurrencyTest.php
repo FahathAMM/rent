@@ -6,6 +6,7 @@ use App\Actions\TransitionBooking;
 use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\BookingPricing;
+use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\RentalShop;
 use App\Models\ShopMember;
@@ -42,8 +43,8 @@ class BookingConcurrencyTest extends TestCase
     private RentalShop $shop;
     private Vehicle $vehicle;
     private User $owner;
-    private User $customerA;
-    private User $customerB;
+    private Customer $customerA;
+    private Customer $customerB;
 
     protected function setUp(): void
     {
@@ -61,11 +62,11 @@ class BookingConcurrencyTest extends TestCase
             'seating_capacity' => 5, 'status' => Vehicle::STATUS_PUBLISHED, 'moderation_status' => Vehicle::MODERATION_APPROVED,
         ]);
 
-        $this->customerA = User::factory()->create();
-        $this->customerB = User::factory()->create();
+        $this->customerA = Customer::factory()->create();
+        $this->customerB = Customer::factory()->create();
     }
 
-    private function makeBooking(User $customer, string $reference, $pickup, $return): Booking
+    private function makeBooking(Customer $customer, string $reference, $pickup, $return): Booking
     {
         $booking = Booking::create([
             'booking_reference' => $reference,

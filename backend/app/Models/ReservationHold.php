@@ -36,7 +36,7 @@ class ReservationHold extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class, 'user_id');
     }
 
     public function isActive(): bool

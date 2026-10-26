@@ -40,7 +40,7 @@ class Refund extends Model
 
     public function requestedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'requested_by');
+        return $this->belongsTo(Customer::class, 'requested_by');
     }
 
     public function approvedBy(): BelongsTo

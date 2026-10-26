@@ -51,7 +51,7 @@ class Payment extends Model
 
     public function initiatedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'initiated_by');
+        return $this->belongsTo(Customer::class, 'initiated_by');
     }
 
     public function refunds(): HasMany

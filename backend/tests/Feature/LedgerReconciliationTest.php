@@ -6,6 +6,7 @@ use App\Actions\TransitionBooking;
 use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\BookingPricing;
+use App\Models\Customer;
 use App\Models\LedgerEntry;
 use App\Models\Payment;
 use App\Models\PlatformCommission;
@@ -34,7 +35,7 @@ class LedgerReconciliationTest extends TestCase
     {
         $category = VehicleCategory::create(['name' => 'Car', 'slug' => 'car', 'sort_order' => 1, 'is_active' => true]);
         $owner = User::factory()->create();
-        $customer = User::factory()->create();
+        $customer = Customer::factory()->create();
         $shop = RentalShop::factory()->create(['owner_user_id' => $owner->id]);
         ShopMember::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active']);
 
