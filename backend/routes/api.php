@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DisputeController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PayHereWebhookController;
@@ -16,13 +17,18 @@ use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShopOnboardingController;
+use App\Http\Controllers\Api\Vendor\BankDetailController as VendorBankDetailController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
 use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
+use App\Http\Controllers\Api\Vendor\EarningsController as VendorEarningsController;
 use App\Http\Controllers\Api\Vendor\InquiryController as VendorInquiryController;
 use App\Http\Controllers\Api\Vendor\PayoutController as VendorPayoutController;
 use App\Http\Controllers\Api\Vendor\ReviewController as VendorReviewController;
+use App\Http\Controllers\Api\Vendor\ShopProfileController as VendorShopProfileController;
+use App\Http\Controllers\Api\Vendor\StaffController as VendorStaffController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
+use App\Http\Controllers\Api\VehicleAvailabilityController;
 use App\Http\Controllers\Api\VisitLogController;
 use Illuminate\Support\Facades\Route;
 
@@ -159,6 +165,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('expense-categories', ExpenseCategoryController::class)->parameters(['expense-categories' => 'expenseCategory']);
         Route::apiResource('expenses', ExpenseController::class);
 
+        // The shop's branches / pickup points — see App\Repositories\LocationRepo.
+        Route::apiResource('locations', LocationController::class);
+
+        // All-vehicle availability calendar.
+        Route::get('vehicles-availability', [VehicleAvailabilityController::class, 'index']);
+        Route::post('vehicles/{vehicle}/availability/block', [VehicleAvailabilityController::class, 'block']);
+        Route::post('vehicles/{vehicle}/availability/unblock', [VehicleAvailabilityController::class, 'unblock']);
+
         // Attachments — generic polymorphic uploads. Permission is resolved
         // per attachable_type inside the controller (see
         // AttachmentController::PERMISSIONS), not via `can:` middleware.
@@ -195,10 +209,22 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('reviews/{review}/reply', [VendorReviewController::class, 'reply']);
             Route::get('inquiries', [VendorInquiryController::class, 'index']);
             Route::post('inquiries/{inquiry}/reply', [VendorInquiryController::class, 'reply']);
-        });
 
-        // NOTE: availability calendars, staff and settings endpoints
-        // land in Phases 6+ once their controllers exist.
+            Route::get('shop-profile', [VendorShopProfileController::class, 'show']);
+            Route::put('shop-profile', [VendorShopProfileController::class, 'update']);
+
+            Route::get('earnings', [VendorEarningsController::class, 'index']);
+
+            Route::get('bank-details', [VendorBankDetailController::class, 'index']);
+            Route::post('bank-details', [VendorBankDetailController::class, 'store']);
+            Route::post('bank-details/{bankDetail}/primary', [VendorBankDetailController::class, 'makePrimary']);
+            Route::delete('bank-details/{bankDetail}', [VendorBankDetailController::class, 'destroy']);
+
+            Route::get('staff', [VendorStaffController::class, 'index']);
+            Route::post('staff', [VendorStaffController::class, 'store']);
+            Route::put('staff/{staff}', [VendorStaffController::class, 'update']);
+            Route::delete('staff/{staff}', [VendorStaffController::class, 'destroy']);
+        });
     });
 });
 

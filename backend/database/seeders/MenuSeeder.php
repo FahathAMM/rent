@@ -87,7 +87,7 @@ class MenuSeeder extends Seeder
             'sort_order' => 2,
             'children' => [
                 ['key' => 'list', 'name' => 'My Vehicles', 'route_name' => '/vendor/vehicles', 'icon' => 'Car', 'sort_order' => 1],
-                ['key' => 'calendar', 'name' => 'Calendar', 'route_name' => '/vendor/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2],
+                ['key' => 'calendar', 'name' => 'Calendar', 'route_name' => '/vendor/vehicles/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2],
             ],
         ],
         [
