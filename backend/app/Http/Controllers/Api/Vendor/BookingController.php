@@ -29,9 +29,15 @@ class BookingController extends Controller
     {
         $this->authorize('viewAny', Booking::class);
 
+        $sortable = ['pickup_at', 'return_at', 'status', 'created_at'];
+        $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
+        $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+
         $bookings = Booking::with('vehicle', 'customer', 'pricing', 'financials')
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->orderByDesc('created_at')
+            ->when($request->search, fn ($q) => $q->where('booking_reference', 'like', "%{$request->search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$request->search}%")))
+            ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
         return response()->json(['record' => $bookings->setCollection(

@@ -1,34 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { vendorPayoutService } from "@/services/vendorPayoutService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { Home } from "lucide-react";
 
 export default function PayoutsPage() {
   const { format } = useCurrencyFormat();
-  const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendor-payouts", page],
-    queryFn: () => vendorPayoutService.getAll({ page }).then((r) => r.data.record),
-  });
-
-  const columns = [
-    { key: "payout_reference", header: "Payout" },
-    { key: "period", header: "Period", render: (row) => `${row.period_start} → ${row.period_end}` },
-    { key: "booking_count", header: "Bookings" },
-    { key: "net_amount", header: "Net Amount", render: (row) => format(row.net_amount) },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
-    { key: "paid_at", header: "Paid", render: (row) => row.paid_at ? new Date(row.paid_at).toLocaleDateString() : "—" },
+  const columns = ({ sortField, sortOrder, handleSort }) => [
+    { accessorKey: "payout_reference", header: "Payout" },
+    {
+      accessorKey: "period_start",
+      header: () => <SortableHeader label="Period" column="period_start" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => `${row.period_start} → ${row.period_end}`,
+    },
+    { accessorKey: "booking_count", header: "Bookings" },
+    {
+      accessorKey: "net_amount",
+      header: () => <SortableHeader label="Net Amount" column="net_amount" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => format(row.net_amount),
+    },
+    {
+      accessorKey: "status",
+      header: () => <SortableHeader label="Status" column="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      accessorKey: "paid_at",
+      header: () => <SortableHeader label="Paid" column="paid_at" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => row.paid_at ? new Date(row.paid_at).toLocaleDateString() : "—",
+    },
   ];
-
-  const records = data?.data ?? [];
 
   const breadcrumbItems = [
     { label: "Home", href: "/vendor/dashboard", icon: <Home className="size-4" /> },
@@ -38,17 +43,13 @@ export default function PayoutsPage() {
   return (
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
-        <DataTable columns={columns} data={records} loading={isLoading} />
-
-        {data && data.last_page > 1 && (
-          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-            <span>Page {data.current_page} of {data.last_page} — {data.total} total</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= data.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
-            </div>
-          </div>
-        )}
+        <ServerDataTable
+          endpoint="/vendor/payouts"
+          columns={columns}
+          breadcrumb={[]}
+          defualtSortField="created_at"
+          defaultSortOrder="desc"
+        />
       </HomePageWrapper>
     </div>
   );

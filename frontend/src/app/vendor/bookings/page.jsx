@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vendorBookingService } from "@/services/vendorBookingService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
-import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { InspectionDialog } from "@/components/vendor/InspectionDialog";
@@ -14,7 +15,7 @@ import { SelectInput } from "@/components/forms/SelectInput";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Home, Phone, Mail } from "lucide-react";
+import { Home, Phone, Mail } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -36,15 +37,10 @@ export default function VendorBookingsPage() {
   const qc = useQueryClient();
   const { format } = useCurrencyFormat();
   const [status, setStatus] = useState("pending");
-  const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState(null);
   const [reasonAction, setReasonAction] = useState(null); // 'reject' | 'cancel'
   const [inspectionAction, setInspectionAction] = useState(null); // 'handover' | 'return'
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendor-bookings", status, page],
-    queryFn: () => vendorBookingService.getAll({ status: status || undefined, page }).then((r) => r.data.record),
-  });
 
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ["vendor-booking", selected?.booking_reference],
@@ -53,7 +49,7 @@ export default function VendorBookingsPage() {
   });
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["vendor-bookings"] });
+    setRefreshKey((k) => k + 1);
     qc.invalidateQueries({ queryKey: ["vendor-booking", selected?.booking_reference] });
   };
 
@@ -96,27 +92,36 @@ export default function VendorBookingsPage() {
     });
   };
 
-  const columns = [
+  const columns = ({ sortField, sortOrder, handleSort }) => [
     {
-      key: "booking_reference", header: "Booking",
-      render: (row) => (
+      accessorKey: "booking_reference",
+      header: () => <SortableHeader label="Booking" column="booking_reference" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => (
         <div>
           <p className="font-medium">{row.booking_reference}</p>
           <p className="text-[11px] text-muted-foreground">{row.vehicle?.title}</p>
         </div>
       ),
     },
-    { key: "customer", header: "Customer", render: (row) => row.customer?.name ?? "—" },
-    { key: "pickup_at", header: "Pickup", render: (row) => formatDateTime(row.pickup_at) },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
-    { key: "total_payable", header: "Total", render: (row) => format(row.pricing?.total_payable) },
+    { accessorKey: "customer", header: "Customer", cell: (row) => row.customer?.name ?? "—" },
     {
-      key: "actions", header: "Actions",
-      render: (row) => <Button variant="outline" size="sm" onClick={() => setSelected(row)}>Review</Button>,
+      accessorKey: "pickup_at",
+      header: () => <SortableHeader label="Pickup" column="pickup_at" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => formatDateTime(row.pickup_at),
+    },
+    {
+      accessorKey: "status",
+      header: () => <SortableHeader label="Status" column="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => <StatusBadge status={row.status} />,
+    },
+    { accessorKey: "total_payable", header: "Total", cell: (row) => format(row.pricing?.total_payable) },
+    {
+      accessorKey: "actions",
+      header: "Actions",
+      cell: (row) => <Button variant="outline" size="sm" onClick={() => setSelected(row)}>Review</Button>,
     },
   ];
 
-  const records = data?.data ?? [];
   const canRespond = detail?.status === "pending";
   const canCancel = detail?.status === "accepted";
   const canHandover = detail?.status === "confirmed";
@@ -131,20 +136,18 @@ export default function VendorBookingsPage() {
     <div>
       <HomePageWrapper breadcrumb={breadcrumbItems}>
         <div className="mb-4 w-56">
-          <SelectInput label="Status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
+          <SelectInput label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
         </div>
 
-        <DataTable columns={columns} data={records} loading={isLoading} />
-
-        {data && data.last_page > 1 && (
-          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-            <span>Page {data.current_page} of {data.last_page} — {data.total} total</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= data.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
-            </div>
-          </div>
-        )}
+        <ServerDataTable
+          key={refreshKey}
+          endpoint="/vendor/bookings"
+          columns={columns}
+          breadcrumb={[]}
+          defualtSortField="created_at"
+          defaultSortOrder="desc"
+          filters={{ status: status || undefined }}
+        />
       </HomePageWrapper>
 
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>

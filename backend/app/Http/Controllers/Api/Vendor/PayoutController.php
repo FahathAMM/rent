@@ -21,9 +21,14 @@ class PayoutController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $sortable = ['period_start', 'period_end', 'net_amount', 'status', 'paid_at', 'created_at'];
+        $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
+        $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
+
         $payouts = OwnerPayout::where('shop_id', VendorContext::shopId())
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->orderByDesc('created_at')
+            ->when($request->search, fn ($q) => $q->where('payout_reference', 'like', "%{$request->search}%"))
+            ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
         return response()->json(['record' => $payouts, 'message' => 'Payouts retrieved', 'status' => true]);
