@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ownerOnboardingService } from "@/services/ownerOnboardingService";
+import { publicService } from "@/services/publicService";
 import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusBanner } from "@/components/shared/StatusBanner";
 import { OnboardingStepper } from "@/components/account/OnboardingStepper";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
+import { SelectInput } from "@/components/forms/SelectInput";
 import { Fieldset } from "@/components/forms/Fieldset";
 import {
   Loader2, UploadCloud, FileCheck2, CheckCircle2, UserPlus,
@@ -42,6 +44,11 @@ export default function BecomeOwnerPage() {
   const { data: profile, isLoading } = useQuery({
     queryKey: ["owner-onboarding"],
     queryFn: () => ownerOnboardingService.show().then((r) => r.data.data),
+  });
+
+  const { data: districts } = useQuery({
+    queryKey: ["public-districts"],
+    queryFn: () => publicService.districts().then((r) => r.data.data),
   });
 
   // The applicant's local session still shows role "customer" until it's
@@ -106,6 +113,12 @@ export default function BecomeOwnerPage() {
   const stepIndex = !profile ? 0 : (canEdit ? 1 : 2);
 
   const fi = (k) => (e) => setForm((p) => ({ ...(p ?? profile ?? {}), [k]: e.target.value }));
+  const selectDistrict = (value) => setForm((p) => ({ ...(p ?? profile ?? {}), district: value, city: "" }));
+  const selectCity = (value) => setForm((p) => ({ ...(p ?? profile ?? {}), city: value }));
+
+  const districtOptions = (districts ?? []).map((d) => ({ value: d.name, label: d.name }));
+  const cityOptions = (districts ?? []).find((d) => d.name === data?.district)?.cities
+    .map((c) => ({ value: c.name, label: c.name })) ?? [];
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -207,8 +220,8 @@ export default function BecomeOwnerPage() {
               </Fieldset>
               <Fieldset legend="Address" grid={2}>
                 <TextInput label="Address Line 1" value={data?.address_line_1 ?? ""} onChange={fi("address_line_1")} error={errors.address_line_1?.[0]} />
-                <TextInput label="City" value={data?.city ?? ""} onChange={fi("city")} error={errors.city?.[0]} />
-                <TextInput label="District" value={data?.district ?? ""} onChange={fi("district")} error={errors.district?.[0]} />
+                <SelectInput label="District" placeholder="Select district" options={districtOptions} value={data?.district ?? ""} onChange={selectDistrict} error={errors.district?.[0]} />
+                <SelectInput label="City" placeholder={data?.district ? "Select city" : "Select a district first"} options={cityOptions} value={data?.city ?? ""} onChange={selectCity} disabled={!data?.district} error={errors.city?.[0]} />
                 <TextInput label="Postal Code" value={data?.postal_code ?? ""} onChange={fi("postal_code")} error={errors.postal_code?.[0]} />
               </Fieldset>
               <div className="flex justify-end">

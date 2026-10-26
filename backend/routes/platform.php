@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomation
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
 use App\Http\Controllers\Api\Platform\CategoryController as PlatformCategoryController;
+use App\Http\Controllers\Api\Platform\CityController as PlatformCityController;
 use App\Http\Controllers\Api\Platform\CommissionController as PlatformCommissionController;
 use App\Http\Controllers\Api\Platform\CustomerController as PlatformCustomerController;
 use App\Http\Controllers\Api\Platform\DashboardController as PlatformDashboardController;
@@ -169,6 +170,13 @@ Route::prefix('platform')->group(function () {
         // Vehicle categories — platform-managed, feeds the public search
         // facets and VehicleCategoryController's commission-base lookups.
         Route::apiResource('categories', PlatformCategoryController::class)->parameters(['categories' => 'category']);
+
+        // Sri Lanka District/City reference data — feeds the owner/shop
+        // onboarding forms' location dropdowns. Districts are fixed
+        // (seeded); platform admins can only add/remove cities.
+        Route::get('cities', [PlatformCityController::class, 'index']);
+        Route::post('cities', [PlatformCityController::class, 'store']);
+        Route::delete('cities/{city}', [PlatformCityController::class, 'destroy']);
 
         // Commission rules — see app-doc/marketplace/04-lifecycles.md
         // "Commission model". Deleting/editing a rule never re-prices a

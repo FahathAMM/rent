@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag,
-  Percent, CreditCard, Undo2, Scale,
+  Percent, CreditCard, Undo2, Scale, MapPin,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/platform/shops", label: "Shop Verification", icon: Building2 },
   { href: "/platform/listings", label: "Listing Moderation", icon: Car },
   { href: "/platform/categories", label: "Categories", icon: Tag },
+  { href: "/platform/cities", label: "Districts & Cities", icon: MapPin },
   { href: "/platform/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/platform/payments", label: "Payments", icon: CreditCard },
   { href: "/platform/refunds", label: "Refunds", icon: Undo2 },

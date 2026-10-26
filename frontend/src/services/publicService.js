@@ -10,5 +10,6 @@ export const publicService = {
   shopVehicles: (slug, params) => api.get(`/public/shops/${slug}/vehicles`, { params }),
   categories: () => api.get("/public/categories"),
   locations: () => api.get("/public/locations"),
+  districts: () => api.get("/public/districts"),
   sendInquiry: (data) => api.post("/public/inquiries", data),
 };

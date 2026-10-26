@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Public\CategoryController;
+use App\Http\Controllers\Api\Public\DistrictController;
 use App\Http\Controllers\Api\Public\InquiryController;
 use App\Http\Controllers\Api\Public\LocationController;
 use App\Http\Controllers\Api\Public\ShopController;
@@ -31,6 +32,7 @@ Route::prefix('public')->group(function () {
 
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('locations', [LocationController::class, 'index']);
+    Route::get('districts', [DistrictController::class, 'index']);
 
     // Contact-the-owner form on a vehicle detail page — rate-limited per
     // app-doc/marketplace/05-ui-and-api-map.md since it's reachable

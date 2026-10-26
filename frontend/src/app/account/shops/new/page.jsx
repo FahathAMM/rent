@@ -3,12 +3,14 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { shopOnboardingService } from "@/services/shopOnboardingService";
+import { publicService } from "@/services/publicService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusBanner } from "@/components/shared/StatusBanner";
 import { OnboardingStepper } from "@/components/account/OnboardingStepper";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
+import { SelectInput } from "@/components/forms/SelectInput";
 import { Fieldset } from "@/components/forms/Fieldset";
 import {
   Loader2, UploadCloud, FileCheck2, Store, Clock, XCircle, Building2, FileBarChart,
@@ -41,6 +43,11 @@ export default function NewShopPage() {
 
   const inProgressShop = (shops ?? []).find((s) => UNVERIFIED_STATES.includes(s.verification_status));
 
+  const { data: districts } = useQuery({
+    queryKey: ["public-districts"],
+    queryFn: () => publicService.districts().then((r) => r.data.data),
+  });
+
   const register = useMutation({
     mutationFn: shopOnboardingService.register,
     onSuccess: () => {
@@ -71,6 +78,12 @@ export default function NewShopPage() {
   });
 
   const fi = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const selectDistrict = (value) => setForm((p) => ({ ...p, district: value, city: "" }));
+  const selectCity = (value) => setForm((p) => ({ ...p, city: value }));
+
+  const districtOptions = (districts ?? []).map((d) => ({ value: d.name, label: d.name }));
+  const cityOptions = (districts ?? []).find((d) => d.name === form.district)?.cities
+    .map((c) => ({ value: c.name, label: c.name })) ?? [];
 
   const handleRegister = (e) => {
     e.preventDefault();
@@ -165,8 +178,8 @@ export default function NewShopPage() {
               </Fieldset>
               <Fieldset legend="Address" grid={2}>
                 <TextInput label="Address Line 1" value={form.address_line_1} onChange={fi("address_line_1")} error={errors.address_line_1?.[0]} />
-                <TextInput label="City" value={form.city} onChange={fi("city")} error={errors.city?.[0]} />
-                <TextInput label="District" value={form.district} onChange={fi("district")} error={errors.district?.[0]} />
+                <SelectInput label="District" placeholder="Select district" options={districtOptions} value={form.district} onChange={selectDistrict} error={errors.district?.[0]} />
+                <SelectInput label="City" placeholder={form.district ? "Select city" : "Select a district first"} options={cityOptions} value={form.city} onChange={selectCity} disabled={!form.district} error={errors.city?.[0]} />
                 <TextInput label="Postal Code" value={form.postal_code} onChange={fi("postal_code")} error={errors.postal_code?.[0]} />
               </Fieldset>
               <Fieldset legend="Registration" grid={2}>
