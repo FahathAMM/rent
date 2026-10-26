@@ -3,9 +3,6 @@
 namespace App\Models\Administration;
 
 use App\Helpers\Media;
-use App\Models\Booking;
-use App\Models\CustomerProfile;
-use App\Models\Favorite;
 use App\Models\OwnerProfile;
 use App\Models\RentalShop;
 use App\Models\ShopMember;
@@ -65,11 +62,6 @@ class User extends Authenticatable
         return $this->hasOne(OwnerProfile::class);
     }
 
-    public function customerProfile(): HasOne
-    {
-        return $this->hasOne(CustomerProfile::class);
-    }
-
     public function shopMemberships(): HasMany
     {
         return $this->hasMany(ShopMember::class, 'user_id');
@@ -84,15 +76,5 @@ class User extends Authenticatable
     public function ownedShops(): HasMany
     {
         return $this->hasMany(RentalShop::class, 'owner_user_id');
-    }
-
-    public function favorites(): HasMany
-    {
-        return $this->hasMany(Favorite::class);
-    }
-
-    public function bookings(): HasMany
-    {
-        return $this->hasMany(Booking::class, 'customer_id');
     }
 }

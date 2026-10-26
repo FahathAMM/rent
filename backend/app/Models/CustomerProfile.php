@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Administration\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -27,7 +26,7 @@ class CustomerProfile extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function verifiedBy(): BelongsTo

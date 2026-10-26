@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\BookingPricing;
 use App\Models\BookingStatusHistory;
+use App\Models\Customer;
 use App\Models\ReservationHold;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
@@ -28,7 +28,7 @@ class BookingService
 {
     public function __construct(private BookingPricingCalculator $calculator) {}
 
-    public function create(User $customer, Vehicle $vehicle, array $data): Booking
+    public function create(Customer $customer, Vehicle $vehicle, array $data): Booking
     {
         $pricing = $vehicle->pricing;
         abort_if(!$pricing, 422, 'This vehicle has no pricing configured yet.');

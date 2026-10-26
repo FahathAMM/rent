@@ -1,4 +1,4 @@
-import api from "@/lib/axios";
+import api from "@/lib/customerAxios";
 
 /** The customer's own bookings — no shop context, ownership by customer_id. See BookingController (backend). */
 export const bookingService = {

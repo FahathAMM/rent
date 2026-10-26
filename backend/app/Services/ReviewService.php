@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Administration\User;
 use App\Models\Booking;
+use App\Models\Customer;
 use App\Models\Review;
 use App\Models\SystemAdmin;
 use App\Models\Vehicle;
@@ -18,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ReviewService
 {
-    public function create(User $user, Booking $booking, array $data): Review
+    public function create(Customer $user, Booking $booking, array $data): Review
     {
         if ($booking->customer_id !== $user->id) {
             throw ValidationException::withMessages(['booking' => ['This booking does not belong to you.']]);

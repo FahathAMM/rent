@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { bookingService } from "@/services/bookingService";
-import { useAuthStore } from "@/store/authStore";
+import { useCustomerAuthStore } from "@/store/customerAuthStore";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
@@ -27,7 +27,7 @@ function daysBetween(from, to) {
  */
 export function BookingRequestWidget({ vehicle }) {
   const router = useRouter();
-  const { isAuthenticated, isVendor } = useAuthStore();
+  const { isAuthenticated } = useCustomerAuthStore();
   const { format } = useCurrencyFormat();
   const [range, setRange] = useState({ from: "", to: "" });
   const [withDriver, setWithDriver] = useState(false);
@@ -92,14 +92,6 @@ export function BookingRequestWidget({ vehicle }) {
       customer_note: note || undefined,
     });
   };
-
-  if (isVendor()) {
-    return (
-      <p className="rounded-md bg-muted p-3 text-center text-sm text-muted-foreground">
-        Vendor accounts can&apos;t submit booking requests.
-      </p>
-    );
-  }
 
   return (
     <div className="space-y-3">

@@ -4,18 +4,15 @@ use App\Http\Controllers\Api\Administration\AuditLogController;
 use App\Http\Controllers\Api\Administration\MenuController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\Auth\AuthController;
-use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\DisputeController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
-use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OwnerOnboardingController;
 use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ReportController;
-use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BankDetailController as VendorBankDetailController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
@@ -95,31 +92,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('shops/{shop}/submit',        [ShopOnboardingController::class, 'submitForVerification']);
     });
 
-    // Customer's own bookings — ownership by customer_id, no shop context
-    // needed at all. See BookingPolicy's docblock. Bound by
-    // booking_reference (not id) to match the human-facing {reference}
-    // URLs in app-doc/marketplace/05-ui-and-api-map.md.
-    Route::get('bookings', [BookingController::class, 'index']);
-    Route::post('bookings', [BookingController::class, 'store']);
-    Route::get('bookings/{booking:booking_reference}', [BookingController::class, 'show']);
-    Route::post('bookings/{booking:booking_reference}/checkout', [BookingController::class, 'checkout']);
-    Route::post('bookings/{booking:booking_reference}/cancel', [BookingController::class, 'cancel']);
-
-    // Customer's own reviews — Review has no BelongsToShop/ShopScope at
-    // all (unlike Booking/Vehicle), so there is no scope-bypass concern
-    // here the way there is for CustomerBookingQuery.
-    Route::get('reviews', [ReviewController::class, 'index']);
-    Route::post('reviews', [ReviewController::class, 'store']);
-
-    // Favorites — ownership by user_id, same reasoning as reviews. A
-    // favorited vehicle may belong to any shop, so the lookup goes
-    // through CustomerFavoriteQuery (the sanctioned bypass) rather than
-    // a bare Vehicle::find(); {vehicle} below is always a plain id,
-    // never Eloquent-bound, so ShopScope never gets a chance to fail
-    // this closed for a customer with no shop context.
-    Route::get('favorites', [FavoriteController::class, 'index']);
-    Route::post('favorites/{vehicle}', [FavoriteController::class, 'store']);
-    Route::delete('favorites/{vehicle}', [FavoriteController::class, 'destroy']);
+    // Bookings/reviews/favorites moved to the separate `customer` guard —
+    // see routes/customer.php. Disputes/reports stay here: they're
+    // genuinely shared between the customer and the shop's owner/staff
+    // (same account today), not customer-exclusive.
 
     // Disputes — raised by either side of a booking (customer or the
     // shop's owner/staff); every account holds the customer role, so

@@ -20,7 +20,7 @@ class FavoriteController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $favorites = CustomerFavoriteQuery::forUser($request->user()->id)
+        $favorites = CustomerFavoriteQuery::forUser(auth('customer')->id())
             ->latest('favorites.created_at')
             ->paginate(min((int) $request->get('per_page', 12), 48));
 
@@ -43,7 +43,7 @@ class FavoriteController extends Controller
         abort_unless(DB::table('vehicles')->where('id', $vehicle)->exists(), 404, 'Vehicle not found.');
 
         $favorite = Favorite::firstOrCreate([
-            'user_id' => $request->user()->id,
+            'user_id' => auth('customer')->id(),
             'vehicle_id' => $vehicle,
         ]);
 
@@ -52,7 +52,7 @@ class FavoriteController extends Controller
 
     public function destroy(Request $request, int $vehicle): JsonResponse
     {
-        Favorite::where('user_id', $request->user()->id)->where('vehicle_id', $vehicle)->delete();
+        Favorite::where('user_id', auth('customer')->id())->where('vehicle_id', $vehicle)->delete();
 
         return response()->json(['message' => 'Removed from favorites']);
     }

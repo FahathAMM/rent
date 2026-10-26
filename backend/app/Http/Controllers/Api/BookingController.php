@@ -9,7 +9,6 @@ use App\Http\Resources\Account\BookingResource;
 use App\Queries\CustomerBookingQuery;
 use App\Queries\PublicVehicleQuery;
 use App\Services\AuditService;
-use App\Services\AuthUser;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Traits\JsonResponse as JsonResponseTrait;
@@ -35,7 +34,7 @@ class BookingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $bookings = CustomerBookingQuery::withRelations(CustomerBookingQuery::base(AuthUser::id()))
+        $bookings = CustomerBookingQuery::withRelations(CustomerBookingQuery::base(auth('customer')->id()))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('created_at')
             ->paginate(min((int) $request->get('perPage', 10), 50));
@@ -47,7 +46,7 @@ class BookingController extends Controller
 
     public function show(string $reference): JsonResponse
     {
-        $booking = CustomerBookingQuery::find(AuthUser::id(), $reference);
+        $booking = CustomerBookingQuery::find(auth('customer')->id(), $reference);
         abort_unless($booking, 404);
 
         return $this->response('Booking retrieved', new BookingResource($booking));
@@ -58,7 +57,7 @@ class BookingController extends Controller
         $vehicle = PublicVehicleQuery::findById((int) $request->validated('vehicle_id'));
         abort_unless($vehicle, 404);
 
-        $booking = $this->service->create(AuthUser::user(), $vehicle, $request->validated());
+        $booking = $this->service->create(auth('customer')->user(), $vehicle, $request->validated());
 
         AuditService::create('Booking', $booking->id, $booking->booking_reference);
 
@@ -67,7 +66,7 @@ class BookingController extends Controller
 
     public function checkout(string $reference): JsonResponse
     {
-        $booking = CustomerBookingQuery::find(AuthUser::id(), $reference);
+        $booking = CustomerBookingQuery::find(auth('customer')->id(), $reference);
         abort_unless($booking, 404);
 
         $checkout = $this->payments->startCheckout($booking);
@@ -77,10 +76,10 @@ class BookingController extends Controller
 
     public function cancel(Request $request, string $reference): JsonResponse
     {
-        $booking = CustomerBookingQuery::find(AuthUser::id(), $reference);
+        $booking = CustomerBookingQuery::find(auth('customer')->id(), $reference);
         abort_unless($booking, 404);
 
-        $booking = $this->transitions->cancelByCustomer($booking, AuthUser::id(), $request->get('reason'));
+        $booking = $this->transitions->cancelByCustomer($booking, auth('customer')->id(), $request->get('reason'));
 
         AuditService::edit('Booking', $booking->id, $booking->booking_reference, null, ['status' => 'cancelled_by_customer']);
 

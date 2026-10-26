@@ -7,7 +7,6 @@ use App\Http\Requests\Review\StoreReviewRequest;
 use App\Models\Review;
 use App\Queries\CustomerBookingQuery;
 use App\Services\AuditService;
-use App\Services\AuthUser;
 use App\Services\ReviewService;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +25,7 @@ class ReviewController extends Controller
 
     public function index(): JsonResponse
     {
-        $reviews = Review::where('user_id', AuthUser::id())
+        $reviews = Review::where('user_id', auth('customer')->id())
             ->with('vehicle:id,title,slug')
             ->orderByDesc('created_at')
             ->paginate(10);
@@ -36,10 +35,10 @@ class ReviewController extends Controller
 
     public function store(StoreReviewRequest $request): JsonResponse
     {
-        $booking = CustomerBookingQuery::find(AuthUser::id(), $request->validated('booking_reference'));
+        $booking = CustomerBookingQuery::find(auth('customer')->id(), $request->validated('booking_reference'));
         abort_unless($booking, 404);
 
-        $review = $this->service->create(AuthUser::user(), $booking, $request->safe()->except('booking_reference'));
+        $review = $this->service->create(auth('customer')->user(), $booking, $request->safe()->except('booking_reference'));
 
         AuditService::create('Review', $review->id, "Review for {$booking->booking_reference}");
 
