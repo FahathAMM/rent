@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ShopCover } from "@/components/marketplace/ShopCover";
 import { cn } from "@/lib/utils";
 import {
-  ShieldCheck, Star, MapPin, CarFront, Phone, MessageCircle, CalendarCheck, Zap, ArrowRight,
+  ShieldCheck, Star, MapPin, CarFront, Phone, MessageCircle, CalendarCheck, Zap, ArrowRight,Building2
 } from "lucide-react";
 
 /** Shop directory tiles (grid card + list row) — Http\Resources\Public\ShopResource's shape, incl. the listing's fleet stats. Used by /shops and the home page. */
