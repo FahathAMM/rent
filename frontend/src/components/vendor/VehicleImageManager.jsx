@@ -15,9 +15,25 @@ import { cn } from "@/lib/utils";
  * Listing photos for one vehicle — upload, reorder, set primary, delete.
  * Separate from AttachmentPanel because vehicle images need sort_order/
  * is_primary and dedicated vendor endpoints (public disk) rather than the
- * generic Attachment model's permission-slug pattern.
+ * generic Attachment model's permission-slug pattern. The pop-up from the
+ * vehicles list; the edit page renders VehicleImageGallery inline.
  */
 export function VehicleImageManager({ vehicle, open, onOpenChange }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Photos — {vehicle?.title}</DialogTitle>
+          <DialogDescription>JPG, PNG or WebP, max 5MB each. The starred photo is shown first to shoppers.</DialogDescription>
+        </DialogHeader>
+        {vehicle && <VehicleImageGallery vehicle={vehicle} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The upload button + photo grid, live against the API (the vehicle must already exist). */
+export function VehicleImageGallery({ vehicle }) {
   const qc = useQueryClient();
   const fileInputRef = useRef(null);
   const queryKey = ["vehicle-images", vehicle?.id];
@@ -67,58 +83,51 @@ export function VehicleImageManager({ vehicle, open, onOpenChange }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Photos — {vehicle?.title}</DialogTitle>
-          <DialogDescription>JPG, PNG or WebP, max 5MB each. The starred photo is shown first to shoppers.</DialogDescription>
-        </DialogHeader>
+    <div className="space-y-4">
+      <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={handleFileChange} />
+      <Button type="button" variant="outline" className="w-fit gap-1.5" onClick={() => fileInputRef.current?.click()} disabled={upload.isPending}>
+        {upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+        Upload Photos
+      </Button>
 
-        <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp" multiple className="hidden" onChange={handleFileChange} />
-        <Button type="button" variant="outline" className="w-fit gap-1.5" onClick={() => fileInputRef.current?.click()} disabled={upload.isPending}>
-          {upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Upload Photos
-        </Button>
-
-        {isLoading ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-        ) : !images?.length ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
-            <ImageOff className="h-8 w-8" />
-            <p className="text-sm">No photos yet — shoppers won&apos;t be able to see this vehicle clearly.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {images.map((img, i) => (
-              <div key={img.id} className={cn("group relative overflow-hidden rounded-lg border", img.is_primary && "ring-2 ring-primary")}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.alt_text ?? ""} className="aspect-video w-full object-cover" />
-                {img.is_primary && (
-                  <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
-                    <Star className="h-2.5 w-2.5 fill-current" /> Primary
-                  </span>
+      {isLoading ? (
+        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : !images?.length ? (
+        <div className="flex flex-col items-center gap-2 py-10 text-center text-muted-foreground">
+          <ImageOff className="h-8 w-8" />
+          <p className="text-sm">No photos yet — shoppers won&apos;t be able to see this vehicle clearly.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {images.map((img, i) => (
+            <div key={img.id} className={cn("group relative overflow-hidden rounded-lg border", img.is_primary && "ring-2 ring-primary")}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.url} alt={img.alt_text ?? ""} className="aspect-video w-full object-cover" />
+              {img.is_primary && (
+                <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                  <Star className="h-2.5 w-2.5 fill-current" /> Primary
+                </span>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/0 opacity-0 transition-opacity group-hover:bg-black/40 group-hover:opacity-100">
+                <Button type="button" size="icon" variant="secondary" className="!h-7 !w-7" onClick={() => move(i, -1)} disabled={i === 0}>
+                  <ArrowLeft className="!h-3.5 !w-3.5" />
+                </Button>
+                {!img.is_primary && (
+                  <Button type="button" size="icon" variant="secondary" className="!h-7 !w-7" onClick={() => setPrimary.mutate(img.id)}>
+                    <Star className="!h-3.5 !w-3.5" />
+                  </Button>
                 )}
-                <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/0 opacity-0 transition-opacity group-hover:bg-black/40 group-hover:opacity-100">
-                  <Button type="button" size="icon" variant="secondary" className="!h-7 !w-7" onClick={() => move(i, -1)} disabled={i === 0}>
-                    <ArrowLeft className="!h-3.5 !w-3.5" />
-                  </Button>
-                  {!img.is_primary && (
-                    <Button type="button" size="icon" variant="secondary" className="!h-7 !w-7" onClick={() => setPrimary.mutate(img.id)}>
-                      <Star className="!h-3.5 !w-3.5" />
-                    </Button>
-                  )}
-                  <Button type="button" size="icon" variant="destructive" className="!h-7 !w-7" onClick={() => remove.mutate(img.id)}>
-                    <Trash2 className="!h-3.5 !w-3.5" />
-                  </Button>
-                  <Button type="button" size="icon" variant="secondary" className="!h-7 !w-7" onClick={() => move(i, 1)} disabled={i === images.length - 1}>
-                    <ArrowRight className="!h-3.5 !w-3.5" />
-                  </Button>
-                </div>
+                <Button type="button" size="icon" variant="destructive" className="!h-7 !w-7" onClick={() => remove.mutate(img.id)}>
+                  <Trash2 className="!h-3.5 !w-3.5" />
+                </Button>
+                <Button type="button" size="icon" variant="secondary" className="!h-7 !w-7" onClick={() => move(i, 1)} disabled={i === images.length - 1}>
+                  <ArrowRight className="!h-3.5 !w-3.5" />
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -31,16 +31,30 @@ const primaryImage = (v) => v.images?.find((i) => i.is_primary)?.url ?? v.images
  * `relative isolate`. Slides are only mounted once they're next up, so the
  * first paint downloads a single image.
  */
-export function HeroSlideshow({ vehicles }) {
+export function HeroSlideshow({ vehicles, platformSlides, onActiveChange }) {
   const { format } = useCurrencyFormat();
+  // Platform-managed slides (/platform/hero-slides) win outright; the page
+  // renders their headline, so they carry no caption pill here.
+  const managed = (platformSlides ?? []).map((s) => ({ id: `hero-${s.id}`, image: s.image_url, title: s.title, managed: true }));
   const listed = (vehicles ?? [])
     .filter(primaryImage)
     .slice(0, MAX_SLIDES)
     .map((v) => ({ ...v, image: primaryImage(v) }));
-  const slides = [...listed, ...STOCK_SLIDES].slice(0, MAX_SLIDES);
+  const slides = managed.length ? managed : [...listed, ...STOCK_SLIDES].slice(0, MAX_SLIDES);
 
   const [active, setActive] = useState(0);
   const [mountedCount, setMountedCount] = useState(1);
+
+  // Restart from the first slide when the source switches (e.g. platform slides finish loading).
+  const source = managed.length ? "managed" : "fallback";
+  useEffect(() => {
+    setActive(0);
+    setMountedCount(1);
+  }, [source]);
+
+  useEffect(() => {
+    onActiveChange?.(active);
+  }, [active, onActiveChange]);
 
   useEffect(() => {
     if (slides.length < 2) return;
@@ -81,7 +95,7 @@ export function HeroSlideshow({ vehicles }) {
       <div className="absolute inset-x-0 bottom-4">
         <div className="mx-auto flex max-w-6xl items-end justify-between gap-4 px-4">
           <div key={current.id} className="min-w-0 animate-in fade-in duration-700">
-            {isListing ? (
+            {current.managed ? null : isListing ? (
               <Link
                 href={`/vehicles/${current.slug}`}
                 className="group inline-flex max-w-full items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs text-white/85 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"

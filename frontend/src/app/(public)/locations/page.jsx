@@ -1,56 +1,59 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { publicService } from "@/services/publicService";
-import { MapPin, Loader2, Car } from "lucide-react";
+import { LocationsSection } from "@/components/public/LocationsSection";
+import { Loader2, MapPin } from "lucide-react";
 
+/** All districts + the map — the same LocationsSection as the home page, given the whole page. */
 export default function LocationsPage() {
-  const { data: cities, isLoading } = useQuery({
+  const { data: cities, isLoading: citiesLoading } = useQuery({
     queryKey: ["public-locations"],
     queryFn: () => publicService.locations().then((r) => r.data.data),
   });
 
+  const { data: districts, isLoading: districtsLoading } = useQuery({
+    queryKey: ["public-districts"],
+    queryFn: () => publicService.districts().then((r) => r.data.data),
+    staleTime: Infinity,
+  });
+
+  const isLoading = citiesLoading || districtsLoading;
+
   return (
     <div>
-      <section className="border-b bg-muted/30">
-        <div className="mx-auto max-w-6xl px-4 py-12 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">Browse by Location</h1>
-          <p className="mx-auto mt-2 max-w-lg text-muted-foreground">
-            Pick a city to see every vehicle currently available for rent there.
+      <section className="relative isolate overflow-hidden border-b">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden opacity-70">
+          <div className="aurora-blob aurora-blob-1" />
+          <div className="aurora-blob aurora-blob-3" />
+        </div>
+        <div className="relative mx-auto max-w-6xl px-4 py-12 text-center sm:py-14">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+            <MapPin className="h-3.5 w-3.5 text-primary" /> All 25 districts of Sri Lanka
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Browse by{" "}
+            <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">location</span>
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground sm:text-base">
+            Pick a district to see every vehicle currently available for rent there.
           </p>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        {isLoading ? (
-          <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : cities?.length ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {cities.map((c) => (
-              <Link
-                key={c.city}
-                href={`/browse?city=${encodeURIComponent(c.city)}`}
-                className="group flex items-center gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold">{c.city}</p>
-                  <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Car className="h-3.5 w-3.5" /> {c.vehicle_count} vehicle{c.vehicle_count === 1 ? "" : "s"} available
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-2xl border border-dashed py-16 text-center text-sm text-muted-foreground">
-            No locations with available vehicles yet.
-          </p>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <LocationsSection
+          cities={cities}
+          districts={districts}
+          eyebrow="Districts"
+          title="Where you can rent"
+          subtitle="Ranked by vehicles available. Districts without vehicles yet are listed at the bottom."
+          href={null}
+          listClassName="max-h-[560px]"
+        />
+      )}
     </div>
   );
 }

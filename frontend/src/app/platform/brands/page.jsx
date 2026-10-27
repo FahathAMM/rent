@@ -20,6 +20,37 @@ import { toast } from "sonner";
 
 const emptyForm = { name: "", slug: "", sort_order: 0, is_active: true };
 
+// Mirrors StoreBrandRequest::LOGO_RULES so a bad file is caught before uploading.
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const LOGO_MAX_MB = 2;
+const LOGO_MIN_PX = 64;
+const LOGO_MAX_PX = 2000;
+
+function readImageSize(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url); };
+    img.onerror = () => { reject(new Error("unreadable")); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+}
+
+/** Resolves to an error message, or null when the file is acceptable. */
+async function checkLogo(file) {
+  if (!LOGO_TYPES.includes(file.type)) return "The logo must be a PNG, JPG or WebP image.";
+  if (file.size > LOGO_MAX_MB * 1024 * 1024) return `The logo must be ${LOGO_MAX_MB} MB or smaller (this one is ${(file.size / 1024 / 1024).toFixed(1)} MB).`;
+  try {
+    const { width, height } = await readImageSize(file);
+    if (width < LOGO_MIN_PX || height < LOGO_MIN_PX || width > LOGO_MAX_PX || height > LOGO_MAX_PX) {
+      return `The logo must be between ${LOGO_MIN_PX}×${LOGO_MIN_PX} and ${LOGO_MAX_PX}×${LOGO_MAX_PX} pixels (this one is ${width}×${height}).`;
+    }
+  } catch {
+    return "That file couldn't be read as an image.";
+  }
+  return null;
+}
+
 const slugify = (v) => v.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export default function PlatformBrandsPage() {
@@ -149,9 +180,21 @@ export default function PlatformBrandsPage() {
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/webp"
                 className="hidden"
-                onChange={(e) => { setLogoFile(e.target.files?.[0] ?? null); setRemoveLogo(false); e.target.value = ""; }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  e.target.value = "";
+                  if (!file) return;
+                  const problem = await checkLogo(file);
+                  if (problem) {
+                    setErrors((p) => ({ ...p, logo: [problem] }));
+                    return;
+                  }
+                  setErrors(({ logo, ...rest }) => rest);
+                  setLogoFile(file);
+                  setRemoveLogo(false);
+                }}
               />
               <div className="flex items-center gap-3 rounded-lg border p-2.5">
                 <BrandMark brand={{ name: form.name || "?", logo_url: previewUrl }} className="size-12" />
@@ -170,7 +213,7 @@ export default function PlatformBrandsPage() {
                 </div>
               </div>
               {errors.logo?.[0] && <p className="text-xs text-destructive">{errors.logo[0]}</p>}
-              <p className="text-xs text-muted-foreground">Square PNG/SVG on a transparent background works best. Max 2MB.</p>
+              <p className="text-xs text-muted-foreground">PNG, JPG or WebP, up to 2 MB, between 64×64 and 2000×2000 px. A square PNG on a transparent background works best.</p>
             </div>
 
             <TextInput label="Sort order" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} error={errors.sort_order?.[0]} />

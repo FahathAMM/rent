@@ -7,8 +7,11 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Admin Panel",
-  description: "Administration dashboard",
+  title: {
+    default: "LankaLane — Vehicle rentals from trusted shops across Sri Lanka",
+    template: "%s | LankaLane",
+  },
+  description: "Compare and hire cars, vans and SUVs from verified rental shops across Sri Lanka.",
 };
 
 export default function RootLayout({ children }) {

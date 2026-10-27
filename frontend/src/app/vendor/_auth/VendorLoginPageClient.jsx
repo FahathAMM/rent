@@ -44,7 +44,7 @@ export default function VendorLoginPageClient({ initialBrand, initialView = "log
     initialData: initialBrand,
   });
   const brand = data ?? {};
-  const brandName = brand.name || "RentLanka";
+  const brandName = brand.name || "LankaLane";
   const logoUrl = brand.login_logo || brand.logo || null;
 
   return (

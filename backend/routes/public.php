@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Public\BrandController;
 use App\Http\Controllers\Api\Public\CategoryController;
 use App\Http\Controllers\Api\Public\VehicleCatalogueController;
 use App\Http\Controllers\Api\Public\DistrictController;
+use App\Http\Controllers\Api\Public\HeroSlideController;
 use App\Http\Controllers\Api\Public\InquiryController;
 use App\Http\Controllers\Api\Public\LocationController;
 use App\Http\Controllers\Api\Public\ShopController;
@@ -34,6 +35,7 @@ Route::prefix('public')->group(function () {
     Route::get('shops/{slug}/reviews', [ShopController::class, 'reviews']);
 
     Route::get('categories', [CategoryController::class, 'index']);
+    Route::get('hero-slides', [HeroSlideController::class, 'index']);
     Route::get('brands', [BrandController::class, 'index']);
     Route::get('models', [VehicleCatalogueController::class, 'models']);     // ?brand_id=
     Route::get('variants', [VehicleCatalogueController::class, 'variants']); // ?model_id=

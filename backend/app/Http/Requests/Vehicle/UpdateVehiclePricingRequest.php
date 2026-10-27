@@ -34,4 +34,38 @@ class UpdateVehiclePricingRequest extends FormRequest
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
+
+    /**
+     * Column defaults for the vehicle_pricing fields that are NOT NULL in
+     * the schema. An optional field left empty in the form arrives as null
+     * (ConvertEmptyStringsToNull) and would otherwise hit "column cannot be
+     * null" - empty means "use the default" instead.
+     */
+    private const NOT_NULL_DEFAULTS = [
+        'weekend_surcharge_pct' => 0,
+        'security_deposit' => 0,
+        'deposit_method' => 'cash_on_pickup',
+        'excess_mileage_rate_per_km' => 0,
+        'delivery_available' => false,
+        'cleaning_fee' => 0,
+        'late_return_fee_per_hour' => 0,
+        'fuel_policy' => 'full_to_full',
+        'min_rental_days' => 1,
+        'advance_notice_hours' => 4,
+        'tax_rate' => 0,
+    ];
+
+    /** validated(), with nulls on NOT NULL columns replaced by their defaults. */
+    public function pricingData(): array
+    {
+        $data = $this->validated();
+
+        foreach (self::NOT_NULL_DEFAULTS as $field => $default) {
+            if (array_key_exists($field, $data) && $data[$field] === null) {
+                $data[$field] = $default;
+            }
+        }
+
+        return $data;
+    }
 }

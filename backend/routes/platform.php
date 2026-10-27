@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomation
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
 use App\Http\Controllers\Api\Platform\BrandController as PlatformBrandController;
+use App\Http\Controllers\Api\Platform\HeroSlideController as PlatformHeroSlideController;
 use App\Http\Controllers\Api\Platform\VehicleColourController;
 use App\Http\Controllers\Api\Platform\VehicleModelController;
 use App\Http\Controllers\Api\Platform\VehicleVariantController;
@@ -167,6 +168,11 @@ Route::prefix('platform')->group(function () {
         // Vehicle brands — platform-managed list vendors pick from. Logo
         // uploads are multipart, so updates go through POST + _method=PUT.
         Route::apiResource('brands', PlatformBrandController::class)->parameters(['brands' => 'brand']);
+
+        // Home page hero slides (image + headline). Multipart updates go
+        // through POST + _method=PUT, like brands.
+        Route::post('hero-slides/reorder', [PlatformHeroSlideController::class, 'reorder']);
+        Route::apiResource('hero-slides', PlatformHeroSlideController::class)->except('show')->parameters(['hero-slides' => 'heroSlide']);
 
         // The rest of the vehicle hierarchy: brand -> model -> variant, plus colours.
         Route::apiResource('vehicle-models', VehicleModelController::class)->except('show')->parameters(['vehicle-models' => 'model']);

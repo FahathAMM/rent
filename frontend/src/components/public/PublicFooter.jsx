@@ -12,7 +12,7 @@ export function PublicFooter() {
     staleTime: 60_000,
   });
 
-  const brandName = brand?.name || "RentLanka";
+  const brandName = brand?.name || "LankaLane";
   const logoUrl = brand?.logo || null;
   const tagline = brand?.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
 

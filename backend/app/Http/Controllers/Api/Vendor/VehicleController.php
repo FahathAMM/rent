@@ -121,7 +121,7 @@ class VehicleController extends Controller
 
         $pricing = VehiclePricing::updateOrCreate(
             ['vehicle_id' => $vehicle->id],
-            $request->validated() + ['updated_by' => AuthUser::id()]
+            $request->pricingData() + ['updated_by' => AuthUser::id()]
         );
 
         AuditService::edit('VehiclePricing', $vehicle->id, $vehicle->title);

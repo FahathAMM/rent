@@ -38,7 +38,7 @@ export default function LoginPageClient({ initialBrand, initialView = "login" })
     initialData: initialBrand,
   });
   const brand = data ?? {};
-  const brandName = brand.name || "RentLanka";
+  const brandName = brand.name || "LankaLane";
   const tagline = brand.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
   const logoUrl = brand.login_logo || brand.logo || null;
   const eyebrow = brand.login_eyebrow || "Cars, vans and more from trusted local owners";
