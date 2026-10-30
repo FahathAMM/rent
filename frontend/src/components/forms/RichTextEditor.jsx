@@ -88,7 +88,7 @@ function Toolbar({ editor }) {
     </div>
   );
 }
-
+//fhd
 export function RichTextEditor({ label, error, required, className, value, onChange, placeholder, minHeight = "120px" }) {
   const editor = useEditor({
     extensions: [

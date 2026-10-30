@@ -7,6 +7,7 @@ Administration core (authentication, users, roles & permissions, dynamic
 navigation menus, key-value store settings, audit log) that every tenant
 shares as its account/RBAC layer.
 
+
 ## Multi-tenancy
 
 Every business signs up as its own **company** (tenant) via `/register`.
