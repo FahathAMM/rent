@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api\Vendor;
 
+use App\Support\VendorContext;
+use App\Services\SubscriptionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Vehicle\StoreVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehiclePricingRequest;
 use App\Http\Resources\Vendor\VehicleResource;
 use App\Models\Vehicle;
+use App\Models\PlatformSetting;
 use App\Models\VehiclePricing;
 use App\Repositories\VehicleRepo;
 use App\Services\AuditService;
@@ -21,7 +24,7 @@ use Illuminate\Http\Request;
  * Vehicle's BelongsToShop) has already confined every {vehicle} route
  * parameter to the active shop before it reaches here - an id belonging
  * to another shop 404s at route-model-binding time. VehiclePolicy is the
- * second, explicit check (ability-gated, not just shop-gated).
+ * second, explicit check (permission-gated, not just shop-gated).
  */
 class VehicleController extends Controller
 {
@@ -45,6 +48,7 @@ class VehicleController extends Controller
     public function store(StoreVehicleRequest $request): JsonResponse
     {
         $this->authorize('create', Vehicle::class);
+        app(SubscriptionService::class)->ensureCanAddVehicle(VendorContext::shopId());
 
         $vehicle = $this->repo->store($request);
 
@@ -89,8 +93,20 @@ class VehicleController extends Controller
     {
         $this->authorize('publish', $vehicle);
 
+        $shop = $vehicle->shop;
+        abort_unless(
+            $shop?->isVerified() || PlatformSetting::get('allow_unapproved_owner_publishing', false),
+            403,
+            'Your rental shop must be verified before you can publish listings.'
+        );
+
+        abort_if($vehicle->moderation_status === Vehicle::MODERATION_FLAGGED, 422,
+            'This listing was taken offline by the platform' . ($vehicle->moderation_note ? ": {$vehicle->moderation_note}" : '') . '. Please contact the platform admin to have it republished.');
+
         abort_unless($vehicle->moderation_status === Vehicle::MODERATION_APPROVED, 422,
             'This vehicle must pass moderation before it can be published.');
+
+        app(SubscriptionService::class)->ensureCanPublish($vehicle);
 
         $vehicle = $this->repo->publish($vehicle);
 
