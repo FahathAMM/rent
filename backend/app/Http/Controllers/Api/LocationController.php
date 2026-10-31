@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Support\VendorContext;
+use App\Services\SubscriptionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Location\StoreLocationRequest;
 use App\Http\Requests\Location\UpdateLocationRequest;
@@ -37,6 +39,8 @@ class LocationController extends Controller
 
     public function store(StoreLocationRequest $request): JsonResponse
     {
+        app(SubscriptionService::class)->ensureCanAddLocation(VendorContext::shopId());
+
         $location = $this->repo->store($request);
 
         AuditService::create('Location', $location->id, $location->name);
