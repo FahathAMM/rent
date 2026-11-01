@@ -23,3 +23,50 @@ backend/storage/logs/visits.log
 
 backend/public/storage
 backend/storage/app/public/company-logos/
+from pathlib import Path.md
+app-doc/
+backend/.env.example
+# Lankalane VPS Deployment Guide.md
+DEMO_VENDOR_ACCOUNTS.md
+# Lankalane VPS Deployment Guide.md
+
+# ── Sensitive files — never commit ─────────────────────────────────────────
+# Environment files (real config / secrets). The *.example templates stay tracked.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Keys, certificates, SSH and package-registry credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.ppk
+id_rsa*
+id_ed25519*
+auth.json
+.npmrc
+
+# Database dumps, local databases and backup archives
+*.sql
+*.sql.gz
+*.dump
+*.sqlite
+*.sqlite3
+*.bak
+*.zip
+*.tgz
+*.tar.gz
+
+# Logs
+*.log
+
+# Browser profiles from automated/manual testing (cookies, saved logins, history)
+.chrome-tmp/
+**/.chrome-tmp/
+chrome-profile*/
+
+# Local tool settings
+.claude/settings.local.json
