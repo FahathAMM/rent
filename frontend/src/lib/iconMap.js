@@ -14,10 +14,10 @@ import {
   Scale, Waves, GitCompareArrows, FileMinus, FilePlus, FileStack, HandCoins,
   Laptop, MapPin, Inbox, AlertTriangle, FileBarChart, Recycle,
   Monitor, Smartphone, Keyboard, Printer, Armchair, Router,
-  Car, CalendarCheck, Heart, User, Bike, Bus, CarFront, Sparkles,
+  Car, CalendarCheck, Heart, User, Bike, Bus, CarFront, Sparkles, KeyRound, Crown,
 } from "lucide-react";
 
-export const iconMap = {
+const iconMap = {
   LayoutDashboard,
   ShoppingCart,
   Package,
@@ -93,6 +93,8 @@ export const iconMap = {
   Target,
   Handshake,
   Landmark,
+  KeyRound,
+  Crown,
   NotebookPen,
   BookText,
   CalendarRange,
@@ -124,8 +126,6 @@ export const iconMap = {
   CarFront,
   Sparkles,
 };
-
-export const iconNames = Object.keys(iconMap).sort();
 
 export function getIcon(name) {
   return iconMap[name] ?? Settings;
