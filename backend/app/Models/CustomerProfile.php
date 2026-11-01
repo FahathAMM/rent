@@ -33,9 +33,4 @@ class CustomerProfile extends Model
     {
         return $this->belongsTo(SystemAdmin::class, 'verified_by');
     }
-
-    public function hasValidLicence(): bool
-    {
-        return $this->licence_expiry !== null && $this->licence_expiry->isFuture();
-    }
 }

@@ -46,10 +46,7 @@ class Automation extends Model
     private const COMMANDS = [
         'Database Backup' => 'backup:run --only-db',
         'Expire Unanswered Bookings' => 'bookings:expire-unanswered',
-        'Expire Unpaid Bookings' => 'bookings:expire-unpaid',
-        'Release Expired Holds' => 'holds:release-expired',
         'Flag No-Show Bookings' => 'bookings:flag-no-show',
-        'Build Owner Payouts' => 'payouts:build-cycle',
     ];
 
     /**
@@ -77,11 +74,6 @@ class Automation extends Model
     public function intervals(): array
     {
         return array_values(array_filter(array_map('trim', explode(',', (string) $this->interval))));
-    }
-
-    public function isFixedTime(): bool
-    {
-        return in_array(self::FIXED_TIME, $this->intervals(), true);
     }
 
     /**
