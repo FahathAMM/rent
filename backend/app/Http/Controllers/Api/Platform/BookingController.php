@@ -38,7 +38,13 @@ class BookingController extends Controller
     public function show(string $reference): JsonResponse
     {
         $booking = Booking::where('booking_reference', $reference)
-            ->with('vehicle', 'shop', 'customer:id,name,email,phone', 'pricing', 'financials', 'statusHistories', 'disputes', 'review')
+            ->with([
+                'vehicle', 'vehicle.images' => fn ($q) => $q->where('is_primary', true)->with('attachment'),
+                'shop', 'customer:id,name,email,phone,created_at',
+                'pickupLocation:id,name,address,city,district', 'returnLocation:id,name,address,city,district',
+                'pricing', 'securityDeposit', 'statusHistories' => fn ($q) => $q->latest(),
+                'inspections', 'damages', 'payments', 'disputes', 'review',
+            ])
             ->first();
         abort_unless($booking, 404);
 
