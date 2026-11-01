@@ -12,7 +12,7 @@ import {
   CheckboxInput,
 } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
-import { VehicleImageGallery } from "@/components/vendor/VehicleImageManager";
+import { VehicleImageGallery } from "./VehicleImageManager";
 import { cn } from "@/lib/utils";
 import {
   Loader2,

@@ -46,7 +46,7 @@ class CustomerBookingQuery
     {
         return $query->with([
             'vehicle' => fn ($q) => $q->withoutGlobalScope(ShopScope::class),
-            'shop', 'pricing', 'review',
+            'shop', 'shop.primaryBankDetail', 'pricing', 'review', 'payments.proof', 'dateChanges',
             'pickupLocation' => fn ($q) => $q->withoutGlobalScope(ShopScope::class),
             'returnLocation' => fn ($q) => $q->withoutGlobalScope(ShopScope::class),
         ]);

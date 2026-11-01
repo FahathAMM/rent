@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Listing photos - unlike KYC/business documents, these are public
  * (served from the 'public' disk, world-readable at /storage/...) since
- * they're what PublicVehicleQuery shows anonymous shoppers. Authorized
+ * they're what PublicVehicleRepo shows anonymous shoppers. Authorized
  * via VehiclePolicy's existing 'update' ability - managing a vehicle's
  * photos is part of managing the vehicle, not a separate permission.
  */

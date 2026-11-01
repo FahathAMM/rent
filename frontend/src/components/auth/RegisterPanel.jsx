@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCustomerAuth } from "@/hooks/useCustomerAuth";
+import { safeNextPath } from "@/lib/utils";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { RegisterFormFields } from "@/components/auth/RegisterFormFields";
 import { DevCredit } from "@/components/auth/DevCredit";
@@ -29,7 +30,8 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
     setLoading(true);
     try {
       await register(form);
-      router.push("/account/dashboard");
+      // Back to where they were (e.g. a booking they started) — else the dashboard.
+      router.push(safeNextPath("/account/dashboard"));
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Registration failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });

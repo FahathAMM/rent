@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VehicleColour;
 use App\Models\VehicleModel;
 use App\Models\VehicleVariant;
-use App\Queries\PublicVehicleQuery;
+use App\Repositories\PublicVehicleRepo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
  * The managed vehicle lists under a brand - models, variants and colours.
  * Feeds the vendor vehicle form's cascading dropdowns and the /browse
  * filters. Only active entries; models also carry how many publicly
- * visible vehicles they have (same rules as search, via PublicVehicleQuery).
+ * visible vehicles they have (same rules as search, via PublicVehicleRepo).
  */
 class VehicleCatalogueController extends Controller
 {
@@ -22,7 +22,7 @@ class VehicleCatalogueController extends Controller
     {
         $request->validate(['brand_id' => ['required', 'integer']]);
 
-        $visibleCounts = PublicVehicleQuery::base()
+        $visibleCounts = app(PublicVehicleRepo::class)->base()
             ->where('brand_id', $request->integer('brand_id'))
             ->whereNotNull('model_id')
             ->selectRaw('model_id, count(*) as aggregate')

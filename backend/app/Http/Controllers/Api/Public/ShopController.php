@@ -7,23 +7,20 @@ use App\Http\Resources\Public\ReviewResource;
 use App\Http\Resources\Public\ShopResource;
 use App\Http\Resources\Public\VehicleResource;
 use App\Models\Review;
-use App\Queries\PublicShopQuery;
-use App\Queries\PublicVehicleQuery;
+use App\Repositories\PublicShopRepo;
+use App\Repositories\PublicVehicleRepo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
 {
+    public function __construct(private PublicShopRepo $shops) {}
+
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only([
-            'q', 'city', 'district', 'verified_only', 'category_id', 'delivery', 'rating_min', 'sort',
-        ]);
+        $shops = $this->shops->searchPaginated($request->only(PublicShopRepo::FILTERS), $request->integer('per_page', 12));
 
-        $shops = PublicShopQuery::search($filters)
-            ->paginate(min((int) $request->get('per_page', 12), 48));
-
-        $stats = PublicShopQuery::fleetStats($shops->pluck('id')->all());
+        $stats = $this->shops->fleetStats($shops->pluck('id')->all());
         $shops->getCollection()->each(fn ($shop) => $shop->fleet_stats = $stats[$shop->id] ?? null);
 
         return response()->json([
@@ -39,20 +36,17 @@ class ShopController extends Controller
 
     public function show(string $slug): JsonResponse
     {
-        $shop = PublicShopQuery::findBySlug($slug);
-        abort_if(!$shop, 404, 'Shop not found.');
-
-        $shop->fleet_stats = PublicShopQuery::fleetStats([$shop->id])[$shop->id];
+        $shop = $this->shops->findBySlugOrFail($slug);
+        $shop->fleet_stats = $this->shops->fleetStats([$shop->id])[$shop->id];
 
         return response()->json(['data' => new ShopResource($shop)]);
     }
 
     public function vehicles(string $slug, Request $request): JsonResponse
     {
-        $shop = PublicShopQuery::findBySlug($slug);
-        abort_if(!$shop, 404, 'Shop not found.');
+        $shop = $this->shops->findBySlugOrFail($slug);
 
-        $vehicles = PublicVehicleQuery::search($request->only(['sort', 'category_id', 'q']))
+        $vehicles = app(PublicVehicleRepo::class)->searchQuery($request->only(['sort', 'category_id', 'q']))
             ->where('vehicles.shop_id', $shop->id)
             ->paginate(min((int) $request->get('per_page', 12), 48));
 
@@ -70,8 +64,7 @@ class ShopController extends Controller
     /** Published reviews across all of the shop's vehicles, plus a 1-5 star distribution for the summary bar chart. */
     public function reviews(string $slug, Request $request): JsonResponse
     {
-        $shop = PublicShopQuery::findBySlug($slug);
-        abort_if(!$shop, 404, 'Shop not found.');
+        $shop = $this->shops->findBySlugOrFail($slug);
 
         $published = fn () => Review::where('shop_id', $shop->id)->where('status', Review::STATUS_PUBLISHED);
 

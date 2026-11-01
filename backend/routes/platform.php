@@ -15,7 +15,6 @@ use App\Http\Controllers\Api\Platform\VehicleModelController;
 use App\Http\Controllers\Api\Platform\VehicleVariantController;
 use App\Http\Controllers\Api\Platform\CategoryController as PlatformCategoryController;
 use App\Http\Controllers\Api\Platform\CityController as PlatformCityController;
-use App\Http\Controllers\Api\Platform\CommissionController as PlatformCommissionController;
 use App\Http\Controllers\Api\Platform\CustomerController as PlatformCustomerController;
 use App\Http\Controllers\Api\Platform\DashboardController as PlatformDashboardController;
 use App\Http\Controllers\Api\Platform\DisputeController as PlatformDisputeController;
@@ -23,12 +22,12 @@ use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
 use App\Http\Controllers\Api\Platform\PaymentController as PlatformPaymentController;
-use App\Http\Controllers\Api\Platform\PayoutController as PlatformPayoutController;
-use App\Http\Controllers\Api\Platform\ReconciliationController as PlatformReconciliationController;
-use App\Http\Controllers\Api\Platform\RefundController as PlatformRefundController;
+use App\Http\Controllers\Api\Platform\PublicVisitController;
 use App\Http\Controllers\Api\Platform\ReportController as PlatformReportController;
 use App\Http\Controllers\Api\Platform\ReviewController as PlatformReviewController;
 use App\Http\Controllers\Api\Platform\ShopVerificationController;
+use App\Http\Controllers\Api\Platform\SubscriptionController as PlatformSubscriptionController;
+use App\Http\Controllers\Api\Platform\PromotionController as PlatformPromotionController;
 use App\Http\Controllers\Api\Platform\SystemAdminController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use Illuminate\Support\Facades\Route;
@@ -53,12 +52,17 @@ Route::prefix('platform')->group(function () {
         Route::post('details', [PlatformDetailController::class, 'update']); // multipart + _method=PUT (logo upload)
 
         // Roles, permissions and the two marketplace-facing nav trees are
-        // shared across every shop, so only a platform admin may change
-        // them (a shop owner editing "roles" or "menus" would otherwise
-        // affect every other shop on the platform) — reuses the
-        // Administration controllers as-is.
-        Route::apiResource('roles', RoleController::class)->except(['show']);
+        // shared across every shop, so only the platform may change them (a
+        // shop owner editing "roles" or "menus" would otherwise affect every
+        // other shop on the platform). Any platform admin can view roles;
+        // changing what a role can do is Platform Owner only.
+        Route::get('roles', [RoleController::class, 'index']);
         Route::get('permissions', [PermissionController::class, 'index']);
+        Route::middleware('platform.owner')->group(function () {
+            Route::post('roles', [RoleController::class, 'store']);
+            Route::put('roles/{role}', [RoleController::class, 'update']);
+            Route::delete('roles/{role}', [RoleController::class, 'destroy']);
+        });
         Route::get('menus',           [MenuController::class, 'index']);
         Route::post('menus',          [MenuController::class, 'store']);
         Route::put('menus/{menu}',    [MenuController::class, 'update']);
@@ -87,6 +91,10 @@ Route::prefix('platform')->group(function () {
             Route::delete('backups', [PlatformBackupController::class, 'destroy']);
         });
 
+        // Public site visits (public_visits table) — /platform/visits.
+        Route::get('visits/summary', [PublicVisitController::class, 'summary']);
+        Route::get('visits',         [PublicVisitController::class, 'index']);
+
         // Application log viewer (storage/logs) — /platform/logs.
         Route::get('logs',          [PlatformLogController::class, 'index']);
         Route::get('logs/entries',  [PlatformLogController::class, 'entries']);
@@ -107,6 +115,42 @@ Route::prefix('platform')->group(function () {
         Route::post('shops/{rentalShop}/suspend', [ShopVerificationController::class, 'suspend']);
         Route::post('shops/{rentalShop}/activate', [ShopVerificationController::class, 'activate']);
         Route::get('shops/documents/{verification}/download', [ShopVerificationController::class, 'downloadDocument']);
+        Route::middleware('platform.owner')->group(function () {
+            Route::delete('shops/{rentalShop}', [ShopVerificationController::class, 'destroy']);
+        });
+
+        // Shop subscription plans — app-doc/marketplace/10-monetization.md.
+        // Any admin can review payments and grant a plan; plans and settings are Platform Owner only.
+        Route::get('subscription-stats',     [PlatformSubscriptionController::class, 'stats']);
+        Route::get('subscription-plans',     [PlatformSubscriptionController::class, 'plans']);
+        Route::get('subscription-settings',  [PlatformSubscriptionController::class, 'settings']);
+        Route::middleware('platform.owner')->group(function () {
+            Route::post('subscription-plans',             [PlatformSubscriptionController::class, 'storePlan']);
+            Route::put('subscription-plans/{plan}',       [PlatformSubscriptionController::class, 'updatePlan']);
+            Route::put('subscription-settings',           [PlatformSubscriptionController::class, 'updateSettings']);
+        });
+        Route::get('subscription-payments',                    [PlatformSubscriptionController::class, 'payments']);
+        Route::post('subscription-payments/{payment}/approve', [PlatformSubscriptionController::class, 'approve']);
+        Route::post('subscription-payments/{payment}/reject',  [PlatformSubscriptionController::class, 'reject']);
+        Route::get('subscription-payments/{payment}/proof',    [PlatformSubscriptionController::class, 'proof']);
+        Route::get('shops/{rentalShop}/subscription',          [PlatformSubscriptionController::class, 'shop']);
+        Route::post('shops/{rentalShop}/subscription',         [PlatformSubscriptionController::class, 'grant']);
+
+        // Paid visibility (featured vehicles, category / city sponsorship) — 10-monetization.md 2.2.
+        // Any admin reviews payments, grants and ends; packages and slot limits are Platform Owner only.
+        Route::get('promotions/stats',                [PlatformPromotionController::class, 'stats']);
+        Route::get('promotions/packages',             [PlatformPromotionController::class, 'packages']);
+        Route::get('promotions',                      [PlatformPromotionController::class, 'index']);
+        Route::post('promotions/{promotion}/approve', [PlatformPromotionController::class, 'approve']);
+        Route::post('promotions/{promotion}/reject',  [PlatformPromotionController::class, 'reject']);
+        Route::post('promotions/{promotion}/end',     [PlatformPromotionController::class, 'end']);
+        Route::get('promotions/{promotion}/proof',    [PlatformPromotionController::class, 'proof']);
+        Route::post('shops/{rentalShop}/promotions',  [PlatformPromotionController::class, 'grant']);
+        Route::middleware('platform.owner')->group(function () {
+            Route::post('promotions/packages',           [PlatformPromotionController::class, 'storePackage']);
+            Route::put('promotions/packages/{package}',  [PlatformPromotionController::class, 'updatePackage']);
+            Route::put('promotions/settings',            [PlatformPromotionController::class, 'updateSettings']);
+        });
 
         // Listing moderation queue — a vehicle's moderation_status starts
         // 'pending' at creation; approving here is the only path that
@@ -118,18 +162,9 @@ Route::prefix('platform')->group(function () {
         Route::post('listings/{vehicle}/reject',    [ListingModerationController::class, 'reject']);
         Route::post('listings/{vehicle}/flag',      [ListingModerationController::class, 'flag']);
         Route::post('listings/{vehicle}/unpublish', [ListingModerationController::class, 'unpublish']);
+        Route::post('listings/{vehicle}/republish', [ListingModerationController::class, 'republish']);
         Route::post('listings/{vehicle}/feature',   [ListingModerationController::class, 'feature']);
         Route::post('listings/{vehicle}/unfeature', [ListingModerationController::class, 'unfeature']);
-
-        // Manual payout settlement — see
-        // app-doc/marketplace/04-lifecycles.md "Payout cycle".
-        Route::get('payouts',                     [PlatformPayoutController::class, 'index']);
-        Route::get('payouts/{payout}',             [PlatformPayoutController::class, 'show']);
-        Route::post('payouts/build',               [PlatformPayoutController::class, 'build']);
-        Route::post('payouts/{payout}/approve',     [PlatformPayoutController::class, 'approve']);
-        Route::post('payouts/{payout}/processing',  [PlatformPayoutController::class, 'markProcessing']);
-        Route::post('payouts/{payout}/paid',        [PlatformPayoutController::class, 'markPaid']);
-        Route::post('payouts/{payout}/failed',      [PlatformPayoutController::class, 'markFailed']);
 
         // Review moderation — see
         // app-doc/marketplace/05-ui-and-api-map.md "/platform/reviews".
@@ -152,17 +187,17 @@ Route::prefix('platform')->group(function () {
         Route::get('abuse-reports',               [PlatformReportController::class, 'index']);
         Route::post('abuse-reports/{report}/action', [PlatformReportController::class, 'action']);
 
-        // Customer accounts (any marketplace user — customer, owner, or
-        // staff; there is no separate "customer" table) — suspend/ban
-        // revokes every token the account already holds.
-        Route::get('customers',                 [PlatformCustomerController::class, 'index']);
-        Route::get('customers/{user}',           [PlatformCustomerController::class, 'show']);
-        Route::post('customers/{user}/suspend',  [PlatformCustomerController::class, 'suspend']);
-        Route::post('customers/{user}/ban',      [PlatformCustomerController::class, 'ban']);
-        Route::post('customers/{user}/activate', [PlatformCustomerController::class, 'activate']);
+        // Customer accounts (the `customers` table / customer guard, not
+        // vendor `users`) — suspend/ban revokes every token the account
+        // already holds.
+        Route::get('customers',                      [PlatformCustomerController::class, 'index']);
+        Route::get('customers/{customer}',           [PlatformCustomerController::class, 'show']);
+        Route::post('customers/{customer}/suspend',  [PlatformCustomerController::class, 'suspend']);
+        Route::post('customers/{customer}/ban',      [PlatformCustomerController::class, 'ban']);
+        Route::post('customers/{customer}/activate', [PlatformCustomerController::class, 'activate']);
 
         // Vehicle categories — platform-managed, feeds the public search
-        // facets and VehicleCategoryController's commission-base lookups.
+        // facets.
         Route::apiResource('categories', PlatformCategoryController::class)->parameters(['categories' => 'category']);
 
         // Vehicle brands — platform-managed list vendors pick from. Logo
@@ -186,36 +221,15 @@ Route::prefix('platform')->group(function () {
         Route::post('cities', [PlatformCityController::class, 'store']);
         Route::delete('cities/{city}', [PlatformCityController::class, 'destroy']);
 
-        // Commission rules — see app-doc/marketplace/04-lifecycles.md
-        // "Commission model". Deleting/editing a rule never re-prices a
-        // booking that already confirmed; the resolved rule is frozen
-        // into booking_financials at that moment.
-        Route::apiResource('commissions', PlatformCommissionController::class)->parameters(['commissions' => 'commission']);
-
-        // Payments — read-only; only ever written by PaymentService / the
-        // PayHere webhook handler.
+        // Payments — read-only here; cash and bank-transfer payments are
+        // written by the shop's booking flow (handover, transfers).
         Route::get('payments',           [PlatformPaymentController::class, 'index']);
         Route::get('payments/{payment}', [PlatformPaymentController::class, 'show']);
-
-        // Refunds — manual settlement, same evidence-required pattern as
-        // PayoutController::markPaid (PayHere's refund API is unconfirmed
-        // against a live merchant account).
-        Route::get('refunds',                    [PlatformRefundController::class, 'index']);
-        Route::get('refunds/{refund}',            [PlatformRefundController::class, 'show']);
-        Route::post('refunds',                    [PlatformRefundController::class, 'store']);
-        Route::post('refunds/{refund}/approve',   [PlatformRefundController::class, 'approve']);
-        Route::post('refunds/{refund}/reject',    [PlatformRefundController::class, 'reject']);
-        Route::post('refunds/{refund}/complete',  [PlatformRefundController::class, 'complete']);
 
         // Cross-shop booking oversight — no ShopScope bypass needed (see
         // PlatformBookingController's docblock).
         Route::get('bookings',                       [PlatformBookingController::class, 'index']);
         Route::get('bookings/{reference}',             [PlatformBookingController::class, 'show']);
         Route::post('bookings/{reference}/cancel',     [PlatformBookingController::class, 'cancel']);
-
-        // "Gateway vs ledger vs payouts" — see
-        // app-doc/marketplace/05-ui-and-api-map.md "/platform/reconciliation".
-        Route::get('reconciliation',          [PlatformReconciliationController::class, 'index']);
-        Route::get('reconciliation/export',   [PlatformReconciliationController::class, 'export']);
     });
 });

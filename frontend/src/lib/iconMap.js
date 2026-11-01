@@ -14,7 +14,7 @@ import {
   Scale, Waves, GitCompareArrows, FileMinus, FilePlus, FileStack, HandCoins,
   Laptop, MapPin, Inbox, AlertTriangle, FileBarChart, Recycle,
   Monitor, Smartphone, Keyboard, Printer, Armchair, Router,
-  Car, CalendarCheck, Heart, User, Bike, Bus, CarFront, Sparkles, KeyRound, Crown,
+  Car, CalendarCheck, Heart, User, Bike, Bus, CarFront, Sparkles, KeyRound, Crown, Megaphone,
 } from "lucide-react";
 
 const iconMap = {
@@ -95,6 +95,7 @@ const iconMap = {
   Landmark,
   KeyRound,
   Crown,
+  Megaphone,
   NotebookPen,
   BookText,
   CalendarRange,

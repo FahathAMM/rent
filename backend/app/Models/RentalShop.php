@@ -49,7 +49,7 @@ class RentalShop extends Model
         'logo', 'cover_image', 'business_registration_no', 'tax_id',
         'status', 'verification_status', 'is_published', 'published_at', 'suspended_reason',
         'verified_at', 'verified_by',
-        'commission_rate_override', 'payout_schedule', 'min_payout_threshold',
+        'advance_percentage',
     ];
 
     protected $appends = ['logo_url', 'cover_image_url'];
@@ -62,8 +62,7 @@ class RentalShop extends Model
         'is_published' => 'boolean',
         'published_at' => 'datetime',
         'verified_at' => 'datetime',
-        'commission_rate_override' => 'decimal:2',
-        'min_payout_threshold' => 'decimal:2',
+        'advance_percentage' => 'decimal:2',
         'rating_avg' => 'decimal:2',
         'response_rate' => 'decimal:2',
         'tax_id' => 'encrypted',
@@ -101,7 +100,7 @@ class RentalShop extends Model
 
     public function members(): HasMany
     {
-        return $this->hasMany(ShopMember::class, 'shop_id');
+        return $this->hasMany(User::class, 'shop_id');
     }
 
     public function verifications(): HasMany
@@ -132,11 +131,6 @@ class RentalShop extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class, 'shop_id');
-    }
-
-    public function payouts(): HasMany
-    {
-        return $this->hasMany(OwnerPayout::class, 'shop_id');
     }
 
     public function isActive(): bool

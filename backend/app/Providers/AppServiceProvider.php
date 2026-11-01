@@ -2,22 +2,20 @@
 
 namespace App\Providers;
 
-use App\Contracts\PaymentGateway;
+use App\Models\Administration\User;
 use App\Models\Expense;
 use App\Models\RentalShop;
+use App\Models\Role;
 use App\Models\Vehicle;
-use App\Services\Payments\PayHereGateway;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Swapping gateways (or adding a second one) later is a binding
-        // change here, not a change to BookingController/the webhook
-        // controller - see PaymentGateway's docblock.
-        $this->app->bind(PaymentGateway::class, PayHereGateway::class);
+        //
     }
 
     public function boot(): void
@@ -33,5 +31,8 @@ class AppServiceProvider extends ServiceProvider
             'rental_shop' => RentalShop::class,
             'vehicle' => Vehicle::class,
         ]);
+
+        // shop-owner can do everything in their shop: every vendor-* check passes.
+        Gate::before(fn ($user, string $ability) => $user instanceof User && str_starts_with($ability, 'vendor-') && $user->hasRole(Role::SHOP_OWNER) ? true : null);
     }
 }

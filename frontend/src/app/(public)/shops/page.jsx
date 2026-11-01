@@ -311,12 +311,12 @@ function ShopsPageContent() {
 
           <div className="flex items-center gap-2">
             <Select value={params.get("sort") ?? "rating"} onValueChange={(v) => setParam("sort", v === "rating" ? "" : v)}>
-              <SelectTrigger className="w-44 bg-card"><SelectValue placeholder="Sort" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-40 rounded-lg bg-card text-sm sm:w-44"><SelectValue placeholder="Sort" /></SelectTrigger>
               <SelectContent>
                 {SORT_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <div className="flex rounded-lg border bg-card p-0.5">
+            <div className="flex h-9 items-center gap-0.5 rounded-lg border bg-card p-0.5">
               {[{ v: "grid", icon: LayoutGrid, label: "Grid view" }, { v: "list", icon: List, label: "List view" }].map(({ v, icon: Icon, label }) => (
                 <button
                   key={v}
@@ -324,7 +324,7 @@ function ShopsPageContent() {
                   onClick={() => changeView(v)}
                   aria-label={label}
                   aria-pressed={view === v}
-                  className={cn("rounded-md p-1.5 transition-colors", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("flex aspect-square h-full items-center justify-center rounded-md transition-colors", view === v ? "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground")}
                 >
                   <Icon className="h-4 w-4" />
                 </button>

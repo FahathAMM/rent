@@ -8,19 +8,23 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-/** Application log viewer (storage/logs/*.log) — /platform/logs. */
+/** Application log viewer (storage/logs/*.log, plus the daily public_visit/*.log) — /platform/logs. */
 class LogController extends Controller
 {
     /** Only the last 10MB of a file is ever parsed — large log files stay fast to browse. */
     private const MAX_READ_BYTES = 10 * 1024 * 1024;
 
+    /** Sub-folders of storage/logs whose files are listed too ('' = storage/logs itself). */
+    private const FOLDERS = ['', 'public_visit'];
+
     public function index(): JsonResponse
     {
-        $files = collect(File::glob(storage_path('logs/*.log')))
+        $files = collect(self::FOLDERS)
+            ->flatMap(fn (string $folder) => File::glob(storage_path('logs/' . ($folder ? "{$folder}/" : '') . '*.log')))
             ->map(fn (string $path) => [
-                'name'        => basename($path),
+                'name'        => $this->nameOf($path),
                 'size'        => File::size($path),
                 'modified_at' => Carbon::createFromTimestamp(File::lastModified($path))->toISOString(),
             ])
@@ -79,7 +83,7 @@ class LogController extends Controller
         ]);
     }
 
-    public function download(Request $request): StreamedResponse
+    public function download(Request $request): BinaryFileResponse
     {
         $path = $this->resolveFile($request->get('file'));
         abort_unless($path, 404, 'Log file not found');
@@ -99,7 +103,7 @@ class LogController extends Controller
             'action'          => 'delete',
             'form'            => 'Log',
             'record_id'       => null,
-            'record'          => basename($path).' (cleared)',
+            'record'          => $this->nameOf($path).' (cleared)',
             'ip'              => request()->ip(),
             'browser'         => request()->userAgent(),
         ]);
@@ -107,17 +111,30 @@ class LogController extends Controller
         return response()->json(['message' => 'Log file cleared successfully']);
     }
 
-    /** Only matches *.log files that actually exist under storage/logs — prevents path traversal. */
+    /** "laravel.log" or "public_visit/2026-10-31.log" — the file's path relative to storage/logs. */
+    private function nameOf(string $path): string
+    {
+        $folder = basename(dirname($path));
+
+        return in_array($folder, self::FOLDERS, true) ? "{$folder}/" . basename($path) : basename($path);
+    }
+
+    /** Only *.log files that exist directly in storage/logs or an allowed sub-folder — prevents path traversal. */
     private function resolveFile(?string $name): ?string
     {
         if (! $name) {
             return null;
         }
 
-        $safe = basename($name);
-        $path = storage_path("logs/{$safe}");
+        $folder = str_contains($name, '/') ? dirname($name) : '';
+        $file = basename($name);
+        if (! in_array($folder, self::FOLDERS, true) || ! str_ends_with($file, '.log')) {
+            return null;
+        }
 
-        return (str_ends_with($safe, '.log') && File::exists($path)) ? $path : null;
+        $path = storage_path('logs/' . ($folder ? "{$folder}/" : '') . $file);
+
+        return File::exists($path) ? $path : null;
     }
 
     private function readTail(string $path): string

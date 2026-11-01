@@ -3,36 +3,16 @@
 import { useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vehicleService } from "@/services/vehicleService";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, Star, Trash2, ArrowLeft, ArrowRight, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 /**
- * Listing photos for one vehicle — upload, reorder, set primary, delete.
- * Separate from AttachmentPanel because vehicle images need sort_order/
- * is_primary and dedicated vendor endpoints (public disk) rather than the
- * generic Attachment model's permission-slug pattern. The pop-up from the
- * vehicles list; the edit page renders VehicleImageGallery inline.
+ * Listing photos for one vehicle — upload, reorder, set primary, delete —
+ * shown inline on the vehicle edit page. Live against the API, so the
+ * vehicle must already exist.
  */
-export function VehicleImageManager({ vehicle, open, onOpenChange }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Photos — {vehicle?.title}</DialogTitle>
-          <DialogDescription>JPG, PNG or WebP, max 5MB each. The starred photo is shown first to shoppers.</DialogDescription>
-        </DialogHeader>
-        {vehicle && <VehicleImageGallery vehicle={vehicle} />}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** The upload button + photo grid, live against the API (the vehicle must already exist). */
 export function VehicleImageGallery({ vehicle }) {
   const qc = useQueryClient();
   const fileInputRef = useRef(null);

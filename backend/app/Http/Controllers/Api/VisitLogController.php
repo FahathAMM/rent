@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PublicVisit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -10,56 +11,53 @@ use Illuminate\Support\Facades\Log;
 
 class VisitLogController extends Controller
 {
+    private const TYPES = ['public_visit', 'site_visit', 'linkedin_click', 'website_click'];
+
     /**
-     * Simple traffic log — website visits and pricing-plan previews — kept
-     * in its own log file, not the database. No model/table on purpose.
+     * Simple traffic log — public page visits, login-page visits and footer
+     * link clicks — one file per day: storage/logs/public_visit/YYYY-MM-DD.log.
+     * Public page visits are also saved to the public_visits table.
      */
     public function track(Request $request): JsonResponse
     {
-        $type = in_array($request->string('type'), ['site_visit', 'pricing_view', 'linkedin_click', 'website_click'])
+        $type = in_array($request->string('type')->toString(), self::TYPES, true)
             ? $request->string('type')->toString()
-            : 'site_visit';
-
-       $orgIp = $request->ip();
+            : 'public_visit';
 
         $ip = $request->header('X-Real-IP') ?: $request->ip();
 
         $fields = array_merge([
-            'path' => $request->string('path')->toString() ?: null,
+            'path' => mb_substr($request->string('path')->toString(), 0, 500) ?: null,
             'ip' => $ip,
-            'org_ip' => $orgIp,
         ], $this->geo($ip), [
             'user_agent' => $request->userAgent(),
         ]);
 
-        // Pipe-separated plain text instead of Monolog's default JSON
-        // context blob — easier to eyeball/tail than a wall of JSON.
+        // Pipe-separated plain text — easy to read and tail.
         $line = collect($fields)->map(fn ($value, $key) => "{$key}: " . ($value ?? '-'))->implode(' | ');
+
+        // File per local day (log-viewer's display timezone, Asia/Colombo) — the app itself runs in UTC.
+        $date = now(config('log-viewer.timezone'))->toDateString();
 
         Log::build([
             'driver' => 'single',
-            'path' => storage_path('logs/visits.log'),
+            'path' => config('logging.public_visit_path') . "/{$date}.log",
         ])->info("{$type} | {$line}");
+
+        // Public page visits are also kept in the database for /platform/visits.
+        if ($type === 'public_visit') {
+            PublicVisit::create($fields);
+        }
 
         return response()->json(['status' => true]);
     }
 
     /**
-     * Best-effort IP geolocation via ip-api.com's free tier — no signup/API
-     * key, so nothing to configure. Skipped for local/private IPs (nothing
-     * to look up) and swallows any failure — a geo miss should never stop
-     * the visit itself from being logged.
+     * Best-effort IP geolocation via ip-api.com's free tier (no API key).
+     * Skipped for local/private IPs; any failure just logs without geo data.
      */
     private function geo(?string $ip): array
     {
-
-        Log::info('IP Debug', [
-            'ip' => request()->ip(),
-            'ips' => request()->ips(),
-            'x_forwarded_for' => request()->header('X-Forwarded-For'),
-            'x_real_ip' => request()->header('X-Real-IP'),
-            ]);
-        
         $empty = ['country' => null, 'city' => null, 'isp' => null, 'timezone' => null];
 
         if (!$ip || !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
@@ -80,8 +78,9 @@ class VisitLogController extends Controller
                 ];
             }
         } catch (\Throwable $e) {
-            // Best-effort only — ignore and log without geo data.
+            // Best-effort only.
         }
+
         return $empty;
     }
 }

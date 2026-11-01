@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 /**
  * The public marketplace catalogue - unauthenticated, cacheable reads
  * only. Every query behind these routes goes through
- * App\Queries\PublicVehicleQuery / PublicShopQuery (the only sanctioned
+ * App\Repositories\PublicVehicleRepo / App\Repositories\PublicShopRepo (the only sanctioned
  * ShopScope bypass) and every response through Http\Resources\Public\*
  * (column allow-lists) - see
  * app-doc/marketplace/01-phase1-architecture.md section 2.2 and

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { reviewService } from "@/services/reviewService";
+import { customerService } from "@/services/customerService";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { AccountPageHeader } from "@/components/account/AccountPageHeader";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ function Stars({ rating }) {
 export default function AccountReviewsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-reviews"],
-    queryFn: () => reviewService.getAll().then((r) => r.data.record),
+    queryFn: () => customerService.reviews.getAll().then((r) => r.data.record),
   });
 
   const reviews = data?.data ?? [];

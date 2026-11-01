@@ -124,7 +124,7 @@ export function ProfileForm() {
   const role = user.roles?.[0] ?? "—";
 
   return (
-    <div className="space-y-4 pb-6 max-w-4xl mx-auto">
+    <div className="space-y-4">
       {/* Header card */}
       <div className="rounded-xl border bg-card px-6 py-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -205,8 +205,6 @@ export function ProfileForm() {
               <SectionCard title="Account">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                   <ReadOnlyRow label="Role" value={role} />
-                  <ReadOnlyRow label="Date of Birth" value={user.date_of_birth} />
-                  <ReadOnlyRow label="Address" value={user.address} />
                   <ReadOnlyRow label="Status" value={user.status} />
                 </div>
               </SectionCard>

@@ -2,18 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
 import { visitService } from "@/services/visitService";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { LoginPanel } from "@/components/auth/LoginPanel";
 import { RegisterPanel } from "@/components/auth/RegisterPanel";
-import { cn } from "@/lib/utils";
+import { useCustomerAuthStore } from "@/store/customerAuthStore";
+import { Loader2 } from "lucide-react";
+import { cn, safeNextPath } from "@/lib/utils";
 
 /** The customer login/register shell — see app/vendor/_auth/VendorLoginPageClient for the separate vendor/owner/staff one. */
 export default function LoginPageClient({ initialBrand, initialView = "login" }) {
   const [view, setView] = useState(initialView);
   const [direction, setDirection] = useState("forward");
+  const router = useRouter();
+  const { isAuthenticated, _hasHydrated } = useCustomerAuthStore();
+  const signedIn = _hasHydrated && isAuthenticated;
+
+  // Already signed in: no login/register form — go on to where they were heading (?next=) or the dashboard.
+  useEffect(() => {
+    if (signedIn) router.replace(safeNextPath("/account/dashboard"));
+  }, [signedIn, router]);
 
   useEffect(() => {
     visitService.track("site_visit");
@@ -47,6 +58,14 @@ export default function LoginPageClient({ initialBrand, initialView = "login" })
   const headingHighlight = headingWords.pop();
   const headingPrefix = headingWords.join(" ");
   const description = brand.login_description || `${tagline} Browse vehicles from verified owners and shops, book in minutes, and pick up right where you left off.`;
+
+  if (signedIn) {
+    return (
+      <div className="flex h-svh w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background relative isolate h-svh w-full overflow-hidden">

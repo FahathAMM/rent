@@ -11,7 +11,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Car, LogOut, User as UserIcon, X } from "lucide-react";
+import { LogOut, User as UserIcon, X } from "lucide-react";
 
 function isRouteActive(pathname, route) {
   return !!route && (pathname === route || pathname.startsWith(route + "/"));
@@ -24,7 +24,7 @@ function isRouteActive(pathname, route) {
  * to the logo mark, the active nav row, and the avatar — not flooded
  * across the whole surface, so account data stays easy to read.
  */
-export function AccountSidebar({ navigation, user, onLogout, isVendor, open = false, onClose }) {
+export function AccountSidebar({ navigation, user, onLogout, open = false, onClose }) {
   const pathname = usePathname();
   const items = navigation ?? [];
 
@@ -91,19 +91,6 @@ export function AccountSidebar({ navigation, user, onLogout, isVendor, open = fa
             );
           })}
 
-          {isVendor && (
-            <>
-              <div className="my-3 border-t" />
-              <Link
-                href="/vendor/dashboard"
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-xl border border-dashed px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                <Car className="h-4 w-4 shrink-0" />
-                Vendor dashboard
-              </Link>
-            </>
-          )}
         </nav>
 
         <div className="border-t p-3">

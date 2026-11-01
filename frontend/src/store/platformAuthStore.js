@@ -29,8 +29,6 @@ export const usePlatformAuthStore = create(
         }
         set({ admin: null, token: null, isAuthenticated: false });
       },
-
-      updateAdmin: (admin) => set({ admin }),
     }),
     {
       name: "platform-auth",

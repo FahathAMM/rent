@@ -49,6 +49,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'customer.auth'      => \App\Http\Middleware\EnsureCustomer::class,
             'can'                => \App\Http\Middleware\CheckPermission::class,
             'shop.context'       => \App\Http\Middleware\ResolveShopContext::class,
+            'shop.verified'      => \App\Http\Middleware\EnsureShopVerified::class,
+            'plan.feature'       => \App\Http\Middleware\EnsurePlanFeature::class,
+            'subscription.active' => \App\Http\Middleware\EnsureSubscriptionActive::class,
         ]);
 
         // Critical ordering: SubstituteBindings is where Laravel resolves a

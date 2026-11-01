@@ -7,7 +7,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { TextInput, NumberInput, TextareaInput, CheckboxInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
+import { Banknote, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
 const FUEL_LEVELS = [
   { value: "empty", label: "Empty" },
@@ -29,11 +30,19 @@ const emptyDamage = { area: "", description: "", severity: "minor", estimated_co
  * Shared by handover (confirmed -> active) and return (active ->
  * completed) - the only difference is whether damages can be reported
  * (return only) and the submit label/handler the caller passes in.
+ *
+ * cashDue (handover): cash the shop must take before the keys go out — staff confirm it.
+ * depositHeld (return): a cash deposit the shop holds — staff record what they keep, if anything.
  */
-export function InspectionDialog({ open, onOpenChange, title, allowDamages = false, onSubmit, loading }) {
-  const [form, setForm] = useState({ odometer_reading: "", fuel_level: "", notes: "", customer_present: true });
+export function InspectionDialog({ open, onOpenChange, title, allowDamages = false, onSubmit, loading, cashDue = null, depositHeld = null }) {
+  const { format } = useCurrencyFormat();
+  const [form, setForm] = useState({
+    odometer_reading: "", fuel_level: "", notes: "", customer_present: true,
+    cash_received: false, deposit_deduction: "", deposit_deduction_reason: "",
+  });
   const [damages, setDamages] = useState([]);
   const [errors, setErrors] = useState({});
+  const deduction = Number(form.deposit_deduction || 0);
 
   const fi = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const f = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
@@ -51,6 +60,11 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
       notes: form.notes || undefined,
       customer_present: form.customer_present,
     };
+    if (cashDue) payload.cash_received = form.cash_received;
+    if (depositHeld) {
+      payload.deposit_deduction = form.deposit_deduction || 0;
+      payload.deposit_deduction_reason = form.deposit_deduction_reason || undefined;
+    }
     if (allowDamages && damages.length) {
       payload.damages = damages.map((d) => ({ ...d, estimated_cost: d.estimated_cost || undefined }));
     }
@@ -72,6 +86,25 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
           </div>
           <TextareaInput label="Notes" value={form.notes} onChange={fi("notes")} error={errors.notes?.[0]} />
           <CheckboxInput label="Customer present" checked={form.customer_present} onChange={f("customer_present")} />
+
+          {cashDue > 0 && (
+            <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="flex items-center gap-2 text-sm font-medium"><Banknote className="h-4 w-4" /> Collect {format(cashDue)} in cash</p>
+              <CheckboxInput label={`I have received ${format(cashDue)} from the customer`} checked={form.cash_received} onChange={f("cash_received")} />
+              {errors.cash_received?.[0] && <p className="text-xs text-destructive">{errors.cash_received[0]}</p>}
+            </div>
+          )}
+
+          {depositHeld > 0 && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="h-4 w-4" /> Security deposit held: {format(depositHeld)}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <NumberInput label="Amount kept (deduction)" value={form.deposit_deduction} onChange={fi("deposit_deduction")} error={errors.deposit_deduction?.[0]} />
+                <TextInput label="Reason" value={form.deposit_deduction_reason} onChange={fi("deposit_deduction_reason")} disabled={!deduction} error={errors.deposit_deduction_reason?.[0]} />
+              </div>
+              <p className="text-sm">Return to customer: <span className="font-semibold">{format(Math.max(0, depositHeld - deduction))}</span></p>
+            </div>
+          )}
 
           {allowDamages && (
             <div className="space-y-2">
@@ -96,7 +129,7 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
 
           <div className="flex justify-end gap-2 border-t pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || (cashDue > 0 && !form.cash_received)}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save
             </Button>

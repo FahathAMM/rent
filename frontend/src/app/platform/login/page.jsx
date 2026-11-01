@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { usePlatformAuth } from "@/hooks/usePlatformAuth";
+import { usePlatformAuthStore } from "@/store/platformAuthStore";
 import { platformDetailService } from "@/services/platformDetailService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,13 @@ export default function PlatformLoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const { isAuthenticated, _hasHydrated } = usePlatformAuthStore();
+  const signedIn = _hasHydrated && isAuthenticated;
+
+  // Already signed in: skip the form and go to the dashboard.
+  useEffect(() => {
+    if (signedIn) router.replace("/platform/dashboard");
+  }, [signedIn, router]);
 
   const { data: brand = {} } = useQuery({
     queryKey: ["platform-details"],
@@ -42,6 +50,14 @@ export default function PlatformLoginPage() {
       setLoading(false);
     }
   };
+
+  if (signedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">

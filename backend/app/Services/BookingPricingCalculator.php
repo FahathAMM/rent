@@ -9,7 +9,7 @@ use Carbon\Carbon;
 /**
  * Snapshots vehicle_pricing wholesale into an immutable booking_pricing
  * row at request time - see app-doc/marketplace/02-data-model.md
- * "booking_pricing" and 04-lifecycles.md "Commission model". An owner
+ * "booking_pricing". An owner
  * editing rates tomorrow must never change what an already-requested
  * booking owes, so every number here is computed once and never
  * recalculated from the live vehicle_pricing row again.
@@ -30,14 +30,10 @@ class BookingPricingCalculator
         $taxAmount = round($subtotal * (float) $pricing->tax_rate / 100, 2);
         $securityDeposit = round((float) $pricing->security_deposit, 2);
 
-        // Only a prepaid deposit is collected THROUGH the gateway with the
-        // rental - cash_on_pickup is collected by the shop in person and
-        // waived is simply never collected. See
-        // app-doc/marketplace/04-lifecycles.md "Security deposit" - this
-        // is the amount the PayHere hash is computed from, so getting it
-        // wrong here means the gateway rejects the payment outright, not
-        // just a display error.
-        $depositCollectedNow = $pricing->deposit_method === 'prepaid' ? $securityDeposit : 0;
+        // total_payable is everything the customer pays the shop (cash and/or
+        // bank transfer): rental + tax + the security deposit, unless the
+        // vehicle's deposit is waived. The deposit is handed back at return.
+        $depositCollectedNow = $pricing->deposit_method !== 'waived' ? $securityDeposit : 0;
         $totalPayable = round($subtotal + $taxAmount + $depositCollectedNow, 2);
 
         $snapshot = $pricing->only([

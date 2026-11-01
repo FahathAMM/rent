@@ -9,9 +9,9 @@ import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
-  Settings, LogOut, ShieldCheck, X, UserCheck, Car, Banknote, Star,
+  Settings, LogOut, ShieldCheck, X, UserCheck, Car, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
-  Percent, CreditCard, Undo2, Scale, MapPin, GalleryHorizontal, ChevronDown,
+  CreditCard, MapPin, GalleryHorizontal, ChevronDown, KeyRound, Activity, Crown, Megaphone,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -24,7 +24,10 @@ import {
 const NAV_GROUPS = [
   {
     id: "overview", label: "Overview",
-    items: [{ href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/platform/visits", label: "Public Visits", icon: Activity },
+    ],
   },
   {
     id: "marketplace", label: "Marketplace",
@@ -54,10 +57,8 @@ const NAV_GROUPS = [
     id: "finance", label: "Finance",
     items: [
       { href: "/platform/payments", label: "Payments", icon: CreditCard },
-      { href: "/platform/refunds", label: "Refunds", icon: Undo2 },
-      { href: "/platform/payouts", label: "Payouts", icon: Banknote },
-      { href: "/platform/commissions", label: "Commissions", icon: Percent },
-      { href: "/platform/reconciliation", label: "Reconciliation", icon: Scale },
+      { href: "/platform/subscriptions", label: "Subscriptions", icon: Crown },
+      { href: "/platform/promotions", label: "Promotions", icon: Megaphone },
     ],
   },
   {
@@ -71,6 +72,7 @@ const NAV_GROUPS = [
     id: "system", label: "System",
     items: [
       { href: "/platform/users", label: "Users", icon: Users },
+      { href: "/platform/roles", label: "Roles & Permissions", icon: KeyRound },
       { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
       { href: "/platform/settings", label: "Settings", icon: Settings },
     ],
@@ -237,7 +239,7 @@ export function PlatformSidebar({ open = false, onClose }) {
                 </div>
                 <div className="min-w-0 text-left">
                   <p className="truncate text-sm font-medium leading-none text-white">{admin?.name}</p>
-                  <p className="truncate text-xs text-slate-400 capitalize">{admin?.role?.replace("_", " ")}</p>
+                  <p className="truncate text-xs text-slate-400 capitalize">{admin?.admin_role?.replace("_", " ")}</p>
                 </div>
               </button>
             </DropdownMenuTrigger>

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Administration\User;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * Locks in Layer 2 of app-doc/marketplace/03-permissions-model.md: the
- * active shop is resolved ONLY from a validated X-Shop-Id, ShopScope
+ * active shop is ONLY the caller's own (users.shop_id), ShopScope
  * filters every shop-owned query to it, and a cross-shop id 404s rather
  * than leaking.
  *
@@ -40,6 +39,7 @@ class ShopBoundaryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\MenuSeeder::class); // shop-owner permissions
 
         $category = VehicleCategory::create(['name' => 'Car', 'slug' => 'car', 'sort_order' => 1, 'is_active' => true]);
 
@@ -49,8 +49,10 @@ class ShopBoundaryTest extends TestCase
         $this->shopA = RentalShop::factory()->create(['owner_user_id' => $this->ownerA->id]);
         $this->shopB = RentalShop::factory()->create(['owner_user_id' => $ownerB->id]);
 
-        ShopMember::create(['shop_id' => $this->shopA->id, 'user_id' => $this->ownerA->id, 'role' => 'owner', 'status' => 'active']);
-        ShopMember::create(['shop_id' => $this->shopB->id, 'user_id' => $ownerB->id, 'role' => 'owner', 'status' => 'active']);
+        $this->ownerA->update(['shop_id' => $this->shopA->id]);
+        $ownerB->update(['shop_id' => $this->shopB->id]);
+        $this->ownerA->setShopRole('owner');
+        $ownerB->setShopRole('owner');
 
         $this->vehicleA = Vehicle::create([
             'shop_id' => $this->shopA->id, 'category_id' => $category->id, 'title' => 'Shop A Car',
@@ -80,7 +82,6 @@ class ShopBoundaryTest extends TestCase
     public function test_owner_can_view_their_own_vehicle_via_implicit_route_binding(): void
     {
         $this->as($this->ownerA)
-            ->withHeader('X-Shop-Id', (string) $this->shopA->id)
             ->getJson("/api/vehicles/{$this->vehicleA->id}")
             ->assertOk()
             ->assertJsonPath('data.id', $this->vehicleA->id);
@@ -89,30 +90,28 @@ class ShopBoundaryTest extends TestCase
     public function test_cross_shop_vehicle_id_404s_instead_of_leaking(): void
     {
         $this->as($this->ownerA)
-            ->withHeader('X-Shop-Id', (string) $this->shopA->id)
             ->getJson("/api/vehicles/{$this->vehicleB->id}")
             ->assertNotFound();
     }
 
-    public function test_forged_shop_id_the_user_is_not_a_member_of_is_rejected(): void
+    public function test_a_forged_x_shop_id_header_cannot_switch_to_another_shop(): void
     {
         $this->as($this->ownerA)
             ->withHeader('X-Shop-Id', (string) $this->shopB->id)
             ->getJson('/api/vehicles')
+            ->assertOk()
+            ->assertJsonMissing(['id' => $this->vehicleB->id])
+            ->assertJsonFragment(['id' => $this->vehicleA->id]);
+    }
+
+    public function test_a_user_without_a_shop_is_rejected(): void
+    {
+        $this->as(User::factory()->create())
+            ->getJson('/api/vehicles')
             ->assertForbidden();
     }
 
-    public function test_ambiguous_context_without_x_shop_id_is_rejected_when_user_has_multiple_shops(): void
-    {
-        $secondShop = RentalShop::factory()->create(['owner_user_id' => $this->ownerA->id]);
-        ShopMember::create(['shop_id' => $secondShop->id, 'user_id' => $this->ownerA->id, 'role' => 'owner', 'status' => 'active']);
-
-        $this->as($this->ownerA)
-            ->getJson('/api/vehicles')
-            ->assertStatus(400);
-    }
-
-    public function test_x_shop_id_is_optional_when_the_user_has_exactly_one_shop(): void
+    public function test_the_users_own_shop_is_used_without_any_header(): void
     {
         $this->as($this->ownerA)
             ->getJson('/api/vehicles')
@@ -124,7 +123,6 @@ class ShopBoundaryTest extends TestCase
         $this->shopA->update(['status' => 'suspended']);
 
         $this->as($this->ownerA)
-            ->withHeader('X-Shop-Id', (string) $this->shopA->id)
             ->getJson('/api/vehicles')
             ->assertForbidden();
     }

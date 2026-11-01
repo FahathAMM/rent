@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { vehicleService } from "@/services/vehicleService";
-import { VehicleForm } from "@/components/vendor/VehicleForm";
-import { VehicleFormPage } from "@/components/vendor/VehicleFormPage";
+import { VehicleForm } from "../../components/VehicleForm";
+import { VehicleFormPage } from "../../components/VehicleFormPage";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 

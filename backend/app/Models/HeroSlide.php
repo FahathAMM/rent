@@ -21,8 +21,8 @@ class HeroSlide extends Model
     /**
      * Uploads are public-disk paths ("hero-slides/x.jpg") served as
      * same-origin /storage/* (Next.js rewrites it to the backend - see
-     * PlatformDetailResource). The default slides from HeroSlideSeeder are
-     * instead absolute paths to the frontend's own stock photos
+     * PlatformDetailResource). Stock slides are instead absolute paths to
+     * the frontend's own bundled photos
      * ("/images/hero/x.webp") and are used as-is.
      */
     public function getImageUrlAttribute(): ?string

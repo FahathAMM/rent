@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * An open dispute sets bookings.has_open_dispute and the booking's
- * booking_financials.settlement_status to on_hold - the payout builder
- * (later phase) skips it.
+ * An open dispute sets bookings.has_open_dispute until it is resolved or
+ * closed. Any money owed either way is settled between the shop and the
+ * customer - the platform holds none.
  */
 class Dispute extends Model
 {

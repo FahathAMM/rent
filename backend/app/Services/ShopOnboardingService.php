@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Administration\User;
+use App\Models\Booking;
 use App\Models\Location;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use App\Models\ShopSettings;
 use App\Models\SystemAdmin;
 use App\Notifications\MarketplaceNotification;
@@ -16,10 +16,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * Rental shop registration - the only way to become a vendor. A new shop
  * starts unverified and unpublished (see app-doc/marketplace/01-phase1-
- * architecture.md section 3.1). Its creator is the owner member from the
- * start (so they can upload documents and submit), but the shop-owner
- * role - and with it the vendor app's permissions - is only granted once
- * a platform admin verifies the shop.
+ * architecture.md section 3.1). Its creator is linked as the owner from
+ * the start and gets vendor access immediately, so they can set up the shop
+ * while verification is pending. The shop remains unpublished until a
+ * platform admin verifies it. One account owns or staffs at most one shop;
+ * a second shop needs a second account.
  */
 class ShopOnboardingService
 {
@@ -27,6 +28,12 @@ class ShopOnboardingService
 
     public function register(User $user, array $data): RentalShop
     {
+        if ($user->shop_id) {
+            throw ValidationException::withMessages([
+                'name' => ['This account already belongs to a rental shop. Use a separate account to register another shop.'],
+            ]);
+        }
+
         return DB::transaction(function () use ($user, $data) {
             $shop = RentalShop::create($data + [
                 'owner_user_id' => $user->id,
@@ -37,13 +44,9 @@ class ShopOnboardingService
                 'policies' => RentalShop::DEFAULT_POLICIES,
             ]);
 
-            ShopMember::create([
-                'shop_id' => $shop->id,
-                'user_id' => $user->id,
-                'role' => ShopMember::ROLE_OWNER,
-                'status' => ShopMember::STATUS_ACTIVE,
-                'accepted_at' => now(),
-            ]);
+            // The shop gets its own shop-owner role and the registering user holds it.
+            $user->update(['shop_id' => $shop->id]);
+            $user->setShopRole(User::SHOP_ROLE_OWNER);
 
             ShopSettings::createFor($shop->id);
 
@@ -95,7 +98,8 @@ class ShopOnboardingService
                 'suspended_reason' => null,
             ]);
 
-            $shop->owner?->assignRole('shop-owner');
+            // The shop's workspace opens now, so this is when its free trial starts (once).
+            app(SubscriptionService::class)->startTrial($shop);
         });
 
         AuditService::edit('RentalShop', $shop->id, $shop->name, null, ['verification_status' => 'verified', 'decided_by_admin_id' => $admin->id]);
@@ -122,6 +126,40 @@ class ShopOnboardingService
         ));
 
         return $shop->fresh();
+    }
+
+    /**
+     * Soft-deletes a shop — its bookings keep pointing at it for history.
+     * Refused while customers still have open bookings. Its owner and staff are unlinked and lose their shop roles,
+     * so their accounts stay usable as customers (or to register again).
+     */
+    public function delete(SystemAdmin $admin, RentalShop $shop, string $reason): void
+    {
+        $openBookings = Booking::where('shop_id', $shop->id)->whereIn('status', [
+            Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE,
+        ])->count();
+
+        if ($openBookings) {
+            throw ValidationException::withMessages(['shop' => [
+                "This shop still has {$openBookings} open booking(s). Resolve them, or suspend the shop instead.",
+            ]]);
+        }
+
+        DB::transaction(function () use ($admin, $shop, $reason) {
+            User::where('shop_id', $shop->id)->get()->each(function (User $member) {
+                $member->setShopRole(null);
+                $member->update(['shop_id' => null]);
+            });
+
+            $shop->update([
+                'status' => RentalShop::STATUS_SUSPENDED,
+                'is_published' => false,
+                'suspended_reason' => $reason,
+            ]);
+            $shop->delete();
+
+            AuditService::delete('RentalShop', $shop->id, $shop->name, ['reason' => $reason, 'decided_by_admin_id' => $admin->id]);
+        });
     }
 
     public function suspend(SystemAdmin $admin, RentalShop $shop, string $reason): RentalShop

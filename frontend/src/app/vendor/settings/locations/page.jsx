@@ -46,7 +46,10 @@ export default function LocationsSettingsPage() {
   const save = useMutation({
     mutationFn: (payload) => editing ? locationService.update(editing.id, payload) : locationService.create(payload),
     onSuccess: () => { setRefreshKey((k) => k + 1); toast.success(editing ? "Location updated" : "Location added"); setOpen(false); },
-    onError: (err) => setErrors(err.response?.data?.errors ?? {}),
+    onError: (err) => {
+      setErrors(err.response?.data?.errors ?? {});
+      if (err.response?.status !== 422) toast.error(err.response?.data?.message ?? "Could not save the location");
+    },
   });
 
   const remove = useMutation({

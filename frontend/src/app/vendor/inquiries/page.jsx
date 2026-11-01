@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { vendorInquiryService } from "@/services/vendorInquiryService";
+import { vendorService } from "@/services/vendorService";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { ActionButton } from "@/components/Datatable/ActionButton";
@@ -21,7 +21,7 @@ export default function VendorInquiriesPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const reply = useMutation({
-    mutationFn: () => vendorInquiryService.reply(selected.id, draft),
+    mutationFn: () => vendorService.inquiries.reply(selected.id, draft),
     onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Reply sent"); setSelected(null); setDraft(""); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to reply"),
   });

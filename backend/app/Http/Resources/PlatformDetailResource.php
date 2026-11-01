@@ -22,6 +22,7 @@ class PlatformDetailResource extends JsonResource
             'login_eyebrow'     => $this->login_eyebrow,
             'login_heading'     => $this->login_heading,
             'login_description' => $this->login_description,
+            // Off → bookings are paid in cash at pickup; the booking widget and pages word themselves accordingly.
         ];
     }
 }

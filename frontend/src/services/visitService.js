@@ -1,7 +1,7 @@
 import api from "@/lib/axios";
 
-// Fire-and-forget traffic logging (site visits, pricing preview) — backend
-// writes it to a log file, not the database. Never blocks the UI.
+// Fire-and-forget traffic logging (public page visits, login visits, link
+// clicks) — backend writes storage/logs/public_visit/<date>.log. Never blocks the UI.
 export const visitService = {
   track: (type) =>
     api

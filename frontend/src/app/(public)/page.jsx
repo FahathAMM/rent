@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { VehicleCard } from "@/components/marketplace/VehicleCard";
+import { VehicleCard } from "@/app/(public)/browse/components/VehicleCard";
 import { ShopCard } from "@/components/marketplace/ShopCard";
 import { HowItWorksSection } from "@/components/public/HowItWorksSection";
 import { ScrollReveal } from "@/components/public/ScrollReveal";
@@ -78,7 +78,7 @@ function BrandsSection({ brands }) {
   const sorted = withVehicles;
 
   return (
-    <section className="relative isolate overflow-hidden py-16">
+    <section className="relative isolate overflow-hidden py-10 sm:py-16">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-violet-500/[0.04] to-transparent" />
       <div className="mx-auto max-w-6xl px-4">
         <SectionHeader
@@ -89,7 +89,7 @@ function BrandsSection({ brands }) {
           linkLabel="Browse all vehicles"
         />
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
           {visible.map((b, i) => {
             const soon = !b.vehicles_count;
             const share = soon ? 0 : Math.max(8, Math.round((b.vehicles_count / max) * 100));
@@ -101,7 +101,7 @@ function BrandsSection({ brands }) {
                 key={b.id}
                 {...(soon ? {} : { href: `/browse?brand_id=${b.id}` })}
                 className={cn(
-                  "group relative flex flex-col items-center overflow-hidden rounded-2xl border bg-card p-5 pt-6 text-center shadow-sm ring-primary/30 transition-all duration-300",
+                  "group relative flex flex-col items-center overflow-hidden rounded-xl border bg-card p-2.5 pt-5 text-center shadow-sm ring-primary/30 transition-all duration-300 sm:rounded-2xl sm:p-5 sm:pt-6",
                   soon ? "opacity-75" : "hover:-translate-y-1 hover:border-transparent hover:shadow-xl hover:ring-2"
                 )}
               >
@@ -109,37 +109,37 @@ function BrandsSection({ brands }) {
                 <span aria-hidden="true" className={cn("absolute left-1/2 top-4 size-20 -translate-x-1/2 rounded-full bg-gradient-to-br opacity-15 blur-2xl transition-opacity group-hover:opacity-30", gradient)} />
 
                 {i === 0 && !showAll && sorted.length > 1 && (
-                  <span className="absolute left-2 top-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-1.5 py-0.5 text-[8px] sm:left-2 sm:top-2 sm:px-2 sm:text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
                     Most popular
                   </span>
                 )}
 
                 {b.logo_url ? (
-                  <BrandMark brand={b} className="relative size-16 rounded-2xl shadow-md transition-transform duration-300 group-hover:scale-110" />
+                  <BrandMark brand={b} className="relative size-12 rounded-xl shadow-md transition-transform duration-300 group-hover:scale-110 sm:size-16 sm:rounded-2xl" />
                 ) : (
-                  <span className={cn("relative flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl font-bold text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3", gradient)}>
+                  <span className={cn("relative flex size-12 items-center justify-center rounded-xl bg-gradient-to-br text-xl font-bold sm:size-16 sm:rounded-2xl sm:text-2xl text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3", gradient)}>
                     {b.name?.[0]?.toUpperCase()}
                     <span aria-hidden="true" className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/10 to-white/20" />
                   </span>
                 )}
 
-                <span className="relative mt-3.5 w-full truncate font-semibold">{b.name}</span>
+                <span className="relative mt-2 w-full truncate text-xs font-semibold sm:mt-3.5 sm:text-base">{b.name}</span>
                 {soon ? (
-                  <span className="relative mt-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                  <span className="relative mt-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
                     Coming soon
                   </span>
                 ) : (
-                  <span className="relative mt-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                  <span className="relative mt-1 rounded-full bg-muted px-2 py-0.5 text-[10px] sm:px-2.5 sm:text-[11px] font-medium text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                     {b.vehicles_count} {b.vehicles_count === 1 ? "vehicle" : "vehicles"}
                   </span>
                 )}
 
                 {/* share of the catalogue, relative to the biggest brand */}
-                <span className="relative mt-4 h-1 w-full overflow-hidden rounded-full bg-muted" title={soon ? undefined : `${Math.round((b.vehicles_count / (total || 1)) * 100)}% of listings`}>
+                <span className="relative mt-3 h-1 w-full overflow-hidden rounded-full bg-muted sm:mt-4" title={soon ? undefined : `${Math.round((b.vehicles_count / (total || 1)) * 100)}% of listings`}>
                   <span className={cn("block h-full rounded-full bg-gradient-to-r transition-all duration-700", gradient)} style={{ width: `${share}%` }} />
                 </span>
 
-                <span className={cn("relative mt-3 flex items-center gap-1 text-xs font-medium text-primary opacity-0 transition-all duration-300", !soon && "group-hover:opacity-100")}>
+                <span className={cn("relative mt-3 hidden items-center gap-1 text-xs font-medium text-primary opacity-0 sm:flex transition-all duration-300", !soon && "group-hover:opacity-100")}>
                   View vehicles <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Tile>
@@ -148,7 +148,7 @@ function BrandsSection({ brands }) {
         </div>
 
         {sorted.length > BRANDS_PREVIEW && (
-          <div className="mt-8 flex justify-center">
+          <div className="mt-6 flex justify-center sm:mt-8">
             <Button variant="outline" onClick={() => setShowAll((s) => !s)} className="gap-1.5 rounded-full px-6">
               {showAll ? "Show fewer brands" : `Show all ${sorted.length} brands`}
             </Button>
@@ -161,11 +161,11 @@ function BrandsSection({ brands }) {
 
 function HeroStat({ icon: Icon, value, label }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-left backdrop-blur-md">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/15"><Icon className="h-4 w-4 text-orange-200" /></div>
-      <div>
-        <p className="text-lg font-bold leading-tight">{value}</p>
-        <p className="text-[11px] text-white/70">{label}</p>
+    <div className="flex flex-col items-center gap-1 rounded-xl border border-white/15 bg-white/10 px-2 py-2.5 text-center backdrop-blur-md sm:flex-row sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-left">
+      <div className="hidden size-9 shrink-0 items-center justify-center rounded-xl bg-white/15 sm:flex"><Icon className="h-4 w-4 text-orange-200" /></div>
+      <div className="min-w-0">
+        <p className="text-base font-bold leading-tight sm:text-lg">{value}</p>
+        <p className="text-[10px] leading-tight text-white/70 sm:text-[11px]">{label}</p>
       </div>
     </div>
   );
@@ -266,7 +266,7 @@ export default function HomePage() {
       <section className="relative isolate overflow-hidden border-b">
         <HeroSlideshow vehicles={featured?.data} platformSlides={heroSlides} onActiveChange={setHeroIndex} />
 
-        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-8 text-center text-white sm:pb-14 sm:pt-12">
+        <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-8 text-center text-white sm:pb-14 sm:pt-12">
           <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-medium text-white/90 backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-700">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-300 opacity-75" />
@@ -374,11 +374,11 @@ export default function HomePage() {
             </div>
           )}
 
-          <div className="mx-auto mt-6 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mx-auto mt-5 grid max-w-3xl grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
             {stats.map((s) => <HeroStat key={s.label} {...s} />)}
           </div>
 
-          <div className="mx-auto mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/80">
+          <div className="mx-auto mt-4 hidden flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/80 sm:flex">
             {TRUST_POINTS.map(({ icon: Icon, label }) => (
               <span key={label} className="flex items-center gap-1.5">
                 <Icon className="h-4 w-4 text-orange-300" /> {label}
@@ -394,27 +394,27 @@ export default function HomePage() {
       {/* ── Categories ─────────────────────────────────────────────────── */}
       {categories?.length > 0 && (
         <ScrollReveal>
-          <section className="mx-auto max-w-6xl px-4 py-16">
+          <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16">
             <SectionHeader eyebrow="Find your ride" title="Browse by vehicle type" subtitle="From city cars to vans for the whole family." href="/browse" linkLabel="Browse all" />
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-6">
               {categories.map((c, i) => {
                 const Icon = getIcon(c.icon);
                 return (
                   <Link
                     key={c.id}
                     href={`/browse?category_id=${c.id}`}
-                    className="group relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border bg-card p-6 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg"
+                    className="group relative flex flex-col items-center gap-2 overflow-hidden rounded-xl border bg-card p-3 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg sm:gap-3 sm:rounded-2xl sm:p-6"
                   >
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 opacity-0 transition-opacity group-hover:opacity-100" />
                     {c.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.image} alt={c.name} className="size-16 rounded-2xl object-cover shadow-sm transition-transform group-hover:scale-110" />
+                      <img src={c.image} alt={c.name} className="size-11 rounded-xl object-cover shadow-sm transition-transform group-hover:scale-110 sm:size-16 sm:rounded-2xl" />
                     ) : (
-                      <div className={cn("flex size-16 items-center justify-center rounded-2xl text-white shadow-md transition-transform group-hover:scale-110", TILE_COLORS[i % TILE_COLORS.length])}>
-                        <Icon className="h-7 w-7" />
+                      <div className={cn("flex size-11 items-center justify-center rounded-xl text-white shadow-md transition-transform group-hover:scale-110 sm:size-16 sm:rounded-2xl", TILE_COLORS[i % TILE_COLORS.length])}>
+                        <Icon className="h-5 w-5 sm:h-7 sm:w-7" />
                       </div>
                     )}
-                    <span className="truncate text-sm font-semibold">{c.name}</span>
+                    <span className="w-full truncate text-xs font-semibold sm:text-sm">{c.name}</span>
                   </Link>
                 );
               })}
@@ -425,11 +425,11 @@ export default function HomePage() {
 
       {/* ── Featured vehicles ──────────────────────────────────────────── */}
       <ScrollReveal>
-        <section className="bg-muted/30 py-16">
+        <section className="bg-muted/30 py-10 sm:py-16">
           <div className="mx-auto max-w-6xl px-4">
             <SectionHeader eyebrow="Top picks" title="Featured vehicles" subtitle="Highly rated, frequently booked vehicles from our rental partners." href="/browse" />
             {featured?.data?.length ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
                 {featured.data.map((v) => <VehicleCard key={v.id} vehicle={v} />)}
               </div>
             ) : (
@@ -444,7 +444,7 @@ export default function HomePage() {
       {/* ── New arrivals ───────────────────────────────────────────────── */}
       {newest?.length > 0 && (
         <ScrollReveal>
-          <section className="border-y bg-gradient-to-b from-emerald-500/5 to-transparent py-16">
+          <section className="border-y bg-gradient-to-b from-emerald-500/5 to-transparent py-10 sm:py-16">
             <div className="mx-auto max-w-6xl px-4">
               <SectionHeader eyebrow="Just listed" title="New arrivals" subtitle="The latest vehicles added by rental shops.">
                 <div className="hidden items-center gap-2 sm:flex">
@@ -468,8 +468,8 @@ export default function HomePage() {
               </SectionHeader>
               <div ref={newestRailRef} className="flex snap-x snap-mandatory gap-4 overflow-x-auto no-scrollbar py-2">
                 {newest.map((v) => (
-                  <div key={v.id} className="relative w-64 shrink-0 snap-start">
-                    <span className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                  <div key={v.id} className="relative w-44 shrink-0 snap-start sm:w-64">
+                    <span className="absolute right-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-semibold text-white shadow-sm sm:right-2 sm:top-2 sm:px-2.5 sm:text-[10px]">
                       <Sparkles className="h-3 w-3" /> New
                     </span>
                     <VehicleCard vehicle={v} className="border-emerald-500/40 hover:border-emerald-500" />
@@ -484,13 +484,17 @@ export default function HomePage() {
       {/* ── Top rated rental companies ─────────────────────────────────── */}
       {shops.length > 0 && (
         <ScrollReveal>
-          <section className="mx-auto max-w-6xl px-4 py-16">
+          <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16">
             <SectionHeader eyebrow="Trusted partners" title="Top rated rental companies" subtitle="Verified shops with great reviews and responsive service." href="/shops" linkLabel="All companies" />
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {shops.slice(0, 3).map((shop) => <ShopCard key={shop.id} shop={shop} />)}
+            <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 no-scrollbar sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
+              {shops.slice(0, 3).map((shop) => (
+                <div key={shop.id} className="w-[82%] shrink-0 snap-start sm:w-auto">
+                  <ShopCard shop={shop} />
+                </div>
+              ))}
             </div>
             {shops.length > 3 && (
-              <div className="mt-10">
+              <div className="mt-6 sm:mt-10">
                 <ShopLogoMarquee shops={shops} />
               </div>
             )}
@@ -514,16 +518,16 @@ export default function HomePage() {
 
       {/* ── Why us ─────────────────────────────────────────────────────── */}
       <ScrollReveal>
-        <section className="mx-auto max-w-6xl px-4 py-16">
+        <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16">
           <SectionHeader center eyebrow={`Why ${brandName}`} title="Renting made simple — and safe" subtitle="Everything you need to book with confidence, in one place." />
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
             {WHY_POINTS.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="group rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/15 via-pink-500/15 to-violet-500/15 text-primary transition-colors group-hover:from-orange-500 group-hover:via-pink-500 group-hover:to-violet-500 group-hover:text-white">
-                  <Icon className="h-5 w-5" />
+              <div key={title} className="group rounded-xl border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:rounded-2xl sm:p-6">
+                <div className="flex size-9 sm:size-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/15 via-pink-500/15 to-violet-500/15 text-primary transition-colors group-hover:from-orange-500 group-hover:via-pink-500 group-hover:to-violet-500 group-hover:text-white">
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="mt-4 font-semibold">{title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                <h3 className="mt-2.5 text-sm font-semibold leading-snug sm:mt-4 sm:text-base">{title}</h3>
+                <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground sm:mt-1.5 sm:line-clamp-none sm:text-sm">{body}</p>
               </div>
             ))}
           </div>
@@ -536,7 +540,7 @@ export default function HomePage() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
             <div className="aurora-blob aurora-blob-2" />
           </div>
-          <div className="relative mx-auto max-w-6xl px-4 py-16">
+          <div className="relative mx-auto max-w-6xl px-4 py-10 sm:py-16">
             <SectionHeader center eyebrow="Easy as 1-2-3" title="How it works" subtitle="From search to keys in hand." />
             <HowItWorksSection />
           </div>
@@ -545,18 +549,18 @@ export default function HomePage() {
 
       {/* ── Owner CTA ───────────────────────────────────────────────────── */}
       <ScrollReveal>
-        <section className="mx-auto max-w-6xl px-4 py-16">
-          <div className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-600 px-6 py-12 text-white shadow-2xl sm:px-12">
+        <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16">
+          <div className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-600 px-5 py-8 text-white shadow-2xl sm:px-12 sm:py-12">
             <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/15 blur-3xl" aria-hidden="true" />
             <div className="absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-violet-900/30 blur-3xl" aria-hidden="true" />
             <div className="absolute inset-0 opacity-[0.07] [background-image:repeating-linear-gradient(135deg,#fff_0_1px,transparent_1px_14px)]" aria-hidden="true" />
 
-            <div className="relative grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center">
+            <div className="relative grid gap-6 sm:gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/80">For rental businesses</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Grow your rental business with {brandName}</h2>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">Grow your rental business with {brandName}</h2>
                 <p className="mt-3 max-w-lg text-white/85">
-                  List your fleet, take booking requests online and reach customers across Sri Lanka. Verification is quick and payouts are handled for you.
+                  List your fleet, take booking requests online and reach customers across Sri Lanka. Verification is quick, and customers pay you directly in cash or by bank transfer.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <Button asChild size="lg" className="bg-white text-foreground shadow-lg hover:bg-white/90">
@@ -572,10 +576,10 @@ export default function HomePage() {
                 {[
                   { icon: TrendingUp, text: "Reach customers searching across the island" },
                   { icon: CalendarCheck, text: "Manage bookings, fleet and calendar in one place" },
-                  { icon: Banknote, text: "Automatic earnings tracking and payouts" },
+                  { icon: Banknote, text: "Earnings and payments tracked for every booking" },
                   { icon: Users, text: "Add your staff with their own logins and permissions" },
                 ].map(({ icon: Icon, text }) => (
-                  <li key={text} className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm backdrop-blur-sm">
+                  <li key={text} className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs backdrop-blur-sm sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/20"><Icon className="h-4 w-4" /></span>
                     {text}
                   </li>

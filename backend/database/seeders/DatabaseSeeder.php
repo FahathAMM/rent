@@ -7,10 +7,11 @@ use Illuminate\Database\Seeder;
 /**
  * Production-safe entry point — `php artisan db:seed` always creates the
  * real infra (menu/roles/permissions, platform admin account, default
- * platform branding, scheduled-task definitions, vehicle categories,
- * platform settings). A marketplace demo dataset (shops, owners,
- * vehicles, bookings) is seeded separately and gated to non-production
- * environments — see MarketplaceDemoSeeder.
+ * platform branding, vehicle catalogue, platform settings, locations).
+ * A small marketplace demo (5 shops with 4-5 vehicles each, a demo vendor
+ * and customer, plus vehicle photos) is gated to non-production — see
+ * DemoSeeder and DemoVehiclePhotoSeeder. The larger 50-shop demo is kept
+ * in Backup\MarketplaceDemoSeeder and can be run on its own.
  */
 class DatabaseSeeder extends Seeder
 {
@@ -20,16 +21,15 @@ class DatabaseSeeder extends Seeder
         // permissions, and syncs them.
         $this->call(MenuSeeder::class);
         $this->call(PlatformSeeder::class);
-        $this->call(AutomationSeeder::class);
         $this->call(VehicleCategorySeeder::class);
         $this->call(VehicleBrandSeeder::class);
         $this->call(VehicleColourSeeder::class);
         $this->call(PlatformSettingSeeder::class);
         $this->call(SriLankaLocationSeeder::class);
-        $this->call(HeroSlideSeeder::class);
 
         if (!app()->environment('production')) {
-            $this->call(MarketplaceDemoSeeder::class);
+            $this->call(DemoSeeder::class);
+            $this->call(DemoVehiclePhotoSeeder::class);
         }
     }
 }

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreInquiryRequest;
-use App\Queries\PublicVehicleQuery;
+use App\Repositories\PublicVehicleRepo;
 use App\Services\AuthUser;
 use App\Services\InquiryService;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +15,7 @@ class InquiryController extends Controller
 
     public function store(StoreInquiryRequest $request): JsonResponse
     {
-        $vehicle = PublicVehicleQuery::findBySlug($request->validated('vehicle_slug'));
+        $vehicle = app(PublicVehicleRepo::class)->findBySlug($request->validated('vehicle_slug'));
         abort_unless($vehicle, 404, 'Vehicle not found.');
 
         $this->service->create(

@@ -20,7 +20,7 @@ class ReviewController extends Controller
     public function index(Request $request): JsonResponse
     {
         $reviews = Review::with('vehicle:id,title', 'shop:id,name', 'user:id,name,email')
-            ->when($request->status, fn ($q) => $q->where('status', $request->status), fn ($q) => $q->where('status', Review::STATUS_PENDING))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('created_at')
             ->paginate(min((int) $request->get('perPage', 20), 100));
 

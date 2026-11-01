@@ -18,6 +18,11 @@ class InspectionRequest extends FormRequest
             'accessories_checklist' => ['nullable', 'array'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'customer_present' => ['nullable', 'boolean'],
+            // Handover: staff confirm the cash due at pickup was handed over (enforced in TransitionBooking::handover()).
+            'cash_received' => ['nullable', 'boolean'],
+            // Return: what the shop keeps from a deposit it holds in cash.
+            'deposit_deduction' => ['nullable', 'numeric', 'min:0'],
+            'deposit_deduction_reason' => ['nullable', 'string', 'max:255'],
             'damages' => ['nullable', 'array'],
             'damages.*.area' => ['required_with:damages', 'string', 'max:100'],
             'damages.*.description' => ['required_with:damages', 'string', 'max:1000'],

@@ -70,3 +70,6 @@ chrome-profile*/
 
 # Local tool settings
 .claude/settings.local.json
+postman/LankaLane-local.postman_environment.json
+postman/LankaLane.postman_collection.json
+# Lankalane VPS Deployment Guide.md

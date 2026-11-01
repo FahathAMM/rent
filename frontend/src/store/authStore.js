@@ -28,20 +28,17 @@ export const useAuthStore = create(
 
       updateUser: (user) => set({ user }),
 
-      // Every account is at minimum a customer; shop-owner/shop-staff are
-      // additive on top — see app-doc/marketplace/03-
-      // permissions-model.md "Layer 1". There is no bypass-everything role
-      // on this guard (that's exclusively SystemAdmin on the platform
-      // guard, a completely different login).
-      isVendor: () => {
-        const roles = get().user?.roles ?? [];
-        return ["shop-owner", "shop-staff"].some((r) => roles.includes(r));
+      // Can the user do this? e.g. can("vendor-vehicles-list-create")
+      can: (permission) => {
+        const user = get().user;
+        if (!user) return false;
+
+        // Shop owner can do everything
+        if (user.roles?.includes("shop-owner")) return true;
+
+        // Staff: only what their role allows
+        return user.permissions?.includes(permission) ?? false;
       },
-
-      // Check a Spatie permission string, e.g. "vendor-vehicles-list-view".
-      can: (permission) => (get().user?.permissions ?? []).includes(permission),
-
-      hasRole: (role) => (get().user?.roles ?? []).includes(role),
     }),
     {
       name: "pos-auth",

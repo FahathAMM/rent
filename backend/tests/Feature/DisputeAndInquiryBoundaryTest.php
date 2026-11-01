@@ -7,7 +7,6 @@ use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\Dispute;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use App\Models\VehicleInquiry;
@@ -49,8 +48,8 @@ class DisputeAndInquiryBoundaryTest extends TestCase
 
         $this->shopA = RentalShop::factory()->create(['owner_user_id' => $this->ownerA->id]);
         $this->shopB = RentalShop::factory()->create(['owner_user_id' => $this->ownerB->id]);
-        ShopMember::create(['shop_id' => $this->shopA->id, 'user_id' => $this->ownerA->id, 'role' => 'owner', 'status' => 'active']);
-        ShopMember::create(['shop_id' => $this->shopB->id, 'user_id' => $this->ownerB->id, 'role' => 'owner', 'status' => 'active']);
+        $this->ownerA->update(['shop_id' => $this->shopA->id]);
+        $this->ownerB->update(['shop_id' => $this->shopB->id]);
 
         $vehicleA = Vehicle::create([
             'shop_id' => $this->shopA->id, 'category_id' => $category->id, 'title' => 'Shop A Car',
@@ -165,7 +164,6 @@ class DisputeAndInquiryBoundaryTest extends TestCase
         ]);
 
         $this->as($this->ownerA)
-            ->withHeader('X-Shop-Id', (string) $this->shopA->id)
             ->postJson("/api/vendor/inquiries/{$inquiry->id}/reply", ['reply_message' => 'Trying to reply cross-shop'])
             ->assertNotFound();
     }

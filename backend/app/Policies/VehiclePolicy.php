@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Administration\User;
 use App\Models\Vehicle;
-use App\Support\ShopAbility;
 use App\Support\ShopGate;
 use App\Support\VendorContext;
 
@@ -21,47 +20,41 @@ class VehiclePolicy
 {
     public function viewAny(User $user): bool
     {
-        return ShopGate::allowsCurrent($user, ShopAbility::ListingsView);
+        return ShopGate::allowsCurrent($user, 'vendor-vehicles-list-view');
     }
 
     public function view(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::ListingsView);
+            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-view');
     }
 
     public function create(User $user): bool
     {
-        return ShopGate::allowsCurrent($user, ShopAbility::ListingsCreate);
+        return ShopGate::allowsCurrent($user, 'vendor-vehicles-list-create');
     }
 
     public function update(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::ListingsEdit);
+            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-edit');
     }
 
     public function delete(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::ListingsArchive);
+            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-delete');
     }
 
     public function publish(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::ListingsPublish);
+            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-edit');
     }
 
     public function managePricing(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::PricingManage);
-    }
-
-    public function manageAvailability(User $user, Vehicle $vehicle): bool
-    {
-        return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::AvailabilityManage);
+            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-edit');
     }
 }

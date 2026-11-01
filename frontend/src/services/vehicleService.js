@@ -1,7 +1,6 @@
 import api from "@/lib/axios";
 
 export const vehicleService = {
-  getAll: (params) => api.get("/vehicles", { params }),
   getOne: (id) => api.get(`/vehicles/${id}`),
   create: (data) => api.post("/vehicles", data),
   update: (id, data) => api.put(`/vehicles/${id}`, data),

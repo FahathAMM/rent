@@ -5,12 +5,16 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useShopStore } from "@/store/shopStore";
 import { authService } from "@/services/authService";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { platformDetailService } from "@/services/platformDetailService";
 import { useNavigationMenu } from "@/hooks/useMenus";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { ShopSwitcher } from "@/components/layout/ShopSwitcher";
-import { ImpersonationBanner } from "@/components/shared/ImpersonationBanner";
-import { Loader2, ShieldOff, Store } from "lucide-react";
+import { PlanBanner } from "./settings/subscription/components/PlanBanner";
+import { SubscriptionLock, useIsShopOwner } from "./settings/subscription/components/SubscriptionLock";
+import { useSubscription } from "./settings/subscription/components/useSubscription";
+import { Building2, Loader2, ShieldOff, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -33,28 +37,55 @@ function UnauthorizedView({ title }) {
   );
 }
 
-// `pending` = the user owns a shop that hasn't been verified yet, so they
-// have no vendor role (and no vendor nav) until a platform admin approves it.
-function NoShopView({ pending }) {
+function NoShopView() {
   return (
     <div className="flex flex-col items-center justify-center h-full py-24 gap-4 text-center px-4">
       <div className="rounded-full bg-muted p-4">
         <Store className="h-8 w-8 text-muted-foreground" />
       </div>
       <div>
-        <h2 className="text-xl font-semibold">{pending ? "Shop not verified yet" : "No shop yet"}</h2>
+        <h2 className="text-xl font-semibold">No shop yet</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          {pending
-            ? "Your rental shop is still being set up or reviewed. You'll get full access once it's verified."
-            : "You don't own or staff any rental shop yet. Register a rental shop to get started."}
+          You don&apos;t own or staff any rental shop yet. Register a rental shop to get started.
         </p>
       </div>
       <Button asChild size="sm">
-        <Link href="/vendor/shops/new">{pending ? "View shop status" : "Register a rental shop"}</Link>
+        <Link href="/vendor/shops/new">Register a rental shop</Link>
       </Button>
     </div>
   );
 }
+
+/** Shown to a vendor still signed in when their shop gets suspended — the API refuses everything (ResolveShopContext). */
+function SuspendedView({ onLogout }) {
+  const { data: brand } = useQuery({
+    queryKey: ["platform-details"],
+    queryFn: () => platformDetailService.get().then((r) => r.data.data),
+    staleTime: 60_000,
+  });
+  const brandName = brand?.name || "LankaLane";
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-center">
+      <div className="rounded-full bg-destructive/10 p-4">
+        <ShieldOff className="h-8 w-8 text-destructive" />
+      </div>
+      <div>
+        <h2 className="text-xl font-semibold">Your shop has been suspended</h2>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+          The vendor workspace is unavailable while your shop is suspended. Please contact the {brandName} admin.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button asChild variant="outline" size="sm"><Link href="/">Go to home page</Link></Button>
+        <Button size="sm" onClick={onLogout}>Log out</Button>
+      </div>
+    </div>
+  );
+}
+
+// Still reachable while the shop is unpaid and the rest of the workspace is locked.
+const OPEN_WHILE_LOCKED = ["/vendor/settings/subscription", "/vendor/profile"];
 
 // Personal account pages every authenticated vendor can reach regardless of
 // their menu/permission access — they aren't module nav items.
@@ -94,13 +125,15 @@ function getTitleFromNav(menus, pathname) {
 }
 
 export default function VendorLayout({ children }) {
-  const { user, isAuthenticated, _hasHydrated, updateUser, isVendor } = useAuthStore();
-  const { shops, activeShopId, setShops } = useShopStore();
+  const { isAuthenticated, _hasHydrated, updateUser } = useAuthStore();
+  const { logout } = useAuth();
+  const { shop, setShop } = useShopStore();
   const router = useRouter();
   const pathname = usePathname();
   const { data: navigation, isLoading: navLoading } = useNavigationMenu("vendor");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeModuleId, setActiveModuleId] = useState(null);
+  const isOwner = useIsShopOwner();
 
   const isAuthRoute = pathname === "/vendor/login" || pathname === "/vendor/register";
   const isOnboardingRoute = ONBOARDING_ROUTES.some((route) => pathname.startsWith(route));
@@ -110,19 +143,29 @@ export default function VendorLayout({ children }) {
     if (!isAuthenticated) router.replace("/vendor/login");
   }, [isAuthRoute, isAuthenticated, _hasHydrated, router]);
 
-  // Roles/permissions/shop memberships are only ever written to the
-  // persisted store at login time, so a browser tab left logged in across
-  // a role/membership change (e.g. accepted a staff invite elsewhere)
-  // would otherwise keep acting on a stale snapshot until the user
-  // manually logs out. Re-sync once per mount instead.
+  // Roles/permissions/shop are only ever written to the persisted store at
+  // login time, so a browser tab left logged in across a role/shop change
+  // (e.g. added as staff elsewhere) would otherwise keep acting on a stale
+  // snapshot until the user manually logs out. Re-sync once per mount instead.
   useEffect(() => {
     if (!_hasHydrated || !isAuthenticated) return;
     authService.me().then((res) => {
       updateUser(res.data.data);
-      setShops(res.data.data.shops ?? []);
+      setShop(res.data.data.shop);
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_hasHydrated, isAuthenticated]);
+
+  // An unverified shop has no vendor workspace yet (the API refuses it —
+  // EnsureShopVerified), so its owner is kept on the onboarding page.
+  const awaitingVerification = shop?.is_verified === false
+    && !isAuthRoute
+    && !isOnboardingRoute
+    && !pathname.startsWith("/vendor/profile");
+
+  useEffect(() => {
+    if (awaitingVerification) router.replace("/vendor/shops/new");
+  }, [awaitingVerification, router]);
 
   // Which module's sub-pages the sidebar shows. Updates whenever the URL
   // matches a module's child route; left alone otherwise (e.g. on
@@ -158,6 +201,9 @@ export default function VendorLayout({ children }) {
   );
 
   const accessibleRoutes = useMemo(() => flattenRoutes(navigation ?? []), [navigation]);
+  // Only ask once the workspace is open to the shop (verified, not suspended); the endpoint itself is never locked.
+  const { data: subscription } = useSubscription({ enabled: !!shop && !shop.is_suspended && shop.is_verified !== false && !isAuthRoute && !isOnboardingRoute });
+  const locked = !!subscription?.locked && !OPEN_WHILE_LOCKED.some((route) => pathname.startsWith(route));
 
   if (isAuthRoute) return children;
 
@@ -167,8 +213,11 @@ export default function VendorLayout({ children }) {
     return <div className="min-h-screen bg-slate-50">{children}</div>;
   }
 
-  if (!shops?.length) return <NoShopView />;
-  if (!isVendor()) return <NoShopView pending />;
+  if (!shop) return <NoShopView />;
+
+  if (shop.is_suspended) return <SuspendedView onLogout={logout} />;
+
+  if (awaitingVerification) return loading;
 
   const hasPageAccess = !accessibleRoutes.length
     ? true
@@ -185,18 +234,25 @@ export default function VendorLayout({ children }) {
         navigation={navigation}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        topSlot={<div className="px-3 pt-3 pb-1"><ShopSwitcher /></div>}
+        topSlot={
+          <div className="flex items-center gap-2 px-6 pt-4 pb-2 text-sm text-muted-foreground">
+            <Building2 className="h-4 w-4 shrink-0" />
+            <span className="truncate">{shop.shop_name ?? `Shop #${shop.shop_id}`}</span>
+          </div>
+        }
       />
       <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
-        <ImpersonationBanner />
         <Header
           navigation={navigation}
           activeModuleId={activeModuleId}
           title={title}
           onMenuClick={() => setSidebarOpen(true)}
         />
+        <PlanBanner />
         <main className="flex-1 overflow-auto bg-muted/10 p-1 pb-20 lg:pb-1">
-          {hasPageAccess ? children : <UnauthorizedView title={title} />}
+          {locked
+            ? <SubscriptionLock shopName={shop.shop_name} isOwner={isOwner} />
+            : hasPageAccess ? children : <UnauthorizedView title={title} />}
         </main>
       </div>
     </div>

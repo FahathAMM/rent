@@ -1,16 +1,39 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { bookingService } from "@/services/bookingService";
+import { customerService } from "@/services/customerService";
 import { useCustomerAuthStore } from "@/store/customerAuthStore";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { Button } from "@/components/ui/button";
-import { DateRangePicker } from "@/components/forms/DateRangePicker";
+import { BookingDateRange } from "./BookingDateRange";
 import { CheckboxInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
-import { Loader2 } from "lucide-react";
+import { Banknote, Landmark, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+// What a signed-out customer had filled in when they hit "Log in to book",
+// kept for this tab only so the request picks up where it left off after
+// login/register (see LoginPanel/RegisterPanel's `next`).
+const draftKey = (vehicleId) => `booking-draft:${vehicleId}`;
+
+function readDraft(vehicleId) {
+  try {
+    return JSON.parse(sessionStorage.getItem(draftKey(vehicleId)) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(vehicleId, draft) {
+  try {
+    if (draft) sessionStorage.setItem(draftKey(vehicleId), JSON.stringify(draft));
+    else sessionStorage.removeItem(draftKey(vehicleId));
+  } catch {
+    // Storage blocked (private mode etc.) — the customer just re-enters their dates.
+  }
+}
 
 function daysBetween(from, to) {
   if (!from || !to) return 0;
@@ -33,11 +56,34 @@ export function BookingRequestWidget({ vehicle }) {
   const [withDriver, setWithDriver] = useState(false);
   const [deliveryRequested, setDeliveryRequested] = useState(false);
   const [note, setNote] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [errors, setErrors] = useState({});
+  const containerRef = useRef(null);
+
+  // The customer pays the shop directly: cash at pickup, or a bank transfer when the shop has a bank account on file.
+  const canTransfer = !!vehicle.shop?.accepts_bank_transfer;
+  const advancePct = vehicle.shop?.advance_percentage != null ? Number(vehicle.shop.advance_percentage) : null;
+
+  // Back from login/register with a saved draft → refill it and bring the widget into view.
+  useEffect(() => {
+    const draft = readDraft(vehicle.id);
+    if (!draft) return;
+    setRange(draft.range ?? { from: "", to: "" });
+    setWithDriver(!!draft.withDriver);
+    setDeliveryRequested(!!draft.deliveryRequested);
+    setNote(draft.note ?? "");
+    if (draft.paymentMethod) setPaymentMethod(draft.paymentMethod);
+    if (isAuthenticated) {
+      writeDraft(vehicle.id, null);
+      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      toast.info("Welcome back — your booking details are filled in. Review them and send your request.");
+    }
+  }, [vehicle.id, isAuthenticated]);
 
   const create = useMutation({
-    mutationFn: bookingService.create,
+    mutationFn: customerService.bookings.create,
     onSuccess: (res) => {
+      writeDraft(vehicle.id, null);
       toast.success("Booking request sent — the owner will respond soon");
       router.push(`/account/bookings/${res.data.data.booking_reference}`);
     },
@@ -58,23 +104,23 @@ export function BookingRequestWidget({ vehicle }) {
     const base = Number(pricing.daily_rate) * rentalDays;
     const driver = withDriver ? Number(pricing.driver_rate_per_day ?? 0) * rentalDays : 0;
     const delivery = deliveryRequested && pricing.delivery_available ? Number(pricing.delivery_flat_fee ?? 0) : 0;
+    const tax = Math.round((base + driver + delivery) * Number(pricing.tax_rate ?? 0)) / 100;
     const deposit = Number(pricing.security_deposit ?? 0);
-    // Only a prepaid deposit is paid through the gateway with the rental —
-    // cash_on_pickup is collected by the shop in person, so it's shown but
-    // excluded from "pay now". Must match BookingPricingCalculator exactly,
-    // since that's what the real charge will be.
-    const depositPrepaid = pricing.deposit_method === "prepaid";
+    // Must match BookingPricingCalculator: everything the shop collects, deposit included unless waived.
     return {
-      base, driver, delivery, deposit, depositPrepaid,
-      total: base + driver + delivery + (depositPrepaid ? deposit : 0),
+      base, driver, delivery, tax, deposit,
+      total: base + driver + delivery + tax + (pricing.deposit_method !== "waived" ? deposit : 0),
     };
   }, [rentalDays, pricing, withDriver, deliveryRequested]);
+  // Same rule as BankTransferService::advanceAmount(): % of the total, rounded up. Bank transfer totals include any non-waived deposit.
+  const advance = advancePct && estimate ? Math.ceil((estimate.total * advancePct) / 100) : null;
 
   const handleSubmit = () => {
     setErrors({});
 
     if (!isAuthenticated) {
-      router.push(`/login?next=/vehicles/${vehicle.slug}`);
+      writeDraft(vehicle.id, { range, withDriver, deliveryRequested, note, paymentMethod });
+      router.push(`/login?next=${encodeURIComponent(`/vehicles/${vehicle.slug}`)}`);
       return;
     }
 
@@ -90,20 +136,48 @@ export function BookingRequestWidget({ vehicle }) {
       with_driver: withDriver,
       delivery_requested: deliveryRequested,
       customer_note: note || undefined,
+      payment_method: canTransfer ? paymentMethod : "cash",
     });
   };
 
   return (
-    <div className="space-y-3">
+    <div ref={containerRef} className="space-y-3 scroll-mt-24">
       <ValidationError errors={errors} />
 
-      <DateRangePicker label="Pickup & return dates" value={range} onChange={setRange} placeholder="Choose your dates" />
+      <BookingDateRange vehicle={vehicle} label="Pickup & return dates" value={range} onChange={setRange} placeholder="Choose your dates" />
 
       {pricing?.driver_rate_per_day > 0 && (
         <CheckboxInput label={`Add a driver (+${format(pricing.driver_rate_per_day)}/day)`} checked={withDriver} onChange={setWithDriver} />
       )}
       {pricing?.delivery_available && (
         <CheckboxInput label={`Delivery to my location (+${format(pricing.delivery_flat_fee ?? 0)})`} checked={deliveryRequested} onChange={setDeliveryRequested} />
+      )}
+
+      {canTransfer && (
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium">How will you pay the shop?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "cash", icon: Banknote, title: "Cash at pickup", sub: "Pay everything when you collect" },
+              { value: "bank_transfer", icon: Landmark, title: "Bank transfer", sub: advancePct ? (advance ? `From ${format(advance)} (${advancePct}% advance)` : `From a ${advancePct}% advance`) : "Transfer the full amount" },
+            ].map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setPaymentMethod(o.value)}
+                aria-pressed={paymentMethod === o.value}
+                className={cn(
+                  "flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left text-sm transition-colors",
+                  paymentMethod === o.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50",
+                )}
+              >
+                <span className="flex items-center gap-1.5 font-medium"><o.icon className="h-4 w-4" /> {o.title}</span>
+                <span className="text-xs text-muted-foreground">{o.sub}</span>
+              </button>
+            ))}
+          </div>
+          {errors.payment_method?.[0] && <p className="text-xs text-destructive">{errors.payment_method[0]}</p>}
+        </div>
       )}
 
       <TextareaInput label="Note to owner (optional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. arriving by flight, need it for a wedding..." />
@@ -113,13 +187,14 @@ export function BookingRequestWidget({ vehicle }) {
           <div className="flex justify-between"><span className="text-muted-foreground">Rental ({rentalDays} day{rentalDays > 1 ? "s" : ""})</span><span>{format(estimate.base)}</span></div>
           {estimate.driver > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span>{format(estimate.driver)}</span></div>}
           {estimate.delivery > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>{format(estimate.delivery)}</span></div>}
+          {estimate.tax > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax ({Number(pricing.tax_rate)}%)</span><span>{format(estimate.tax)}</span></div>}
           {estimate.deposit > 0 && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Security deposit {estimate.depositPrepaid ? "" : "(pay at pickup)"}</span>
+              <span className="text-muted-foreground">Security deposit (refundable)</span>
               <span>{format(estimate.deposit)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t pt-1 font-semibold"><span>Pay now</span><span>{format(estimate.total)}</span></div>
+          <div className="flex justify-between border-t pt-1 font-semibold"><span>{canTransfer && paymentMethod === "bank_transfer" ? "Total (by bank transfer)" : "Pay at pickup (cash)"}</span><span>{format(estimate.total)}</span></div>
         </div>
       )}
 
@@ -128,7 +203,9 @@ export function BookingRequestWidget({ vehicle }) {
         {isAuthenticated ? "Request to book" : "Log in to book"}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
-        You won&apos;t be charged yet — the owner reviews your request first.
+        {canTransfer && paymentMethod === "bank_transfer"
+            ? <>Once the owner confirms, you&apos;ll see their bank details — transfer {advancePct ? `any amount from the ${advancePct}% advance${advance ? ` (${format(advance)})` : ""} up to the full total` : "the full amount"} and upload the receipt. Any balance is paid at pickup.</>
+            : <>Once the owner confirms, you pay the shop in cash at pickup.</>}
       </p>
     </div>
   );

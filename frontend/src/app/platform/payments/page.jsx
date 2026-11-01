@@ -1,20 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { platformPaymentService } from "@/services/platformPaymentService";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { FilterSelect } from "@/components/Datatable/FilterSelect";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { SelectInput } from "@/components/forms/SelectInput";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
-import { ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { Home } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
   { value: "initiated", label: "Initiated" },
   { value: "pending", label: "Pending" },
   { value: "succeeded", label: "Succeeded" },
@@ -24,51 +20,40 @@ const STATUS_OPTIONS = [
   { value: "chargeback", label: "Chargeback" },
 ];
 
+/** Read-only — payments are written only by PaymentService and the PayHere webhook handler. */
 export default function PlatformPaymentsPage() {
   const { format } = useCurrencyFormat();
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["platform-payments", status, page],
-    queryFn: () => platformPaymentService.getAll({ status: status || undefined, page }).then((r) => r.data.record),
-  });
-
-  const columns = [
-    { key: "payment_reference", header: "Reference", render: (row) => <span className="font-mono text-xs">{row.payment_reference}</span> },
-    { key: "booking", header: "Booking", render: (row) => row.booking?.booking_reference ?? "—" },
-    { key: "gateway", header: "Gateway", render: (row) => <span className="capitalize">{row.gateway}</span> },
-    { key: "type", header: "Type", render: (row) => <span className="capitalize">{row.type}</span> },
-    { key: "amount", header: "Amount", render: (row) => format(row.amount) },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
-    { key: "paid_at", header: "Paid at", render: (row) => row.paid_at ? formatDateTime(row.paid_at) : "—" },
+  const columns = () => [
+    { accessorKey: "payment_reference", header: "Reference", cell: (row) => <span className="font-mono">{row.payment_reference}</span> },
+    { accessorKey: "booking", header: "Booking", cell: (row) => row.booking?.booking_reference ?? "—" },
+    { accessorKey: "method", header: "Method", cell: (row) => (row.method === "bank" ? "Bank transfer" : row.method === "cash" ? "Cash" : "—") },
+    { accessorKey: "type", header: "Type", cell: (row) => <span className="capitalize">{String(row.type).replace(/_/g, " ")}</span> },
+    { accessorKey: "credit", header: "Credit", cell: (row) => (Number(row.credit) > 0 ? <span className="text-emerald-600">{format(row.credit)}</span> : "—") },
+    { accessorKey: "debit", header: "Debit", cell: (row) => (Number(row.debit) > 0 ? <span className="text-destructive">{format(row.debit)}</span> : "—") },
+    { accessorKey: "balance", header: "Balance", cell: (row) => (row.balance != null ? <span className="font-medium">{format(row.balance)}</span> : "—") },
+    { accessorKey: "status", header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
+    { accessorKey: "paid_at", header: "Paid at", cell: (row) => row.paid_at ? <span className="whitespace-nowrap">{formatDateTime(row.paid_at)}</span> : "—" },
   ];
 
-  const records = data?.data ?? [];
   const breadcrumbItems = [
     { label: "Dashboard", href: "/platform/dashboard", icon: <Home className="size-4" /> },
     { label: "Payments" },
   ];
 
   return (
-    <PageWrapper breadcrumb={breadcrumbItems}>
-      <PageHeader title="Payments" description="Read-only — written only by PaymentService and the PayHere webhook handler." />
-
-      <div className="mb-4 w-56">
-        <SelectInput label="Status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
-      </div>
-
-      <DataTable columns={columns} data={records} loading={isLoading} />
-
-      {data && data.last_page > 1 && (
-        <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-          <span>Page {data.current_page} of {data.last_page} — {data.total} total</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= data.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
-        </div>
-      )}
-    </PageWrapper>
+    <HomePageWrapper breadcrumb={breadcrumbItems}>
+      <ServerDataTable
+        api={platformApi}
+        endpoint="/platform/payments"
+        columns={columns}
+        breadcrumb={[]}
+        searchable={false}
+        filters={{ status: status || undefined }}
+      >
+        <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTIONS} allLabel="All statuses" />
+      </ServerDataTable>
+    </HomePageWrapper>
   );
 }

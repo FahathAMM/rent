@@ -25,7 +25,6 @@ return new class extends Migration
             $table->timestamp('released_at')->nullable();
             $table->decimal('deductions_amount', 10, 2)->default(0);
             $table->string('deduction_reason')->nullable();
-            $table->foreignId('release_refund_id')->nullable()->constrained('refunds')->nullOnDelete();
             $table->foreignId('decided_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });

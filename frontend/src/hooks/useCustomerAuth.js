@@ -1,7 +1,7 @@
 "use client";
 
 import { useCustomerAuthStore } from "@/store/customerAuthStore";
-import { customerAuthService } from "@/services/customerAuthService";
+import { customerService } from "@/services/customerService";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -10,21 +10,21 @@ export function useCustomerAuth() {
   const router = useRouter();
 
   const refreshCustomer = async () => {
-    const res = await customerAuthService.me();
+    const res = await customerService.me();
     const fresh = res.data.data;
     updateCustomer(fresh);
     return fresh;
   };
 
   const login = async (credentials) => {
-    const res = await customerAuthService.login(credentials);
+    const res = await customerService.login(credentials);
     const { customer, token } = res.data.data;
     setAuth(customer, token);
     return customer;
   };
 
   const register = async (data) => {
-    const res = await customerAuthService.register(data);
+    const res = await customerService.register(data);
     const { customer, token } = res.data.data;
     setAuth(customer, token);
     return customer;
@@ -32,7 +32,7 @@ export function useCustomerAuth() {
 
   const logout = async () => {
     try {
-      await customerAuthService.logout();
+      await customerService.logout();
     } catch {}
     storeLogout();
     router.push("/login");

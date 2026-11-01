@@ -9,15 +9,18 @@ const STEPS = [
 /** The 3-step grid, reused inline on the homepage and as the body of the dedicated /how-it-works page — the caller supplies its own heading/wrapper. */
 export function HowItWorksSection() {
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-6">
       {STEPS.map(({ icon: Icon, title, body }, i) => (
-        <div key={title} className="relative rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
+        // phones: icon beside the text; sm+: stacked card
+        <div key={title} className="relative flex gap-3.5 rounded-2xl border bg-card p-4 shadow-sm sm:block sm:p-6">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
             <Icon className="h-5 w-5" />
           </div>
-          <p className="mt-4 text-xs font-semibold text-muted-foreground">STEP {i + 1}</p>
-          <h3 className="mt-1 font-semibold">{title}</h3>
-          <p className="mt-1.5 text-sm text-muted-foreground">{body}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-muted-foreground sm:mt-4 sm:text-xs">STEP {i + 1}</p>
+            <h3 className="mt-0.5 font-semibold sm:mt-1">{title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground sm:mt-1.5">{body}</p>
+          </div>
         </div>
       ))}
     </div>

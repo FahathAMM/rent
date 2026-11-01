@@ -2,12 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { platformDashboardService } from "@/services/platformService";
+import { platformService } from "@/services/platformService";
 import { PageWrapper } from "@/components/shared/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Wallet, CalendarCheck, Percent, Banknote, Building2, Car, Clock, Home,
+  Wallet, CalendarCheck, Building2, Car, Home,
 } from "lucide-react";
 
 function format(amount) {
@@ -52,13 +52,11 @@ function QueueCard({ label, count, href, Icon }) {
 export default function PlatformDashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["platform-dashboard"],
-    queryFn: () => platformDashboardService.getSummary().then((r) => r.data.data),
+    queryFn: () => platformService.dashboard.getSummary().then((r) => r.data.data),
   });
 
   const gmv = data?.gmv ?? {};
   const bookings = data?.bookings ?? {};
-  const commission = data?.commission ?? {};
-  const payoutsDue = data?.payouts_due ?? {};
   const queues = data?.queues ?? {};
 
   const breadcrumbItems = [{ label: "Dashboard", icon: <Home className="size-4" /> }];
@@ -66,13 +64,13 @@ export default function PlatformDashboardPage() {
   return (
     <div>
       <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader title="Platform Dashboard" description="GMV, bookings, commission, payouts due, and review queues across the marketplace." />
+        <PageHeader title="Platform Dashboard" description="Booked value, bookings and review queues across the marketplace." />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard
-            label="GMV (paid bookings)"
+            label="GMV (booked rental value)"
             value={isLoading ? "—" : format(gmv.total)}
-            sub={isLoading ? undefined : `${gmv.paid_booking_count ?? 0} paid bookings`}
+            sub={isLoading ? undefined : `${gmv.paid_booking_count ?? 0} fully paid to shops`}
             Icon={Wallet}
             color="text-indigo-600 bg-indigo-50"
           />
@@ -82,20 +80,6 @@ export default function PlatformDashboardPage() {
             sub={isLoading ? undefined : `${bookings.pending ?? 0} pending · ${bookings.active ?? 0} active`}
             Icon={CalendarCheck}
             color="text-sky-600 bg-sky-50"
-          />
-          <StatCard
-            label="Commission Income"
-            value={isLoading ? "—" : format(commission.commission_income)}
-            sub={isLoading ? undefined : `${format(commission.platform_net)} net of gateway fees`}
-            Icon={Percent}
-            color="text-emerald-600 bg-emerald-50"
-          />
-          <StatCard
-            label="Payouts Due"
-            value={isLoading ? "—" : format((payoutsDue.in_flight_payouts ?? 0) + (payoutsDue.unsettled_not_yet_built ?? 0))}
-            sub={isLoading ? undefined : `${format(payoutsDue.in_flight_payouts)} in flight`}
-            Icon={Banknote}
-            color="text-amber-600 bg-amber-50"
           />
         </div>
 
@@ -119,10 +103,9 @@ export default function PlatformDashboardPage() {
 
         <div className="mt-6">
           <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Review Queues</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <QueueCard label="Shop Verifications" count={isLoading ? "—" : queues.shop_verifications ?? 0} href="/platform/shops" Icon={Building2} />
             <QueueCard label="Listing Moderation" count={isLoading ? "—" : queues.listing_moderation ?? 0} href="/platform/listings" Icon={Car} />
-            <QueueCard label="Payout Approvals" count={isLoading ? "—" : queues.payout_approvals ?? 0} href="/platform/payouts" Icon={Clock} />
           </div>
         </div>
       </PageWrapper>

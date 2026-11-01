@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\Administration\User;
+use App\Models\PlatformDetail;
+use App\Models\RentalShop;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +32,14 @@ class AuthService
         if (!$user->isActive()) {
             throw ValidationException::withMessages([
                 'email' => ['Your account is ' . $user->status . '.'],
+            ]);
+        }
+
+        // A suspended shop's owner and staff can't use the vendor panel at all
+        // (ResolveShopContext refuses every request), so don't let them in.
+        if ($user->shop?->status === RentalShop::STATUS_SUSPENDED) {
+            throw ValidationException::withMessages([
+                'email' => ['Your rental shop has been suspended. Please contact the ' . (PlatformDetail::current()?->name ?: 'LankaLane') . ' admin.'],
             ]);
         }
 

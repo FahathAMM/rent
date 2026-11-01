@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { usePlatformAuthStore } from "@/store/platformAuthStore";
-import { platformDetailService, platformBackupService, platformAutomationService } from "@/services/platformService";
+import { platformService } from "@/services/platformService";
 import { PageWrapper } from "@/components/shared/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -130,7 +130,7 @@ function BrandingCard() {
   const loginLogoInputRef = useRef(null);
 
   useEffect(() => {
-    platformDetailService
+    platformService.details
       .get()
       .then((res) => {
         setDetail({ ...EMPTY_DETAIL, ...res.data.data });
@@ -169,7 +169,7 @@ function BrandingCard() {
       if (logoFile) fd.append("logo", logoFile);
       if (loginLogoFile) fd.append("login_logo", loginLogoFile);
 
-      const res = await platformDetailService.update(fd);
+      const res = await platformService.details.update(fd);
       setDetail({ ...EMPTY_DETAIL, ...res.data.data });
       setLogoFile(null);
       setLoginLogoFile(null);
@@ -279,7 +279,7 @@ function BrandingCard() {
 
 function BackupsCard() {
   const admin = usePlatformAuthStore((s) => s.admin);
-  const isOwner = admin?.role === "platform_owner";
+  const isOwner = admin?.admin_role === "platform_owner";
 
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -291,7 +291,7 @@ function BackupsCard() {
 
   const load = () => {
     setLoading(true);
-    platformBackupService
+    platformService.backups
       .getAll()
       .then((res) => setBackups(res.data.data))
       .catch(() => toast.error("Failed to load backups"))
@@ -305,7 +305,7 @@ function BackupsCard() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      await platformBackupService.create();
+      await platformService.backups.create();
       toast.success("Database backup created");
       load();
     } catch (err) {
@@ -318,7 +318,7 @@ function BackupsCard() {
   const handleDownload = async (backup) => {
     setDownloadingPath(backup.path);
     try {
-      const res = await platformBackupService.download(backup.path);
+      const res = await platformService.backups.download(backup.path);
       const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/zip" }));
       const a = document.createElement("a");
       a.href = url;
@@ -335,7 +335,7 @@ function BackupsCard() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await platformBackupService.delete(deleteTarget.path);
+      await platformService.backups.delete(deleteTarget.path);
       toast.success("Backup deleted");
       setDeleteTarget(null);
       load();
@@ -436,7 +436,7 @@ function BackupsCard() {
         onOpenChange={() => setEmailTarget(null)}
         docLabel="Database Backup"
         docNumber={emailTarget ? formatDateTime(emailTarget.created_at) : ""}
-        onSend={(data) => platformBackupService.email({ ...data, path: emailTarget.path })}
+        onSend={(data) => platformService.backups.email({ ...data, path: emailTarget.path })}
         hideCloseButton
       />
     </>
@@ -457,7 +457,7 @@ function AutomationsCard() {
 
   const load = () => {
     setLoading(true);
-    platformAutomationService
+    platformService.automations
       .getAll()
       .then((res) => setAutomations(res.data.data))
       .catch(() => toast.error("Failed to load automations"))
@@ -499,10 +499,10 @@ function AutomationsCard() {
     };
     try {
       if (editing) {
-        await platformAutomationService.update(editing.id, payload);
+        await platformService.automations.update(editing.id, payload);
         toast.success("Automation updated");
       } else {
-        await platformAutomationService.create(payload);
+        await platformService.automations.create(payload);
         toast.success("Automation created");
       }
       setFormOpen(false);
@@ -517,7 +517,7 @@ function AutomationsCard() {
   const handleToggleActive = async (automation) => {
     setTogglingId(automation.id);
     try {
-      await platformAutomationService.update(automation.id, {
+      await platformService.automations.update(automation.id, {
         name: automation.name,
         interval: automation.interval,
         fixed_time: automation.fixed_time,
@@ -534,7 +534,7 @@ function AutomationsCard() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await platformAutomationService.delete(deleteTarget.id);
+      await platformService.automations.delete(deleteTarget.id);
       toast.success("Automation deleted");
       setDeleteTarget(null);
       load();
@@ -708,7 +708,7 @@ function ProfileCard({ admin }) {
 
         <div className="space-y-2">
           <InfoRow icon={Shield} label="Role">
-            <Badge variant={admin?.role === "platform_owner" ? "default" : "secondary"} className="capitalize">{admin?.role?.replace("_", " ")}</Badge>
+            <Badge variant={admin?.admin_role === "platform_owner" ? "default" : "secondary"} className="capitalize">{admin?.admin_role?.replace("_", " ")}</Badge>
           </InfoRow>
           <InfoRow icon={Shield} label="Status">
             <Badge variant="success" className="capitalize">{admin?.status}</Badge>

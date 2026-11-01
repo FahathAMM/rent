@@ -24,8 +24,8 @@ class VehicleCategorySeeder extends Seeder
             ['name' => 'Motorcycle', 'slug' => 'motorcycle', 'icon' => 'Bike', 'sort_order' => 7],
             ['name' => 'Scooter', 'slug' => 'scooter', 'icon' => 'Bike', 'sort_order' => 8],
             ['name' => 'Pickup / Lorry', 'slug' => 'pickup-lorry', 'icon' => 'Truck', 'sort_order' => 9],
-            ['name' => 'Luxury', 'slug' => 'luxury', 'icon' => 'Sparkles', 'sort_order' => 10, 'commission_rate' => 15.00],
-            ['name' => 'Wedding Car', 'slug' => 'wedding-car', 'icon' => 'Heart', 'sort_order' => 11, 'commission_rate' => 15.00],
+            ['name' => 'Luxury', 'slug' => 'luxury', 'icon' => 'Sparkles', 'sort_order' => 10],
+            ['name' => 'Wedding Car', 'slug' => 'wedding-car', 'icon' => 'Heart', 'sort_order' => 11],
             ['name' => 'Self-Drive', 'slug' => 'self-drive', 'icon' => 'Car', 'sort_order' => 12],
         ];
 

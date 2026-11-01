@@ -22,7 +22,8 @@ class VehicleAvailability extends Model
 
     protected $fillable = ['vehicle_id', 'date', 'status', 'booking_id', 'note', 'created_by'];
 
-    protected $casts = ['date' => 'date'];
+    // A calendar day, not an instant - serialised as plain Y-m-d so clients can key on it without timezone shifts.
+    protected $casts = ['date' => 'date:Y-m-d'];
 
     public function vehicle(): BelongsTo
     {

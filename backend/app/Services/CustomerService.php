@@ -2,64 +2,64 @@
 
 namespace App\Services;
 
-use App\Models\Administration\User;
+use App\Models\Customer;
 use App\Models\SystemAdmin;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Platform admin management of any marketplace account (customer, owner,
- * or staff — there is no separate "customer" table, see User's
- * docblock). AuthService::login already blocks a suspended/banned user
- * from getting a new token; suspend() here additionally revokes every
- * token the user already holds, so an existing session dies immediately
- * rather than staying valid until it naturally expires.
+ * Platform admin management of customer accounts (the `customers` table /
+ * customer guard — vendor `users` are a separate identity). Customer login
+ * already blocks a suspended/banned account from getting a new token;
+ * suspend() and ban() here additionally revoke every token the customer
+ * already holds, so an existing session dies immediately rather than
+ * staying valid until it naturally expires.
  */
 class CustomerService
 {
-    public function suspend(SystemAdmin $admin, User $user, string $reason): User
+    public function suspend(SystemAdmin $admin, Customer $customer, string $reason): Customer
     {
-        if ($user->status === User::STATUS_SUSPENDED) {
+        if ($customer->status === Customer::STATUS_SUSPENDED) {
             throw ValidationException::withMessages(['status' => ['This account is already suspended.']]);
         }
 
-        $user->update([
-            'status' => User::STATUS_SUSPENDED,
+        $customer->update([
+            'status' => Customer::STATUS_SUSPENDED,
             'suspended_reason' => $reason,
             'suspended_at' => now(),
         ]);
 
-        $user->tokens()->delete();
+        $customer->tokens()->delete();
 
-        AuditService::edit('User', $user->id, $user->name, null, ['status' => 'suspended', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
+        AuditService::edit('Customer', $customer->id, $customer->name, null, ['status' => 'suspended', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
 
-        return $user->fresh();
+        return $customer->fresh();
     }
 
-    public function ban(SystemAdmin $admin, User $user, string $reason): User
+    public function ban(SystemAdmin $admin, Customer $customer, string $reason): Customer
     {
-        $user->update([
-            'status' => User::STATUS_BANNED,
+        $customer->update([
+            'status' => Customer::STATUS_BANNED,
             'suspended_reason' => $reason,
             'suspended_at' => now(),
         ]);
 
-        $user->tokens()->delete();
+        $customer->tokens()->delete();
 
-        AuditService::edit('User', $user->id, $user->name, null, ['status' => 'banned', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
+        AuditService::edit('Customer', $customer->id, $customer->name, null, ['status' => 'banned', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
 
-        return $user->fresh();
+        return $customer->fresh();
     }
 
-    public function activate(SystemAdmin $admin, User $user): User
+    public function activate(SystemAdmin $admin, Customer $customer): Customer
     {
-        $user->update([
-            'status' => User::STATUS_ACTIVE,
+        $customer->update([
+            'status' => Customer::STATUS_ACTIVE,
             'suspended_reason' => null,
             'suspended_at' => null,
         ]);
 
-        AuditService::edit('User', $user->id, $user->name, null, ['status' => 'active', 'decided_by_admin_id' => $admin->id]);
+        AuditService::edit('Customer', $customer->id, $customer->name, null, ['status' => 'active', 'decided_by_admin_id' => $admin->id]);
 
-        return $user->fresh();
+        return $customer->fresh();
     }
 }

@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import platformApi from "@/lib/platformAxios";
-import { platformCompanyService } from "@/services/platformService";
+import { platformService } from "@/services/platformService";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { ActionButton } from "@/components/Datatable/ActionButton";
@@ -27,22 +26,23 @@ const EVENTS = ["create", "update", "delete", "suspend", "activate", "impersonat
 
 export default function PlatformAuditLogsPage() {
   const searchParams = useSearchParams();
-  const [companyId, setCompanyId] = useState(searchParams.get("company_id") ?? "");
+  const [shopId, setShopId] = useState(searchParams.get("shop_id") ?? "");
   const [userId, setUserId] = useState("");
   const [event, setEvent] = useState("");
   const [model, setModel] = useState("");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [detail, setDetail] = useState(null);
 
-  const { data: companies } = useQuery({
-    queryKey: ["platform-companies-lite"],
-    queryFn: () => platformCompanyService.getAll({ per_page: 100 }).then((r) => r.data.record.data),
+  const { data: shops } = useQuery({
+    queryKey: ["platform-shops-lite"],
+    queryFn: () => platformService.shops.getAll({ perPage: 100 }).then((r) => r.data.record.data),
   });
 
-  const { data: companyUsers } = useQuery({
-    queryKey: ["platform-company-users", companyId],
-    queryFn: () => platformCompanyService.getUsers(companyId).then((r) => r.data.data),
-    enabled: !!companyId,
+  // A shop's users (owner + staff) come back as `members` on the shop detail.
+  const { data: shopUsers } = useQuery({
+    queryKey: ["platform-shop-users", shopId],
+    queryFn: () => platformService.shops.getOne(shopId).then((r) => r.data.data.members),
+    enabled: !!shopId,
   });
 
   const columns = ({ sortField, sortOrder, handleSort }) => [
@@ -54,14 +54,9 @@ export default function PlatformAuditLogsPage() {
       cell: (row) => <span className="text-xs whitespace-nowrap">{formatDateTime(row.created_at)}</span>,
     },
     {
-      accessorKey: "company",
-      header: "Company",
-      cell: (row) =>
-        row.company ? (
-          <Link href={`/platform/companies/${row.company.id}`} className="hover:underline">{row.company.name}</Link>
-        ) : (
-          "—"
-        ),
+      accessorKey: "shop",
+      header: "Shop",
+      cell: (row) => row.shop?.name ?? "—",
     },
     {
       accessorKey: "actor",
@@ -124,7 +119,7 @@ export default function PlatformAuditLogsPage() {
           defualtSortField="created_at"
           defaultSortOrder="desc"
           filters={{
-            company_id: companyId || undefined,
+            shop_id: shopId || undefined,
             user_id: userId || undefined,
             event: event || undefined,
             model: model || undefined,
@@ -132,19 +127,19 @@ export default function PlatformAuditLogsPage() {
             date_to: dateRange.to || undefined,
           }}
         >
-          <Select value={companyId || "all"} onValueChange={(v) => { setCompanyId(v === "all" ? "" : v); setUserId(""); }}>
-            <SelectTrigger className="h-8 w-full text-sm sm:w-40"><SelectValue placeholder="Company" /></SelectTrigger>
+          <Select value={shopId || "all"} onValueChange={(v) => { setShopId(v === "all" ? "" : v); setUserId(""); }}>
+            <SelectTrigger className="h-8 w-full text-sm sm:w-40"><SelectValue placeholder="Shop" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All companies</SelectItem>
-              {(companies ?? []).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              <SelectItem value="all">All shops</SelectItem>
+              {(shops ?? []).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
 
-          <Select value={userId || "all"} onValueChange={(v) => setUserId(v === "all" ? "" : v)} disabled={!companyId}>
+          <Select value={userId || "all"} onValueChange={(v) => setUserId(v === "all" ? "" : v)} disabled={!shopId}>
             <SelectTrigger className="h-8 w-full text-sm sm:w-36"><SelectValue placeholder="User" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All users</SelectItem>
-              {(companyUsers ?? []).map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
+              {(shopUsers ?? []).map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -156,7 +151,7 @@ export default function PlatformAuditLogsPage() {
             </SelectContent>
           </Select>
 
-          <Input placeholder="Model (e.g. Invoice)" className="h-8 w-full text-sm sm:w-36" value={model} onChange={(e) => setModel(e.target.value)} />
+          <Input placeholder="Model (e.g. Vehicle)" className="h-8 w-full text-sm sm:w-36" value={model} onChange={(e) => setModel(e.target.value)} />
 
           <DateRangePicker placeholder="Date range" className="w-full sm:w-44" value={dateRange} onChange={setDateRange} />
         </ServerDataTable>
@@ -171,7 +166,7 @@ export default function PlatformAuditLogsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <Row label="Company" value={detail?.company?.name ?? "—"} />
+            <Row label="Shop" value={detail?.shop?.name ?? "—"} />
             <Row label="Date" value={formatDateTime(detail?.created_at)} />
             <Row label="IP Address" value={detail?.ip ?? "—"} />
             <Row label="User Agent" value={detail?.browser ?? "—"} />

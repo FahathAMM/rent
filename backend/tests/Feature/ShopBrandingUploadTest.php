@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Administration\User;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -27,13 +26,12 @@ class ShopBrandingUploadTest extends TestCase
         $owner->givePermissionTo(Permission::firstOrCreate(['name' => 'vendor-settings-shop-edit', 'guard_name' => 'web']));
         $owner->givePermissionTo(Permission::firstOrCreate(['name' => 'vendor-settings-shop-view', 'guard_name' => 'web']));
         $this->shop = RentalShop::factory()->create(['owner_user_id' => $owner->id]);
-        ShopMember::create(['shop_id' => $this->shop->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active']);
+        $owner->update(['shop_id' => $this->shop->id]);
     }
 
     private function asOwner()
     {
-        return $this->withHeader('Authorization', 'Bearer ' . $this->shop->owner->createToken('test')->plainTextToken)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id);
+        return $this->withHeader('Authorization', 'Bearer ' . $this->shop->owner->createToken('test')->plainTextToken);
     }
 
     public function test_owner_can_upload_logo_and_cover(): void

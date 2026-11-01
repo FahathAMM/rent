@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Api\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\BookingFinancial;
-use App\Models\OwnerPayout;
+use App\Models\Payment;
 use App\Models\Review;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
@@ -17,8 +16,8 @@ use Illuminate\Http\JsonResponse;
  * The owner dashboard tiles - see app-doc/marketplace/05-ui-and-api-map.md
  * "Owner dashboard tiles (the required set, mapped to data)". Vehicle and
  * Booking are shop-scoped (BelongsToShop), so querying them plainly here
- * already confines to the active shop context; Review/OwnerPayout are
- * not, so those filter by shop_id explicitly.
+ * already confines to the active shop context; Review is not, so it
+ * filters by shop_id explicitly.
  *
  * Omits the "Notifications" tile from that table - no notification is
  * ever created anywhere in the codebase yet (Phase 7), so a permanent
@@ -35,8 +34,7 @@ class DashboardController extends Controller
         return $this->response('Dashboard retrieved', [
             'listings' => $this->listingCounts(),
             'bookings' => $this->bookingCounts(),
-            'revenue' => $this->revenue($shopId),
-            'payouts' => $this->payoutCounts($shopId),
+            'revenue' => $this->revenue(),
             'vehicle_utilisation' => $this->utilisation(),
             'listing_performance' => $this->listingPerformance(),
             'reviews' => $this->reviewSummary($shopId),
@@ -78,9 +76,6 @@ class DashboardController extends Controller
 
         return [
             'pending' => $byStatus->get(Booking::STATUS_PENDING, 0),
-            'awaiting_payment' => Booking::where('status', Booking::STATUS_ACCEPTED)
-                ->whereIn('payment_status', [Booking::PAYMENT_UNPAID, Booking::PAYMENT_INITIATED, Booking::PAYMENT_FAILED])
-                ->count(),
             'confirmed_upcoming' => Booking::where('status', Booking::STATUS_CONFIRMED)->where('pickup_at', '>', now())->count(),
             'active' => $byStatus->get(Booking::STATUS_ACTIVE, 0),
             'completed' => $byStatus->get(Booking::STATUS_COMPLETED, 0),
@@ -94,43 +89,33 @@ class DashboardController extends Controller
     }
 
     /**
-     * Rental revenue excludes deposits and unpaid bookings by
-     * construction - every figure here reads booking_financials, never
-     * bookings, per app-doc/marketplace/05-ui-and-api-map.md.
+     * Money from bookings that are going ahead or done - customers pay the
+     * shop directly (cash / bank transfer). Same rules as the Earnings page
+     * (Vendor\EarningsController): rental income is the subtotal, and what
+     * has been received excludes security-deposit payments (that money goes
+     * back) and is capped per booking at its rental income.
      */
-    private function revenue(?int $shopId): array
+    private function revenue(): array
     {
-        $totals = BookingFinancial::query()
-            ->whereHas('booking', fn ($q) => $q->where('shop_id', $shopId)->where('payment_status', Booking::PAYMENT_PAID))
-            ->selectRaw('COALESCE(SUM(gross_rental_amount),0) as rental_revenue, COALESCE(SUM(commission_amount),0) as platform_commission')
-            ->first();
+        $bookings = Booking::with(['pricing:id,booking_id,subtotal', 'payments' => fn ($q) => $q
+                ->money()
+                ->where('status', Payment::STATUS_SUCCEEDED)
+                ->where('type', '!=', 'security_deposit')])
+            ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED])
+            ->get(['id']);
 
-        $ownerPayableBalance = BookingFinancial::query()
-            ->whereHas('booking', fn ($q) => $q->where('shop_id', $shopId))
-            ->where('settlement_status', BookingFinancial::SETTLEMENT_UNSETTLED)
-            ->sum('owner_payable_amount');
+        $income = 0.0;
+        $received = 0.0;
+        foreach ($bookings as $booking) {
+            $rental = (float) ($booking->pricing?->subtotal ?? 0);
+            $income += $rental;
+            $received += min($rental, (float) $booking->payments->sum(fn ($p) => (float) $p->credit - (float) $p->debit));
+        }
 
         return [
-            'rental_revenue' => (float) $totals->rental_revenue,
-            'platform_commission' => (float) $totals->platform_commission,
-            'owner_payable_balance' => (float) $ownerPayableBalance,
-        ];
-    }
-
-    private function payoutCounts(?int $shopId): array
-    {
-        $payouts = OwnerPayout::where('shop_id', $shopId)
-            ->selectRaw('status, count(*) as count, COALESCE(SUM(net_amount),0) as total')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
-
-        return [
-            'paid' => ['count' => $payouts->get('paid')?->count ?? 0, 'amount' => (float) ($payouts->get('paid')?->total ?? 0)],
-            'pending' => [
-                'count' => ($payouts->get('pending_approval')?->count ?? 0) + ($payouts->get('approved')?->count ?? 0) + ($payouts->get('processing')?->count ?? 0),
-                'amount' => (float) (($payouts->get('pending_approval')?->total ?? 0) + ($payouts->get('approved')?->total ?? 0) + ($payouts->get('processing')?->total ?? 0)),
-            ],
+            'rental_income' => round($income, 2),
+            'received' => round($received, 2),
+            'still_due' => round($income - $received, 2),
         ];
     }
 

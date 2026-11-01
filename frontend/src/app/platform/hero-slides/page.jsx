@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformHeroSlideService } from "@/services/platformHeroSlideService";
+import { platformService } from "@/services/platformService";
 import { PageWrapper } from "@/components/shared/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export default function PlatformHeroSlidesPage() {
 
   const { data: slides, isLoading } = useQuery({
     queryKey: ["platform-hero-slides"],
-    queryFn: () => platformHeroSlideService.getAll().then((r) => r.data.data),
+    queryFn: () => platformService.heroSlides.getAll().then((r) => r.data.data),
   });
 
   const invalidate = () => {
@@ -73,7 +73,7 @@ export default function PlatformHeroSlidesPage() {
   };
 
   const save = useMutation({
-    mutationFn: (fd) => (editing ? platformHeroSlideService.update(editing.id, fd) : platformHeroSlideService.create(fd)),
+    mutationFn: (fd) => (editing ? platformService.heroSlides.update(editing.id, fd) : platformService.heroSlides.create(fd)),
     onSuccess: () => { invalidate(); toast.success(editing ? "Slide updated" : "Slide added"); setOpen(false); },
     onError: (err) => {
       setErrors(err.response?.data?.errors ?? {});
@@ -82,19 +82,19 @@ export default function PlatformHeroSlidesPage() {
   });
 
   const toggle = useMutation({
-    mutationFn: (s) => platformHeroSlideService.update(s.id, toFormData({ ...s, is_active: !s.is_active })),
+    mutationFn: (s) => platformService.heroSlides.update(s.id, toFormData({ ...s, is_active: !s.is_active })),
     onSuccess: (_, s) => { invalidate(); toast.success(s.is_active ? "Slide hidden" : "Slide shown"); },
     onError: () => toast.error("Could not update slide"),
   });
 
   const reorder = useMutation({
-    mutationFn: (ids) => platformHeroSlideService.reorder(ids),
+    mutationFn: (ids) => platformService.heroSlides.reorder(ids),
     onSuccess: invalidate,
     onError: () => toast.error("Could not reorder"),
   });
 
   const remove = useMutation({
-    mutationFn: (id) => platformHeroSlideService.delete(id),
+    mutationFn: (id) => platformService.heroSlides.delete(id),
     onSuccess: () => { invalidate(); toast.success("Slide deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });

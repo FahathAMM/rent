@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { publicService } from "@/services/publicService";
-import { VehicleCard } from "@/components/marketplace/VehicleCard";
+import { VehicleCard } from "./components/VehicleCard";
+import { VehicleListItem } from "./components/VehicleListItem";
 import { ColourSwatch } from "@/components/marketplace/ColourSwatch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   Search as SearchIcon, Loader2, CarFront, SlidersHorizontal, X,
-  MapPin, Tag, Gauge, Fuel, Users, Truck, Wallet, Sparkles, BadgeCheck, Layers, Palette,
+  MapPin, Tag, Gauge, Fuel, Users, Truck, Wallet, Sparkles, BadgeCheck, Layers, Palette, LayoutGrid, List as ListIcon,
 } from "lucide-react";
 
 const TRANSMISSION_OPTIONS = [
@@ -66,10 +67,103 @@ function FilterSection({ icon: Icon, title, children }) {
   );
 }
 
-function FilterSidebarContent({ params, setParam, setDistrict, setBrand, cities, categories, brands, models, colours, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll }) {
+/** Page numbers to show: always first/last, a window around the current page, "…" for gaps. */
+function pageItems(current, last) {
+  const pages = new Set([1, last, current - 1, current, current + 1].filter((p) => p >= 1 && p <= last));
+  const sorted = [...pages].sort((a, b) => a - b);
+  return sorted.flatMap((p, i) => (i > 0 && p - sorted[i - 1] > 1 ? ["…", p] : [p]));
+}
+
+function Pagination({ meta, onPage }) {
+  if (!meta || meta.last_page <= 1) return null;
+  const { current_page: current, last_page: last, per_page: perPage, total } = meta;
+  const from = (current - 1) * perPage + 1;
+  const to = Math.min(current * perPage, total);
+
+  return (
+    <div className="mt-8 flex flex-col items-center gap-3">
+      <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-1.5">
+        <Button variant="outline" size="sm" className="bg-card" disabled={current <= 1} onClick={() => onPage(current - 1)}>Previous</Button>
+        {pageItems(current, last).map((p, i) =>
+          p === "…" ? (
+            <span key={`gap-${i}`} className="px-1.5 text-sm text-muted-foreground">…</span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPage(p)}
+              aria-current={p === current ? "page" : undefined}
+              className={cn(
+                "flex h-9 min-w-9 items-center justify-center rounded-lg border px-2.5 text-sm font-medium transition-colors",
+                p === current
+                  ? "border-transparent bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm"
+                  : "border-input bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              )}
+            >
+              {p}
+            </button>
+          )
+        )}
+        <Button variant="outline" size="sm" className="bg-card" disabled={current >= last} onClick={() => onPage(current + 1)}>Next</Button>
+      </nav>
+      <p className="text-xs text-muted-foreground">Showing {from}–{to} of {total} vehicles</p>
+    </div>
+  );
+}
+
+const PILL_LIMIT = 10;
+
+/**
+ * A pill list for long option sets: a search box, the first PILL_LIMIT
+ * options, and "Show more". The selected option always stays visible even
+ * when it's past the limit.
+ */
+function SearchablePills({ items, selected, onSelect, allLabel, searchPlaceholder, renderLabel = (i) => i.label }) {
+  const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(false);
+
+  const matches = query.trim()
+    ? items.filter((i) => i.label.toLowerCase().includes(query.trim().toLowerCase()))
+    : items;
+  const searching = !!query.trim();
+  let visible = searching || expanded ? matches : matches.slice(0, PILL_LIMIT);
+  const selectedItem = items.find((i) => i.value === selected);
+  if (selectedItem && !visible.includes(selectedItem) && !searching) visible = [...visible, selectedItem];
+  const hidden = matches.length - PILL_LIMIT;
+
+  return (
+    <div className="space-y-2">
+      {items.length > PILL_LIMIT && (
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchPlaceholder} className="h-8 bg-card pl-8 text-xs" />
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {!searching && <Pill active={!selected} onClick={() => onSelect("")}>{allLabel}</Pill>}
+        {visible.map((i) => (
+          <Pill key={i.value} active={selected === i.value} onClick={() => onSelect(i.value)}>{renderLabel(i)}</Pill>
+        ))}
+        {searching && matches.length === 0 && <p className="py-1 text-xs text-muted-foreground">No matches for “{query.trim()}”</p>}
+      </div>
+      {!searching && hidden > 0 && (
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs font-medium text-primary hover:underline">
+          {expanded ? "Show less" : `Show more (${hidden})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FilterSidebarContent({ params, setParam, setDistrict, setBrand, districts, vehicleCounts, categories, brands, models, colours, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll }) {
   const selectedDistrict = params.get("district") ?? "";
-  const districts = Array.from(new Set((cities ?? []).map((c) => c.district).filter(Boolean))).sort();
-  const visibleCities = selectedDistrict ? cities?.filter((c) => c.district === selectedDistrict) : cities;
+  // Every city of the chosen district (from the full Sri Lanka list), not just ones with listings.
+  const districtCities = districts?.find((d) => d.name === selectedDistrict)?.cities ?? [];
+  const countFor = (city) => vehicleCounts?.[`${selectedDistrict}|${city}`] ?? 0;
+  // District totals = sum of its cities' counts (keys are "District|City").
+  const districtCount = (district) => Object.entries(vehicleCounts ?? {})
+    .reduce((sum, [key, n]) => (key.startsWith(`${district}|`) ? sum + n : sum), 0);
+  const withCount = (label, n) => <>{label}{n > 0 && <span className="opacity-70"> ({n})</span>}</>;
 
   return (
     <div className="space-y-5">
@@ -82,77 +176,87 @@ function FilterSidebarContent({ params, setParam, setDistrict, setBrand, cities,
         <div className="space-y-3">
           <div>
             <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">District</p>
-            <div className="flex flex-wrap gap-2">
-              <Pill active={!selectedDistrict} onClick={() => setDistrict("")}>All districts</Pill>
-              {districts.map((d) => (
-                <Pill key={d} active={selectedDistrict === d} onClick={() => setDistrict(d)}>{d}</Pill>
-              ))}
-            </div>
+            <SearchablePills
+              items={(districts ?? []).map((d) => ({ value: d.name, label: d.name }))}
+              selected={selectedDistrict}
+              onSelect={setDistrict}
+              allLabel="All districts"
+              searchPlaceholder="Search districts..."
+              renderLabel={(i) => withCount(i.label, districtCount(i.value))}
+            />
           </div>
-          <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">City</p>
-            <div className="flex flex-wrap gap-2">
-              <Pill active={!params.get("city")} onClick={() => setParam("city", "")}>All cities</Pill>
-              {visibleCities?.map((c) => (
-                <Pill key={c.city} active={params.get("city") === c.city} onClick={() => setParam("city", c.city)}>
-                  {c.city} <span className="opacity-70">({c.vehicle_count})</span>
-                </Pill>
-              ))}
+          {selectedDistrict && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">City</p>
+              {/* keyed by district so the search/expanded state resets when the district changes */}
+              <SearchablePills
+                key={selectedDistrict}
+                // cities with vehicles first, so the first 10 shown are the useful ones
+                items={districtCities
+                  .map((c) => ({ value: c.name, label: c.name }))
+                  .sort((a, b) => countFor(b.label) - countFor(a.label) || a.label.localeCompare(b.label))}
+                selected={params.get("city") ?? ""}
+                onSelect={(v) => setParam("city", v)}
+                allLabel="All cities"
+                searchPlaceholder={`Search cities in ${selectedDistrict}...`}
+                renderLabel={(i) => withCount(i.label, countFor(i.label))}
+              />
             </div>
-          </div>
+          )}
         </div>
       </FilterSection>
 
       <FilterSection icon={Tag} title="Category">
-        <div className="flex flex-wrap gap-2">
-          <Pill active={!params.get("category_id")} onClick={() => setParam("category_id", "")}>All</Pill>
-          {categories?.map((c) => (
-            <Pill key={c.id} active={params.get("category_id") === String(c.id)} onClick={() => setParam("category_id", String(c.id))}>
-              {c.name}
-            </Pill>
-          ))}
-        </div>
+        <SearchablePills
+          items={(categories ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+          selected={params.get("category_id") ?? ""}
+          onSelect={(v) => setParam("category_id", v)}
+          allLabel="All"
+          searchPlaceholder="Search categories..."
+        />
       </FilterSection>
 
       {brands?.length > 0 && (
         <FilterSection icon={BadgeCheck} title="Brand">
-          <div className="flex flex-wrap gap-2">
-            <Pill active={!params.get("brand_id")} onClick={() => setBrand("")}>All</Pill>
-            {brands.map((b) => (
-              <Pill key={b.id} active={params.get("brand_id") === String(b.id)} onClick={() => setBrand(String(b.id))}>
-                {b.name}
-              </Pill>
-            ))}
-          </div>
+          <SearchablePills
+            items={brands.map((b) => ({ value: String(b.id), label: b.name }))}
+            selected={params.get("brand_id") ?? ""}
+            onSelect={setBrand}
+            allLabel="All"
+            searchPlaceholder="Search brands..."
+          />
         </FilterSection>
       )}
 
       {params.get("brand_id") && models?.length > 0 && (
         <FilterSection icon={Layers} title="Model">
-          <div className="flex flex-wrap gap-2">
-            <Pill active={!params.get("model_id")} onClick={() => setParam("model_id", "")}>All</Pill>
-            {models.map((m) => (
-              <Pill key={m.id} active={params.get("model_id") === String(m.id)} onClick={() => setParam("model_id", String(m.id))}>
-                {m.name}
-              </Pill>
-            ))}
-          </div>
+          {/* keyed by brand so search/expanded state resets when the brand changes */}
+          <SearchablePills
+            key={params.get("brand_id")}
+            items={models.map((m) => ({ value: String(m.id), label: m.name }))}
+            selected={params.get("model_id") ?? ""}
+            onSelect={(v) => setParam("model_id", v)}
+            allLabel="All"
+            searchPlaceholder="Search models..."
+          />
         </FilterSection>
       )}
 
       {colours?.length > 0 && (
         <FilterSection icon={Palette} title="Colour">
-          <div className="flex flex-wrap gap-2">
-            <Pill active={!params.get("colour_id")} onClick={() => setParam("colour_id", "")}>All</Pill>
-            {colours.map((c) => (
-              <Pill key={c.id} active={params.get("colour_id") === String(c.id)} onClick={() => setParam("colour_id", String(c.id))}>
-                <span className="inline-flex items-center gap-1.5">
-                  <ColourSwatch hex={c.hex} className="size-3" />
-                  {c.name}
-                </span>
-              </Pill>
-            ))}
-          </div>
+          <SearchablePills
+            items={colours.map((c) => ({ value: String(c.id), label: c.name, hex: c.hex }))}
+            selected={params.get("colour_id") ?? ""}
+            onSelect={(v) => setParam("colour_id", v)}
+            allLabel="All"
+            searchPlaceholder="Search colours..."
+            renderLabel={(i) => (
+              <span className="inline-flex items-center gap-1.5">
+                <ColourSwatch hex={i.hex} className="size-3" />
+                {i.label}
+              </span>
+            )}
+          />
         </FilterSection>
       )}
 
@@ -212,6 +316,17 @@ function BrowseVehiclesPageContent() {
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // Grid or list — a per-visitor preference, remembered in this browser only.
+  const [view, setViewState] = useState("grid");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("browse-view") === "list") setViewState("list");
+    } catch {}
+  }, []);
+  const setView = (v) => {
+    setViewState(v);
+    try { localStorage.setItem("browse-view", v); } catch {}
+  };
   const [priceMin, setPriceMin] = useState(params.get("price_min") ?? "");
   const [priceMax, setPriceMax] = useState(params.get("price_max") ?? "");
 
@@ -236,11 +351,21 @@ function BrowseVehiclesPageContent() {
     price_max: params.get("price_max") ?? undefined,
     sort: params.get("sort") ?? "relevance",
     page: params.get("page") ?? 1,
+    per_page: 18,
   };
 
-  const { data: cities } = useQuery({
+  // All 25 districts with their cities — the filter offers every place, not only ones with listings.
+  const { data: districts } = useQuery({
+    queryKey: ["public-districts"],
+    queryFn: () => publicService.districts().then((r) => r.data.data),
+    staleTime: 10 * 60_000,
+  });
+
+  // Live vehicle counts per city, keyed "District|City", shown beside each city.
+  const { data: vehicleCounts } = useQuery({
     queryKey: ["public-locations"],
     queryFn: () => publicService.locations().then((r) => r.data.data),
+    select: (rows) => Object.fromEntries(rows.map((r) => [`${r.district}|${r.city}`, r.vehicle_count])),
   });
 
   const { data: categories } = useQuery({
@@ -271,6 +396,7 @@ function BrowseVehiclesPageContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["public-vehicles", "browse", filters],
     queryFn: () => publicService.vehicles(filters).then((r) => r.data),
+    placeholderData: keepPreviousData,
   });
 
   const setParam = (key, value) => {
@@ -288,6 +414,13 @@ function BrowseVehiclesPageContent() {
     next.delete("model_id");
     next.delete("page");
     router.push(`/browse?${next.toString()}`);
+  };
+
+  const goToPage = (page) => {
+    const next = new URLSearchParams(params.toString());
+    if (page > 1) next.set("page", String(page)); else next.delete("page");
+    router.push(`/browse?${next.toString()}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const setDistrict = (value) => {
@@ -321,7 +454,7 @@ function BrowseVehiclesPageContent() {
   const activeFilterCount = ["category_id", "brand_id", "model_id", "colour_id", "district", "city", "transmission", "fuel_type", "seats_min", "delivery", "price_min", "price_max"]
     .filter((k) => params.get(k)).length;
 
-  const filterProps = { params, setParam, setDistrict, setBrand, cities, categories, brands, models, colours, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll };
+  const filterProps = { params, setParam, setDistrict, setBrand, districts, vehicleCounts, categories, brands, models, colours, priceMin, priceMax, setPriceMin, setPriceMax, applyPrice, clearAll };
 
   return (
     <div>
@@ -365,7 +498,8 @@ function BrowseVehiclesPageContent() {
       </section>
 
       {/* ── Sidebar + results ─────────────────────────────────────────── */}
-      <div className="mx-auto max-w-7xl px-4 py-8 lg:flex lg:items-start lg:gap-8">
+      {/* pb-28 on mobile keeps the last row / pagination clear of the floating Filters button */}
+      <div className="mx-auto max-w-7xl px-4 pb-28 pt-8 lg:flex lg:items-start lg:gap-8 lg:pb-8">
         {/* Desktop sidebar */}
         <aside className="hidden w-72 shrink-0 lg:block">
           <div className="sticky top-20 rounded-2xl border bg-card p-5 shadow-sm">
@@ -376,15 +510,30 @@ function BrowseVehiclesPageContent() {
         <div className="flex-1">
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              {isLoading ? "Searching..." : `${data?.meta?.total ?? data?.data?.length ?? 0} vehicles found`}
+              {isLoading ? "Searching..." : <>{data?.meta?.total ?? data?.data?.length ?? 0} vehicles<span className="hidden sm:inline"> found</span></>}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5 lg:hidden" onClick={() => setMobileFiltersOpen(true)}>
-                <SlidersHorizontal className="h-3.5 w-3.5" /> Filters
-                {activeFilterCount > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{activeFilterCount}</span>}
-              </Button>
+              {/* toggle and sort share one height (h-9) at every breakpoint */}
+              <div className="flex h-9 items-center gap-0.5 rounded-lg border bg-card p-0.5" role="group" aria-label="Layout">
+                {[["grid", LayoutGrid, "Grid view"], ["list", ListIcon, "List view"]].map(([v, Icon, label]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setView(v)}
+                    aria-label={label}
+                    aria-pressed={view === v}
+                    title={label}
+                    className={cn(
+                      "flex aspect-square h-full items-center justify-center rounded-md transition-colors",
+                      view === v ? "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
               <Select value={params.get("sort") ?? "relevance"} onValueChange={(v) => setParam("sort", v)}>
-                <SelectTrigger className="w-44 bg-card"><SelectValue placeholder="Sort" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-36 rounded-lg bg-card text-sm sm:w-44"><SelectValue placeholder="Sort" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="relevance">Most relevant</SelectItem>
                   <SelectItem value="price_asc">Price: Low to High</SelectItem>
@@ -396,10 +545,10 @@ function BrowseVehiclesPageContent() {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className={view === "list" ? "space-y-3 sm:space-y-4" : "grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3"}>
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-pulse overflow-hidden rounded-2xl border bg-card">
-                  <div className="aspect-[4/3] bg-muted" />
+                <div key={i} className={cn("animate-pulse overflow-hidden rounded-2xl border bg-card", view === "list" && "flex")}>
+                  <div className={cn("aspect-[4/3] bg-muted", view === "list" && "aspect-auto h-28 w-28 shrink-0 sm:h-44 sm:w-64 md:w-72")} />
                   <div className="space-y-2 p-3">
                     <div className="h-4 w-3/4 rounded bg-muted" />
                     <div className="h-3 w-1/2 rounded bg-muted" />
@@ -408,9 +557,18 @@ function BrowseVehiclesPageContent() {
               ))}
             </div>
           ) : data?.data?.length ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {data.data.map((v) => <VehicleCard key={v.id} vehicle={v} />)}
-            </div>
+            <>
+              {view === "list" ? (
+                <div className="space-y-3 sm:space-y-4">
+                  {data.data.map((v) => <VehicleListItem key={v.id} vehicle={v} />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
+                  {data.data.map((v) => <VehicleCard key={v.id} vehicle={v} />)}
+                </div>
+              )}
+              <Pagination meta={data.meta} onPage={goToPage} />
+            </>
           ) : (
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed py-20 text-center">
               <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10">
@@ -424,21 +582,40 @@ function BrowseVehiclesPageContent() {
         </div>
       </div>
 
+      {/* Mobile: floating Filters button, fixed to the bottom of the screen */}
+      {!mobileFiltersOpen && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:hidden">
+          <Button
+            onClick={() => setMobileFiltersOpen(true)}
+            className="pointer-events-auto h-12 gap-2 rounded-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 px-6 text-sm font-semibold shadow-xl shadow-pink-500/25 hover:opacity-90"
+          >
+            <SlidersHorizontal className="h-4 w-4" /> Filters
+            {activeFilterCount > 0 && (
+              <span className="flex size-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-pink-600">{activeFilterCount}</span>
+            )}
+          </Button>
+        </div>
+      )}
+
       {/* Mobile filters overlay */}
       {mobileFiltersOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileFiltersOpen(false)} aria-hidden="true" />
-          <div className="absolute inset-y-0 right-0 w-full max-w-sm overflow-y-auto bg-background p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-background shadow-xl">
+            <div className="flex items-center justify-between border-b px-5 py-4">
               <p className="font-semibold">Filters</p>
-              <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-md p-1.5 hover:bg-muted">
+              <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close filters">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <FilterSidebarContent {...filterProps} />
-            <Button className="mt-6 w-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90" onClick={() => setMobileFiltersOpen(false)}>
-              Show results
-            </Button>
+            <div className="flex-1 overflow-y-auto p-5">
+              <FilterSidebarContent {...filterProps} />
+            </div>
+            <div className="border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <Button className="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90" onClick={() => setMobileFiltersOpen(false)}>
+                Show {data?.meta?.total ?? ""} results
+              </Button>
+            </div>
           </div>
         </div>
       )}

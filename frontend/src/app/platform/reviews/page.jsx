@@ -1,21 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformReviewService } from "@/services/platformReviewService";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
+import { useMutation } from "@tanstack/react-query";
+import { platformService } from "@/services/platformService";
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { FilterSelect } from "@/components/Datatable/FilterSelect";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { Button } from "@/components/ui/button";
-import { SelectInput } from "@/components/forms/SelectInput";
-import { Star, ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { Star, Home } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "published", label: "Published" },
   { value: "rejected", label: "Rejected" },
@@ -33,72 +32,64 @@ function Stars({ rating }) {
 }
 
 export default function PlatformReviewsPage() {
-  const qc = useQueryClient();
-  const [status, setStatus] = useState("pending");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState("");
   const [reasonAction, setReasonAction] = useState(null); // { id, action: 'reject'|'hide' }
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["platform-reviews", status, page],
-    queryFn: () => platformReviewService.getAll({ status: status || undefined, page }).then((r) => r.data.record),
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-reviews"] });
+  const invalidate = () => setRefreshKey((k) => k + 1);
 
   const publish = useMutation({
-    mutationFn: (id) => platformReviewService.publish(id),
+    mutationFn: (id) => platformService.reviews.publish(id),
     onSuccess: () => { invalidate(); toast.success("Review published"); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to publish"),
   });
 
   const reject = useMutation({
-    mutationFn: ({ id, reason }) => platformReviewService.reject(id, reason),
+    mutationFn: ({ id, reason }) => platformService.reviews.reject(id, reason),
     onSuccess: () => { invalidate(); toast.success("Review rejected"); setReasonAction(null); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to reject"),
   });
 
   const hide = useMutation({
-    mutationFn: ({ id, reason }) => platformReviewService.hide(id, reason),
+    mutationFn: ({ id, reason }) => platformService.reviews.hide(id, reason),
     onSuccess: () => { invalidate(); toast.success("Review hidden"); setReasonAction(null); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to hide"),
   });
 
-  const columns = [
+  const columns = () => [
     {
-      key: "review", header: "Review",
-      render: (row) => (
-        <div className="max-w-xs">
+      accessorKey: "review", header: "Review", style: { width: "34%" },
+      cell: (row) => (
+        <div className="py-1">
           <div className="flex items-center gap-2">
             <Stars rating={row.rating} />
-            <span className="text-xs text-muted-foreground">{row.user?.name}</span>
+            <span className="truncate text-[10px] text-muted-foreground">{row.user?.name}</span>
           </div>
-          {row.title && <p className="text-sm font-medium">{row.title}</p>}
-          {row.comment && <p className="truncate text-xs text-muted-foreground">{row.comment}</p>}
+          {row.title && <p className="truncate font-medium">{row.title}</p>}
+          {row.comment && <p className="truncate text-[10px] text-muted-foreground">{row.comment}</p>}
         </div>
       ),
     },
-    { key: "vehicle", header: "Vehicle / Shop", render: (row) => <div><p className="text-sm">{row.vehicle?.title}</p><p className="text-xs text-muted-foreground">{row.shop?.name}</p></div> },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
-    { key: "created_at", header: "Submitted", render: (row) => formatDateTime(row.created_at) },
+    { accessorKey: "vehicle", header: "Vehicle / Shop", cell: (row) => <div className="min-w-0"><p className="truncate">{row.vehicle?.title}</p><p className="truncate text-[10px] text-muted-foreground">{row.shop?.name}</p></div> },
+    { accessorKey: "status", header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
+    { accessorKey: "created_at", header: "Submitted", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
-        <div className="flex flex-wrap gap-1.5">
+      accessorKey: "actions", header: "",
+      cell: (row) => (
+        <div className="flex flex-wrap gap-1">
           {row.status === "pending" && (
             <>
-              <Button size="sm" onClick={() => publish.mutate(row.id)} disabled={publish.isPending}>Publish</Button>
-              <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction({ id: row.id, action: "reject" })}>Reject</Button>
+              <Button size="sm" className="h-6 px-2 text-xs" onClick={() => publish.mutate(row.id)} disabled={publish.isPending}>Publish</Button>
+              <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction({ id: row.id, action: "reject" })}>Reject</Button>
             </>
           )}
           {row.status === "published" && (
-            <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction({ id: row.id, action: "hide" })}>Hide</Button>
+            <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction({ id: row.id, action: "hide" })}>Hide</Button>
           )}
         </div>
       ),
     },
   ];
-
-  const records = data?.data ?? [];
 
   const breadcrumbItems = [
     { label: "Dashboard", href: "/platform/dashboard", icon: <Home className="size-4" /> },
@@ -107,25 +98,19 @@ export default function PlatformReviewsPage() {
 
   return (
     <div>
-      <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader title="Review Moderation" description="Approve new reviews before they go public, or hide a published one that was reported." />
-
-        <div className="mb-4 w-56">
-          <SelectInput label="Status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
-        </div>
-
-        <DataTable columns={columns} data={records} loading={isLoading} />
-
-        {data && data.last_page > 1 && (
-          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-            <span>Page {data.current_page} of {data.last_page} — {data.total} total</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= data.last_page} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
-            </div>
-          </div>
-        )}
-      </PageWrapper>
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          api={platformApi}
+          endpoint="/platform/reviews"
+          columns={columns}
+          breadcrumb={[]}
+          searchable={false}
+          filters={{ status: status || undefined }}
+        >
+          <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTIONS} allLabel="All statuses" />
+        </ServerDataTable>
+      </HomePageWrapper>
 
       <ReasonDialog
         open={reasonAction?.action === "reject"}

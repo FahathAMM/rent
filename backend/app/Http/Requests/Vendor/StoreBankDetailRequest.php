@@ -8,6 +8,7 @@ class StoreBankDetailRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
 
+    /** On update (PUT) a blank account_number keeps the stored one - it's never sent back to the form. */
     public function rules(): array
     {
         return [
@@ -16,7 +17,7 @@ class StoreBankDetailRequest extends FormRequest
             'bank_code' => ['nullable', 'string', 'max:50'],
             'branch_name' => ['nullable', 'string', 'max:255'],
             'branch_code' => ['nullable', 'string', 'max:50'],
-            'account_number' => ['required', 'string', 'max:50'],
+            'account_number' => [$this->isMethod('put') ? 'nullable' : 'required', 'string', 'max:50'],
             'account_type' => ['nullable', 'string', 'max:50'],
             'is_primary' => ['nullable', 'boolean'],
         ];

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { toast } from "sonner";
+import { usePlatformAuthStore } from "@/store/platformAuthStore";
 
 /**
  * Dedicated axios instance for the Platform (SaaS Admin) area — reads the
@@ -32,7 +33,9 @@ platformApi.interceptors.response.use(
       error.networkError = `Cannot reach API at ${(process.env.NEXT_PUBLIC_API_URL || "/api")}. Is the backend running?`;
     }
     if (error.response?.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/platform/login")) {
-      localStorage.removeItem("platform_token");
+      // Clear the whole persisted session, not just the token — the login page sends a
+      // still-"signed-in" admin straight back to the dashboard, which would 401 and loop.
+      usePlatformAuthStore.getState().logout();
       toast.error("Your platform session has expired. Please sign in again.");
       window.location.href = "/platform/login";
     }

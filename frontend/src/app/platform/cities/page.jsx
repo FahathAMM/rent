@@ -1,11 +1,11 @@
 "use client";
 
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformCityService } from "@/services/platformCityService";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
+import { platformService } from "@/services/platformService";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -22,21 +22,23 @@ export default function PlatformCitiesPage() {
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data: districts, isLoading } = useQuery({
+  const { data: districts } = useQuery({
     queryKey: ["platform-cities"],
-    queryFn: () => platformCityService.getAll().then((r) => r.data.data),
+    queryFn: () => platformService.cities.getAll().then((r) => r.data.data),
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-cities"] });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-cities"] }); setRefreshKey((k) => k + 1);
 
   const save = useMutation({
-    mutationFn: (payload) => platformCityService.create(payload),
+    mutationFn: (payload) => platformService.cities.create(payload),
     onSuccess: () => { invalidate(); toast.success("City added"); setNewCityName(""); setError(""); },
     onError: (err) => setError(err.response?.data?.errors?.name?.[0] ?? "Failed to add city"),
   });
 
   const remove = useMutation({
-    mutationFn: (id) => platformCityService.delete(id),
+    mutationFn: (id) => platformService.cities.delete(id),
     onSuccess: () => { invalidate(); toast.success("City deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
@@ -49,12 +51,12 @@ export default function PlatformCitiesPage() {
     save.mutate({ district_id: editingDistrictId, name: newCityName.trim() });
   };
 
-  const columns = [
-    { key: "name", header: "District", render: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "cities_count", header: "Cities", render: (row) => row.cities.length },
+  const columns = () => [
+    { accessorKey: "name", header: "District", cell: (row) => <span className="font-medium">{row.name}</span> },
+    { accessorKey: "cities_count", header: "Cities", cell: (row) => row.cities.length },
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
+      accessorKey: "actions", header: "",
+      cell: (row) => (
         <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEditingDistrictId(row.id); setNewCityName(""); setError(""); }}>
           <Pencil className="h-3.5 w-3.5" /> Edit
         </Button>
@@ -69,14 +71,15 @@ export default function PlatformCitiesPage() {
 
   return (
     <div>
-      <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Districts & Cities"
-          description="Sri Lanka's 25 districts are fixed. Edit a district to add the cities that feed the owner/shop onboarding location dropdowns."
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          api={platformApi}
+          endpoint="/platform/cities"
+          columns={columns}
+          breadcrumb={[]}
         />
-
-        <DataTable columns={columns} data={districts ?? []} loading={isLoading} />
-      </PageWrapper>
+      </HomePageWrapper>
 
       <Dialog open={!!editingDistrict} onOpenChange={(v) => !v && setEditingDistrictId(null)}>
         <DialogContent className="max-w-2xl">

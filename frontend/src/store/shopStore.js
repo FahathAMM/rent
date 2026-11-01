@@ -2,48 +2,23 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /**
- * The active shop context for the vendor app — mirrors the backend's
- * VendorContext, except here it's just "which shop is the switcher set
- * to" (a UI preference), not an authorization boundary. The backend
- * re-validates X-Shop-Id against the caller's own shop_members rows on
- * every request regardless of what this store holds — see
- * ResolveShopContext and app-doc/marketplace/03-permissions-model.md
- * "Layer 2". Setting this to a shop the user isn't a member of just
- * gets every vendor request rejected with 403, it can't leak anything.
+ * The vendor user's own shop — `{ shop_id, shop_name, role }` or null,
+ * refreshed from GET /auth/me. One account belongs to at most one shop,
+ * and the backend always acts for that shop (ResolveShopContext reads
+ * users.shop_id), so this is display state only, never sent to the API.
  */
 export const useShopStore = create(
   persist(
-    (set, get) => ({
-      activeShopId: null,
-      shops: [], // [{ shop_id, role }, ...] — refreshed from GET /auth/me on login
-
-      setShops: (shops) => {
-        const current = get().activeShopId;
-        const stillValid = shops.some((s) => String(s.shop_id) === String(current));
-        const next = stillValid ? current : shops[0]?.shop_id ?? null;
-        set({ shops, activeShopId: next });
-        if (typeof window !== "undefined") {
-          if (next) localStorage.setItem("active_shop_id", String(next));
-          else localStorage.removeItem("active_shop_id");
-        }
-      },
-
-      setActiveShop: (shopId) => {
-        set({ activeShopId: shopId });
-        if (typeof window !== "undefined") {
-          if (shopId) localStorage.setItem("active_shop_id", String(shopId));
-          else localStorage.removeItem("active_shop_id");
-        }
-      },
-
-      clear: () => {
-        set({ activeShopId: null, shops: [] });
-        if (typeof window !== "undefined") localStorage.removeItem("active_shop_id");
-      },
+    (set) => ({
+      shop: null,
+      setShop: (shop) => set({ shop: shop ?? null }),
+      clear: () => set({ shop: null }),
     }),
     {
       name: "shop-context",
-      partialize: (state) => ({ activeShopId: state.activeShopId, shops: state.shops }),
+      version: 1,
+      // Older persisted state held a `shops` array + activeShopId; start clean.
+      migrate: () => ({ shop: null }),
     }
   )
 );

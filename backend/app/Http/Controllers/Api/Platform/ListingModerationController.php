@@ -25,7 +25,7 @@ class ListingModerationController extends Controller
                 'shop:id,name',
                 'images' => fn ($q) => $q->where('is_primary', true)->with('attachment'),
             ])
-            ->when($request->moderation_status, fn ($q) => $q->where('moderation_status', $request->moderation_status), fn ($q) => $q->where('moderation_status', Vehicle::MODERATION_PENDING))
+            ->when($request->moderation_status, fn ($q) => $q->where('moderation_status', $request->moderation_status))
             ->when($request->search, fn ($q) => $q->where('title', 'like', "%{$request->search}%"))
             ->orderByDesc('created_at')
             ->paginate(min((int) $request->get('perPage', 20), 100));
@@ -35,7 +35,20 @@ class ListingModerationController extends Controller
 
     public function show(Vehicle $vehicle): JsonResponse
     {
-        $vehicle->load('category', 'shop.owner:id,name,email', 'pricing', 'images.attachment', 'moderationHistory');
+        $vehicle->load([
+            'category', 'brand:id,name', 'vehicleModel:id,name', 'vehicleVariant:id,name', 'vehicleColour:id,name,hex',
+            'shop:id,name,slug,logo,cover_image,city,district,status,verification_status,is_published,owner_user_id',
+            'shop.owner:id,name,email,phone',
+            'pricing', 'images.attachment', 'pickupLocations.location:id,name,address,city,district',
+            'moderationHistory' => fn ($q) => $q->latest(),
+        ])->loadCount(['bookings', 'reviews']);
+
+        // History rows only carry actor ids — attach the admin's name for the timeline.
+        $admins = SystemAdmin::whereIn('id', $vehicle->moderationHistory->where('actor_type', 'system_admin')->pluck('actor_id'))->pluck('name', 'id');
+        $vehicle->moderationHistory->each(fn ($h) => $h->setAttribute(
+            'actor_name',
+            $h->actor_type === 'system_admin' ? ($admins[$h->actor_id] ?? 'Platform admin') : 'Shop',
+        ));
 
         return $this->response('Listing retrieved', $vehicle);
     }
@@ -58,6 +71,11 @@ class ListingModerationController extends Controller
     public function unpublish(Request $request, Vehicle $vehicle): JsonResponse
     {
         return $this->response('Listing unpublished', $this->service->unpublish($this->admin(), $vehicle, $request->get('reason')));
+    }
+
+    public function republish(Vehicle $vehicle): JsonResponse
+    {
+        return $this->response('Listing republished', $this->service->republish($this->admin(), $vehicle));
     }
 
     public function feature(Vehicle $vehicle): JsonResponse

@@ -45,11 +45,6 @@ final class AuthUser
         return static::user()?->email;
     }
 
-    public static function is(User|int $user): bool
-    {
-        return static::id() === ($user instanceof User ? $user->id : $user);
-    }
-
     public static function hasRole(array|string $role): bool
     {
         return (bool) static::user()?->hasRole($role);

@@ -24,8 +24,9 @@ export function VendorLoginPanel({ onSwitchToRegister }) {
     setErrors({});
     setLoading(true);
     try {
-      await login(form);
-      router.push("/vendor/dashboard");
+      const user = await login(form);
+      // No shop yet, or one still awaiting verification → the registration form; only verified shops get the panel.
+      router.push(user.shop?.is_verified ? "/vendor/dashboard" : "/vendor/shops/new");
     } catch (err) {
       const message = err.networkError ?? err.response?.data?.message ?? "Login failed";
       setErrors(err.response?.data?.errors ?? { email: [message] });

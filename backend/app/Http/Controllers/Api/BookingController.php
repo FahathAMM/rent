@@ -10,7 +10,7 @@ use App\Http\Resources\Account\BookingResource;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Queries\CustomerBookingQuery;
-use App\Queries\PublicVehicleQuery;
+use App\Repositories\PublicVehicleRepo;
 use App\Services\AuditService;
 use App\Services\BankTransferService;
 use App\Services\BookingService;
@@ -93,7 +93,7 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request): JsonResponse
     {
-        $vehicle = PublicVehicleQuery::findById((int) $request->validated('vehicle_id'));
+        $vehicle = app(PublicVehicleRepo::class)->findById((int) $request->validated('vehicle_id'));
         abort_unless($vehicle, 404);
 
         $booking = $this->service->create(auth('customer')->user(), $vehicle, $request->validated());
