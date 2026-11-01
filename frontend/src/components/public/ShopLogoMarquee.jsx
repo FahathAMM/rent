@@ -7,11 +7,17 @@ import { Building2 } from "lucide-react";
  * shops to look continuous rather than choppy — callers should only
  * render this once `shops.length` clears a small floor.
  */
+// Seconds of scroll per shop — keeps the speed the same however many shops
+// there are (higher = slower), instead of the shared 28s loop, which made a
+// long strip race past.
+const SECONDS_PER_SHOP = 10;
+
 export function ShopLogoMarquee({ shops }) {
   const items = [...shops, ...shops];
+  const duration = Math.max(30, shops.length * SECONDS_PER_SHOP);
   return (
     <div className="group overflow-hidden py-2">
-      <div className="animate-marquee flex w-max items-center gap-8">
+      <div className="animate-marquee flex w-max items-center gap-8" style={{ animationDuration: `${duration}s` }}>
         {items.map((shop, i) => (
           <Link
             key={`${shop.id}-${i}`}

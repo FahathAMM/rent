@@ -10,12 +10,11 @@ class VehicleCategory extends Model
 {
     protected $fillable = [
         'parent_id', 'name', 'slug', 'icon', 'description', 'image',
-        'sort_order', 'is_active', 'commission_rate', 'default_min_rental_days',
+        'sort_order', 'is_active', 'default_min_rental_days',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'commission_rate' => 'decimal:2',
     ];
 
     public function parent(): BelongsTo

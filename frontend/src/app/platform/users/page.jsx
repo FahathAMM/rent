@@ -1,12 +1,12 @@
 "use client";
 
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformSystemAdminService } from "@/services/platformService";
+import { useMutation } from "@tanstack/react-query";
+import { platformService } from "@/services/platformService";
 import { usePlatformAuthStore } from "@/store/platformAuthStore";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -15,16 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import { TextInput, PasswordInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
-import { Plus, Pencil, Trash2, Home } from "lucide-react";
+import { Pencil, Trash2, Home } from "lucide-react";
 import { getInitials, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
 const defaultForm = { name: "", email: "", password: "", role: "platform_admin", status: "active" };
 
 export default function PlatformUsersPage() {
-  const queryClient = useQueryClient();
   const currentAdmin = usePlatformAuthStore((s) => s.admin);
-  const isOwner = currentAdmin?.role === "platform_owner";
+  const isOwner = currentAdmin?.admin_role === "platform_owner";
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -32,26 +31,23 @@ export default function PlatformUsersPage() {
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["platform-system-admins"],
-    queryFn: () => platformSystemAdminService.getAll().then((r) => r.data.data),
-  });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const create = useMutation({
-    mutationFn: platformSystemAdminService.create,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["platform-system-admins"] }); toast.success("Platform admin created"); setOpen(false); },
+    mutationFn: platformService.users.create,
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Platform admin created"); setOpen(false); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const update = useMutation({
-    mutationFn: ({ id, data }) => platformSystemAdminService.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["platform-system-admins"] }); toast.success("Platform admin updated"); setOpen(false); },
+    mutationFn: ({ id, data }) => platformService.users.update(id, data),
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Platform admin updated"); setOpen(false); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const remove = useMutation({
-    mutationFn: platformSystemAdminService.delete,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["platform-system-admins"] }); toast.success("Platform admin deleted"); setDeleteTarget(null); },
+    mutationFn: platformService.users.delete,
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Platform admin deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
 
@@ -70,22 +66,22 @@ export default function PlatformUsersPage() {
     else create.mutate(data);
   };
 
-  const columns = [
+  const columns = () => [
     {
-      key: "name", header: "Name",
-      render: (row) => (
+      accessorKey: "name", header: "Name",
+      cell: (row) => (
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{getInitials(row.name)}</div>
           <div><p className="font-medium">{row.name}</p><p className="text-[11px] text-muted-foreground">{row.email}</p></div>
         </div>
       ),
     },
-    { key: "role", header: "Role", render: (row) => <Badge variant={row.role === "platform_owner" ? "default" : "secondary"} className="capitalize">{row.role.replace("_", " ")}</Badge> },
-    { key: "status", header: "Status", render: (row) => <Badge variant={row.status === "active" ? "success" : "secondary"} className="capitalize">{row.status}</Badge> },
-    { key: "last_login_at", header: "Last Login", render: (row) => row.last_login_at ? formatDateTime(row.last_login_at) : "Never" },
+    { accessorKey: "role", header: "Role", cell: (row) => <Badge variant={row.admin_role === "platform_owner" ? "default" : "secondary"} className="capitalize">{row.admin_role?.replace("_", " ")}</Badge> },
+    { accessorKey: "status", header: "Status", cell: (row) => <Badge variant={row.status === "active" ? "success" : "secondary"} className="capitalize">{row.status}</Badge> },
+    { accessorKey: "last_login_at", header: "Last Login", cell: (row) => row.last_login_at ? formatDateTime(row.last_login_at) : "Never" },
     ...(isOwner ? [{
-      key: "actions", header: "Actions",
-      render: (row) => (
+      accessorKey: "actions", header: "",
+      cell: (row) => (
         <div className="flex gap-1">
           <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3.5 w-3.5" /></Button>
           {row.id !== currentAdmin?.id && (
@@ -105,15 +101,18 @@ export default function PlatformUsersPage() {
 
   return (
     <div>
-      <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Platform Users"
-          description="Platform Owner and Platform Admin accounts — separate from company users."
-          action={isOwner ? <Button onClick={openCreate}><Plus className="h-4 w-4" /> New Platform Admin</Button> : null}
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          api={platformApi}
+          endpoint="/platform/users"
+          columns={columns}
+          breadcrumb={[]}
+          isSheet={isOwner}
+          openSheet={openCreate}
+          model="Platform Admin"
         />
-
-        <DataTable columns={columns} data={data ?? []} loading={isLoading} />
-      </PageWrapper>
+      </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">

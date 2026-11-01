@@ -1,12 +1,12 @@
 "use client";
 
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { FilterSelect } from "@/components/Datatable/FilterSelect";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformBrandService } from "@/services/platformBrandService";
-import { platformVehicleModelService, platformVehicleVariantService } from "@/services/platformVehicleCatalogueService";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
+import { platformService } from "@/services/platformService";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Plus, Home, Loader2, Layers } from "lucide-react";
 import { toast } from "sonner";
 
-const ALL = "all";
 
 const slugify = (v) => v.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -33,28 +32,28 @@ function VariantsDialog({ model, onClose }) {
 
   const { data: variants, isLoading } = useQuery({
     queryKey: key,
-    queryFn: () => platformVehicleVariantService.getAll(model.id).then((r) => r.data.data),
+    queryFn: () => platformService.vehicleVariants.getAll(model.id).then((r) => r.data.data),
     enabled: !!model,
   });
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: key });
-    qc.invalidateQueries({ queryKey: ["platform-vehicle-models"] });
+    setRefreshKey((k) => k + 1);
   };
 
   const add = useMutation({
-    mutationFn: () => platformVehicleVariantService.create({ model_id: model.id, name, sort_order: (variants?.length ?? 0) + 1, is_active: true }),
+    mutationFn: () => platformService.vehicleVariants.create({ model_id: model.id, name, sort_order: (variants?.length ?? 0) + 1, is_active: true }),
     onSuccess: () => { setName(""); setError(null); refresh(); },
     onError: (err) => setError(err.response?.data?.errors?.name?.[0] ?? err.response?.data?.message ?? "Could not add variant"),
   });
 
   const toggle = useMutation({
-    mutationFn: (v) => platformVehicleVariantService.update(v.id, { model_id: model.id, name: v.name, sort_order: v.sort_order, is_active: !v.is_active }),
+    mutationFn: (v) => platformService.vehicleVariants.update(v.id, { model_id: model.id, name: v.name, sort_order: v.sort_order, is_active: !v.is_active }),
     onSuccess: refresh,
   });
 
   const remove = useMutation({
-    mutationFn: (id) => platformVehicleVariantService.delete(id),
+    mutationFn: (id) => platformService.vehicleVariants.delete(id),
     onSuccess: () => { refresh(); toast.success("Variant deleted"); },
   });
 
@@ -107,8 +106,7 @@ function VariantsDialog({ model, onClose }) {
 }
 
 export default function PlatformVehicleModelsPage() {
-  const qc = useQueryClient();
-  const [brandFilter, setBrandFilter] = useState(ALL);
+  const [brandFilter, setBrandFilter] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ brand_id: "", name: "", slug: "", sort_order: 0, is_active: true });
@@ -118,18 +116,15 @@ export default function PlatformVehicleModelsPage() {
 
   const { data: brands } = useQuery({
     queryKey: ["platform-brands"],
-    queryFn: () => platformBrandService.getAll().then((r) => r.data.data),
+    queryFn: () => platformService.brands.getAll().then((r) => r.data.data),
   });
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["platform-vehicle-models", brandFilter],
-    queryFn: () => platformVehicleModelService.getAll(brandFilter === ALL ? {} : { brand_id: brandFilter }).then((r) => r.data.data),
-  });
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-vehicle-models"] });
+  const invalidate = () => setRefreshKey((k) => k + 1);
 
   const save = useMutation({
-    mutationFn: (payload) => editing ? platformVehicleModelService.update(editing.id, payload) : platformVehicleModelService.create(payload),
+    mutationFn: (payload) => editing ? platformService.vehicleModels.update(editing.id, payload) : platformService.vehicleModels.create(payload),
     onSuccess: () => { invalidate(); toast.success(editing ? "Model updated" : "Model created"); setOpen(false); },
     onError: (err) => {
       setErrors(err.response?.data?.errors ?? {});
@@ -139,14 +134,14 @@ export default function PlatformVehicleModelsPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id) => platformVehicleModelService.delete(id),
+    mutationFn: (id) => platformService.vehicleModels.delete(id),
     onSuccess: () => { invalidate(); toast.success("Model deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.errors?.model?.[0] ?? err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ brand_id: brandFilter === ALL ? "" : brandFilter, name: "", slug: "", sort_order: 0, is_active: true });
+    setForm({ brand_id: brandFilter, name: "", slug: "", sort_order: 0, is_active: true });
     setErrors({});
     setOpen(true);
   };
@@ -172,15 +167,15 @@ export default function PlatformVehicleModelsPage() {
 
   const brandOptions = (brands ?? []).map((b) => ({ value: String(b.id), label: b.name }));
 
-  const columns = [
-    { key: "brand", header: "Brand", render: (row) => row.brand?.name ?? "—" },
-    { key: "name", header: "Model", render: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "variants_count", header: "Variants", render: (row) => row.variants_count },
-    { key: "vehicles_count", header: "Vehicles", render: (row) => row.vehicles_count },
-    { key: "is_active", header: "Status", render: (row) => <StatusBadge status={row.is_active} /> },
+  const columns = () => [
+    { accessorKey: "brand", header: "Brand", cell: (row) => row.brand?.name ?? "—" },
+    { accessorKey: "name", header: "Model", cell: (row) => <span className="font-medium">{row.name}</span> },
+    { accessorKey: "variants_count", header: "Variants", cell: (row) => row.variants_count },
+    { accessorKey: "vehicles_count", header: "Vehicles", cell: (row) => row.vehicles_count },
+    { accessorKey: "is_active", header: "Status", cell: (row) => <StatusBadge status={row.is_active} /> },
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
+      accessorKey: "actions", header: "",
+      cell: (row) => (
         <div className="flex gap-1.5">
           <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setVariantsTarget(row)}><Layers className="h-3.5 w-3.5" /> Variants</Button>
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
@@ -197,24 +192,21 @@ export default function PlatformVehicleModelsPage() {
 
   return (
     <div>
-      <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Models & Variants"
-          description="Models under each brand, and the optional variants (trims) under each model."
-          action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> New Model</Button>}
-        />
-
-        <div className="mb-4 max-w-xs">
-          <SelectInput
-            label="Brand"
-            value={brandFilter}
-            onChange={setBrandFilter}
-            options={[{ value: ALL, label: "All brands" }, ...brandOptions]}
-          />
-        </div>
-
-        <DataTable columns={columns} data={data ?? []} loading={isLoading} />
-      </PageWrapper>
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          api={platformApi}
+          endpoint="/platform/vehicle-models"
+          columns={columns}
+          breadcrumb={[]}
+          filters={{ brand_id: brandFilter || undefined }}
+          isSheet
+          openSheet={openCreate}
+          model="Model"
+        >
+          <FilterSelect value={brandFilter} onChange={setBrandFilter} options={brandOptions} allLabel="All brands" />
+        </ServerDataTable>
+      </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
@@ -240,7 +232,7 @@ export default function PlatformVehicleModelsPage() {
         </DialogContent>
       </Dialog>
 
-      <VariantsDialog model={variantsTarget} onClose={() => setVariantsTarget(null)} />
+      <VariantsDialog model={variantsTarget} onClose={() => { setVariantsTarget(null); setRefreshKey((k) => k + 1); }} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>

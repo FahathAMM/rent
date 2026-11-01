@@ -9,13 +9,14 @@ import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { useAuthStore } from "@/store/authStore";
 import { useShopStore } from "@/store/shopStore";
 import { BrandLogo } from "@/components/auth/BrandLogo";
+import { MobileMenu } from "@/components/public/MobileMenu";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, getInitials } from "@/lib/utils";
-import { Menu, Store, LayoutDashboard, LogOut, LogIn } from "lucide-react";
+import { Store, LayoutDashboard, LogOut, LogIn } from "lucide-react";
 
 // No "Home" item — the brand logo/name links to the home page.
 const NAV_ITEMS = [
@@ -40,13 +41,16 @@ export function PublicHeader() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const vendorUser = useAuthStore((s) => s.user);
-  const vendorSignedIn = useAuthStore((s) => s.isAuthenticated) && mounted;
-  const { shops, activeShopId } = useShopStore();
-  const activeShop = shops.find((s) => String(s.shop_id) === String(activeShopId)) ?? shops[0];
-  // A vendor who registered but hasn't created a shop yet goes to onboarding.
-  const vendorHref = activeShop ? "/vendor/dashboard" : "/vendor/shops/new";
-  const vendorLabel = activeShop?.shop_name ?? vendorUser?.name ?? "Vendor panel";
+  const vendorAuthenticated = useAuthStore((s) => s.isAuthenticated) && mounted;
+  const shop = useShopStore((s) => s.shop);
+  // Only a verified shop's vendor counts as signed in here — until then
+  // there's no vendor panel to go back to, so the header stays as for any
+  // visitor and "Become a Vendor" goes through the vendor login.
+  const vendorSignedIn = vendorAuthenticated && shop?.is_verified === true && !shop?.is_suspended;
+  const vendorHref = "/vendor/dashboard";
+  const vendorLabel = shop?.shop_name ?? vendorUser?.name ?? "Vendor panel";
   const showBecomeVendor = !vendorSignedIn;
+  const becomeVendorHref = "/vendor/login";
 
   const { data: brand } = useQuery({
     queryKey: ["platform-details"],
@@ -92,9 +96,9 @@ export function PublicHeader() {
             <Button
               variant="outline"
               asChild
-              className="hidden gap-1.5 border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 text-foreground hover:border-orange-500/40 hover:from-orange-500/15 hover:via-pink-500/15 hover:to-violet-500/15 sm:flex"
+              className="hidden h-10 gap-1.5 border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 text-foreground hover:border-orange-500/40 hover:from-orange-500/15 hover:via-pink-500/15 hover:to-violet-500/15 sm:flex"
             >
-              <Link href="/vendor/register"><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
+              <Link href={becomeVendorHref}><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
             </Button>
           )}
 
@@ -102,14 +106,14 @@ export function PublicHeader() {
             <Link
               href={vendorHref}
               title="Go to your vendor panel"
-              className="hidden shrink-0 items-center gap-2 rounded-full border border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 py-1 pl-1 pr-3 shadow-sm transition-colors hover:border-orange-500/50 sm:flex"
+              className="hidden h-10 shrink-0 items-center gap-2 rounded-full border border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 pl-1 pr-3 shadow-sm transition-colors hover:border-orange-500/50 sm:flex"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
                 <Store className="h-4 w-4" />
               </span>
               <span className="flex flex-col leading-tight">
                 <span className="max-w-[10rem] truncate text-sm font-medium">{vendorLabel}</span>
-                <span className="text-[11px] text-muted-foreground">{activeShop ? "Vendor panel" : "Finish shop setup"}</span>
+                <span className="text-[11px] text-muted-foreground">Vendor panel</span>
               </span>
             </Link>
           )}
@@ -119,7 +123,7 @@ export function PublicHeader() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex shrink-0 items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-3 shadow-sm transition-colors hover:border-primary/40"
+                  className="flex h-10 shrink-0 items-center gap-2 rounded-full border bg-card pl-1 pr-3 shadow-sm transition-colors hover:border-primary/40"
                 >
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-xs font-semibold text-white">
                     {getInitials(customer?.name) || "U"}
@@ -138,7 +142,7 @@ export function PublicHeader() {
                 </DropdownMenuItem>
                 {showBecomeVendor && (
                   <DropdownMenuItem asChild className="sm:hidden">
-                    <Link href="/vendor/register"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
+                    <Link href={becomeVendorHref}><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -148,49 +152,20 @@ export function PublicHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button asChild className="hidden gap-1.5 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90 sm:flex">
+            <Button asChild className="hidden h-10 gap-1.5 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90 sm:flex">
               <Link href="/login"><LogIn className="h-4 w-4" /> Sign in</Link>
             </Button>
           )}
 
-          {/* ── Mobile menu ────────────────────────────────────────────── */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="lg:hidden">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {NAV_ITEMS.map((item) => (
-                <DropdownMenuItem key={item.href} asChild>
-                  <Link href={item.href}>{item.label}</Link>
-                </DropdownMenuItem>
-              ))}
-              {showBecomeVendor && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link href="/vendor/register"><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link></DropdownMenuItem>
-                </>
-              )}
-              {vendorSignedIn && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href={vendorHref}>
-                      <Store className="mr-2 h-4 w-4" />
-                      <span className="truncate">{vendorLabel}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-              {!isAuthenticated && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link href="/login"><LogIn className="mr-2 h-4 w-4" /> Sign in</Link></DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MobileMenu
+            brandName={brandName}
+            logoUrl={logoUrl}
+            tagline={brand?.tagline || "Rent any vehicle, anywhere in Sri Lanka."}
+            customer={customer}
+            isAuthenticated={isAuthenticated}
+            onLogout={logout}
+            vendor={{ signedIn: vendorSignedIn, href: vendorHref, label: vendorLabel, becomeHref: becomeVendorHref }}
+          />
         </div>
       </div>
     </header>

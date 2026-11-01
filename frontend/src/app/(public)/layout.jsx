@@ -1,6 +1,7 @@
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { PublicPreloader } from "@/components/public/PublicPreloader";
+import { PublicVisitTracker } from "@/components/public/PublicVisitTracker";
 
 /**
  * Every customer-visit marketing/browsing page (home, browse, vehicle
@@ -13,6 +14,7 @@ export default function PublicLayout({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <PublicPreloader />
+      <PublicVisitTracker />
       <PublicHeader />
       <main className="flex-1">{children}</main>
       <PublicFooter />

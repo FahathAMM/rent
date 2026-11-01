@@ -12,7 +12,7 @@ use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** Review has no BelongsToShop/ShopScope, so shop_id is filtered explicitly here, same as OwnerPayout. */
+/** Review has no BelongsToShop/ShopScope, so shop_id is filtered explicitly here. */
 class ReviewController extends Controller
 {
     use JsonResponseTrait;

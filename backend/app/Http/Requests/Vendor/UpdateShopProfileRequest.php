@@ -27,6 +27,8 @@ class UpdateShopProfileRequest extends FormRequest
             'policies' => ['nullable', 'array', 'max:20'],
             'policies.*.title' => ['required', 'string', 'max:120'],
             'policies.*.body' => ['required', 'string', 'max:5000'],
+            // Bank transfer advance as a % of the booking total (default 5); empty = customer transfers the full amount.
+            'advance_percentage' => ['nullable', 'numeric', 'min:1', 'max:99'],
         ];
     }
 }

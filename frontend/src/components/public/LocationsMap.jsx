@@ -81,8 +81,13 @@ export function LocationsMap({ cities, activeCity, hrefFor, className }) {
       });
 
       // Tight padding (just enough for the outermost bubbles) so the island fills the map.
-      if (bounds.length > 1) map.fitBounds(bounds, { padding: [28, 28], maxZoom: 9 });
-      else if (bounds.length === 1) map.setView(bounds[0], 9);
+      // Phones: fitting the whole island into a narrow box leaves it small and the
+      // pins crowded, so start half a level closer — zoom/drag reach the edges.
+      const mobile = containerRef.current.clientWidth < 640;
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: mobile ? [8, 8] : [28, 28], maxZoom: 9 });
+        if (mobile) map.setZoom(map.getZoom() + 0.5, { animate: false });
+      } else if (bounds.length === 1) map.setView(bounds[0], 9);
 
       mapRef.current = map;
     });

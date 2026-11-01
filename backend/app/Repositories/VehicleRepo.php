@@ -11,7 +11,6 @@ use App\Models\VehicleColour;
 use App\Models\VehicleModel;
 use App\Models\VehicleVariant;
 use App\Services\AuthUser;
-use App\Support\VendorContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -154,7 +153,7 @@ class VehicleRepo
      * URL, spanning every shop), unlike everything else on this model - so
      * this checks via a plain query builder call against the table
      * directly rather than an Eloquent scope bypass. Keeps
-     * withoutGlobalScope(ShopScope) confined to App\Queries\Public* as the
+     * withoutGlobalScope(ShopScope) confined to App\Repositories\PublicVehicleRepo / App\Queries\Public* as the
      * one sanctioned pattern - see tests/Feature/PublicScopeBoundaryTest.php.
      */
     private function uniqueSlug(string $title, ?int $ignoreId = null): string

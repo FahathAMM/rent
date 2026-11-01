@@ -12,11 +12,10 @@ class ShopSettings extends Model
     protected $fillable = [
         'shop_id',
         'booking_prefix', 'next_booking_number',
-        'payout_prefix', 'next_payout_number',
         'agreement_prefix', 'next_agreement_number',
         'expense_prefix', 'next_expense_number',
         'branch_prefix', 'next_branch_number',
-        'owner_response_hours', 'payment_window_hours', 'auto_accept_bookings', 'advance_notice_hours',
+        'owner_response_hours', 'auto_accept_bookings', 'advance_notice_hours',
         'default_min_rental_days', 'default_max_rental_days', 'free_cancellation_hours', 'cancellation_tiers',
         'agreement_terms', 'invoice_footer',
     ];
@@ -38,9 +37,8 @@ class ShopSettings extends Model
      * with NumberGenerator's per-shop counter produce IDENTICAL formatted
      * strings across shops (e.g. two different shops both reach
      * "BKG-2026-00009"). That's fine for expenses (expense_number is
-     * unique per (shop_id, expense_number)) but booking_reference and
-     * payout_reference are GLOBALLY unique columns - see
-     * app-doc/marketplace/02-data-model.md "bookings"/"owner_payouts" -
+     * unique per (shop_id, expense_number)) but booking_reference is a
+     * GLOBALLY unique column - see app-doc/marketplace/02-data-model.md -
      * so a shared prefix collides the instant two shops' independent
      * counters reach the same number, which happens almost immediately.
      * Suffixing every prefix with the shop's own (globally unique) id
@@ -52,7 +50,6 @@ class ShopSettings extends Model
         return self::create([
             'shop_id' => $shopId,
             'booking_prefix' => "BKG{$shopId}",
-            'payout_prefix' => "PO{$shopId}",
             'agreement_prefix' => "AGR{$shopId}",
             'expense_prefix' => "EXP{$shopId}",
             'branch_prefix' => "BR{$shopId}",

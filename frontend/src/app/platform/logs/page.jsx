@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import platformApi from "@/lib/platformAxios";
-import { platformLogService } from "@/services/platformService";
+import { platformService } from "@/services/platformService";
 import { usePlatformAuthStore } from "@/store/platformAuthStore";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { SortableHeader } from "@/components/Datatable/SortableHeader";
@@ -40,7 +40,7 @@ function firstLine(message) {
 
 export default function PlatformLogsPage() {
   const admin = usePlatformAuthStore((s) => s.admin);
-  const isOwner = admin?.role === "platform_owner";
+  const isOwner = admin?.admin_role === "platform_owner";
 
   const [file, setFile] = useState("");
   const [level, setLevel] = useState("");
@@ -52,7 +52,7 @@ export default function PlatformLogsPage() {
 
   const { data: files } = useQuery({
     queryKey: ["platform-log-files"],
-    queryFn: () => platformLogService.getFiles().then((r) => r.data.data),
+    queryFn: () => platformService.logs.getFiles().then((r) => r.data.data),
   });
 
   // Default to the most recently modified file once the list loads.
@@ -65,7 +65,7 @@ export default function PlatformLogsPage() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const res = await platformLogService.download(file);
+      const res = await platformService.logs.download(file);
       const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/plain" }));
       const a = document.createElement("a");
       a.href = url;
@@ -82,7 +82,7 @@ export default function PlatformLogsPage() {
   const handleClear = async () => {
     setClearing(true);
     try {
-      await platformLogService.clear(file);
+      await platformService.logs.clear(file);
       toast.success(`${file} cleared`);
       setConfirmClear(false);
       setRefreshKey((k) => k + 1);

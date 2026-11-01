@@ -18,7 +18,6 @@ class StoreCategoryRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:1000'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
-            'commission_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'default_min_rental_days' => ['nullable', 'integer', 'min:1'],
         ];
     }

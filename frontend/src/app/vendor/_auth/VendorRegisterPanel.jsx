@@ -57,6 +57,7 @@ export function VendorRegisterPanel({ brandName, onSwitchToLogin }) {
         loading={loading}
         onSubmit={handleSubmit}
         onSwitchToLogin={onSwitchToLogin}
+        cancelHref="/"
       />
     </>
   );

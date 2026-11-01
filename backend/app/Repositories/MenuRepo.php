@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Administration\Menu;
 use App\Models\Administration\User;
+use App\Models\RentalShop;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -31,17 +32,6 @@ class MenuRepo
     public function getFlat(): Collection
     {
         return $this->model->active()->orderBy('sort_order')->get();
-    }
-
-    public function getTree(string $audience): Collection
-    {
-        return $this->model
-            ->with('children.children') // two levels deep
-            ->active()
-            ->forAudience($audience)
-            ->roots()
-            ->orderBy('sort_order')
-            ->get();
     }
 
     public function store(array $data): Menu
@@ -75,6 +65,12 @@ class MenuRepo
      */
     public function getNavigation(User $user, string $audience): Collection
     {
+        // Nothing in the vendor workspace is reachable until the shop is verified
+        // (EnsureShopVerified), nor while it's suspended (ResolveShopContext).
+        if ($audience === 'vendor' && (!$user->shop?->isVerified() || $user->shop->status === RentalShop::STATUS_SUSPENDED)) {
+            return new Collection();
+        }
+
         $all = $this->model
             ->active()
             ->forAudience($audience)

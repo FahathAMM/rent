@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export function useAuth() {
-  const { user, token, isAuthenticated, setAuth, updateUser, logout: storeLogout, isVendor } = useAuthStore();
-  const { setShops, clear: clearShops } = useShopStore();
+  const { user, token, isAuthenticated, setAuth, updateUser, logout: storeLogout } = useAuthStore();
+  const { setShop, clear: clearShop } = useShopStore();
   const router = useRouter();
 
-  // Re-fetches the current user's roles/permissions/shops — needed after an
+  // Re-fetches the current user's roles/permissions/shop — needed after an
   // action elsewhere (e.g. a platform admin approving an owner application)
   // changes them server-side; the stored user otherwise stays stale until
   // the next login.
@@ -19,7 +19,7 @@ export function useAuth() {
     const res = await authService.me();
     const freshUser = res.data.data;
     updateUser(freshUser);
-    setShops(freshUser.shops ?? []);
+    setShop(freshUser.shop);
     return freshUser;
   };
 
@@ -27,7 +27,7 @@ export function useAuth() {
     const res = await authService.login(credentials);
     const { user, token } = res.data.data;
     setAuth(user, token);
-    setShops(user.shops ?? []);
+    setShop(user.shop);
     return user;
   };
 
@@ -35,7 +35,7 @@ export function useAuth() {
     const res = await authService.register(data);
     const { user, token } = res.data.data;
     setAuth(user, token);
-    setShops(user.shops ?? []);
+    setShop(user.shop);
     return user;
   };
 
@@ -44,10 +44,10 @@ export function useAuth() {
       await authService.logout();
     } catch {}
     storeLogout();
-    clearShops();
+    clearShop();
     router.push("/vendor/login");
     toast.success("Logged out successfully");
   };
 
-  return { user, token, isAuthenticated, login, register, logout, isVendor, refreshUser };
+  return { user, token, isAuthenticated, login, register, logout, refreshUser };
 }

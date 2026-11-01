@@ -6,7 +6,6 @@ use App\Models\Booking;
 use App\Models\BookingPricing;
 use App\Models\BookingStatusHistory;
 use App\Models\Customer;
-use App\Models\ReservationHold;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
 use App\Models\VehiclePricing;
@@ -18,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Booking request creation - see app-doc/marketplace/04-lifecycles.md
  * "— -> pending" transition rule. Deliberately does NOT lock the
- * vehicle or write a reservation_hold: a mere request never blocks the
+ * vehicle: a mere request never blocks the
  * calendar (several customers may request the same dates), only
  * TransitionBooking::accept() does. This only screens out obviously
  * impossible requests for UX; accept-time revalidation is the real
@@ -45,8 +44,9 @@ class BookingService
 
         $shopSettings = $vehicle->shop->settings;
         $responseHours = $shopSettings->owner_response_hours ?? 24;
+        $paymentMethod = $this->resolvePaymentMethod($vehicle, $data['payment_method'] ?? null);
 
-        return DB::transaction(function () use ($customer, $vehicle, $pickupAt, $returnAt, $quote, $withDriver, $deliveryRequested, $responseHours, $data) {
+        return DB::transaction(function () use ($customer, $vehicle, $pickupAt, $returnAt, $quote, $withDriver, $deliveryRequested, $responseHours, $data, $paymentMethod) {
             $booking = Booking::create([
                 'booking_reference' => NumberGenerator::next($vehicle->shop_id, 'booking'),
                 'vehicle_id' => $vehicle->id,
@@ -64,6 +64,7 @@ class BookingService
                 'driver_days' => $withDriver ? $quote['rental_days'] : null,
                 'status' => Booking::STATUS_PENDING,
                 'payment_status' => Booking::PAYMENT_UNPAID,
+                'payment_method' => $paymentMethod,
                 'owner_response_deadline_at' => now()->addHours($responseHours),
                 'customer_note' => $data['customer_note'] ?? null,
             ]);
@@ -81,6 +82,19 @@ class BookingService
 
             return $booking->fresh(['pricing']);
         });
+    }
+
+    /** The customer's pick of paying the shop in cash at pickup or by bank transfer (only if the shop has a bank account). */
+    private function resolvePaymentMethod(Vehicle $vehicle, ?string $requested): string
+    {
+        if ($requested !== Booking::METHOD_BANK_TRANSFER) {
+            return Booking::METHOD_CASH;
+        }
+        if (!$vehicle->shop->primaryBankDetail()->exists()) {
+            throw ValidationException::withMessages(['payment_method' => ['This shop does not accept bank transfers.']]);
+        }
+
+        return Booking::METHOD_BANK_TRANSFER;
     }
 
     private function assertRequestIsValid(Vehicle $vehicle, VehiclePricing $pricing, Carbon $pickupAt, Carbon $returnAt): void
@@ -119,16 +133,6 @@ class BookingService
             ->exists();
         if ($blocked) {
             throw ValidationException::withMessages(['pickup_at' => ['Some of those dates are unavailable.']]);
-        }
-
-        $heldElsewhere = ReservationHold::where('vehicle_id', $vehicle->id)
-            ->where('status', ReservationHold::STATUS_ACTIVE)
-            ->where('expires_at', '>', now())
-            ->where('start_date', '<', $returnAt)
-            ->where('end_date', '>', $pickupAt)
-            ->exists();
-        if ($heldElsewhere) {
-            throw ValidationException::withMessages(['pickup_at' => ['Vehicle is on hold for another request over those dates.']]);
         }
     }
 }

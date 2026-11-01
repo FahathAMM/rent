@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Vendor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Vendor\StoreBankDetailRequest;
 use App\Models\OwnerBankDetail;
-use App\Models\ShopMember;
 use App\Services\AuditService;
 use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
@@ -14,10 +13,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Payout destination management — account_number is never returned (see
+ * The shop's bank accounts (where customers send bank transfers) — account_number is never returned (see
  * OwnerBankDetail::$hidden); only account_number_last4 reaches the
  * frontend. Restricted beyond the finance-bank_details permission to the
- * shop's own `owner` ShopMember role, per the model's docblock.
+ * shop's own owner (rental_shops.owner_user_id), per the model's docblock.
  */
 class BankDetailController extends Controller
 {
@@ -31,7 +30,7 @@ class BankDetailController extends Controller
 
     private function assertOwner(): void
     {
-        abort_unless(VendorContext::membership()?->role === ShopMember::ROLE_OWNER, 403, 'Only the shop owner can manage bank details.');
+        abort_unless(VendorContext::member()?->isShopOwner(), 403, 'Only the shop owner can manage bank details.');
     }
 
     /** {record, message, status} — ServerDataTable's expected shape, same as Api\LocationController::index(). */
@@ -70,6 +69,44 @@ class BankDetailController extends Controller
         AuditService::create('OwnerBankDetail', $detail->id, "{$detail->bank_name} ••{$detail->account_number_last4}");
 
         return $this->response('Bank detail added', $detail->fresh(), 201);
+    }
+
+    /** Bank-identity changes drop any platform verification - the new account hasn't been checked. */
+    private const REVERIFY_FIELDS = ['account_holder_name', 'bank_name', 'bank_code', 'branch_name', 'branch_code', 'account_number'];
+
+    public function update(StoreBankDetailRequest $request, OwnerBankDetail $bankDetail): JsonResponse
+    {
+        $this->assertOwner();
+        abort_unless($bankDetail->shop_id === VendorContext::shopId(), 404);
+
+        $data = $request->validated();
+        if (empty($data['account_number'])) {
+            unset($data['account_number']);
+        } else {
+            $data['account_number_last4'] = substr($data['account_number'], -4);
+        }
+        // The primary only moves when another account is made primary, so the shop is never left without one.
+        if ($bankDetail->is_primary) {
+            unset($data['is_primary']);
+        }
+
+        $old = $bankDetail->only(array_keys($data));
+        $bankDetail->fill($data);
+        if ($bankDetail->isDirty(self::REVERIFY_FIELDS)) {
+            $bankDetail->fill(['verification_status' => 'unverified', 'verified_by' => null, 'verified_at' => null]);
+        }
+
+        DB::transaction(function () use ($bankDetail) {
+            if ($bankDetail->is_primary && $bankDetail->isDirty('is_primary')) {
+                OwnerBankDetail::where('shop_id', $bankDetail->shop_id)->whereKeyNot($bankDetail->id)->update(['is_primary' => false]);
+            }
+            $bankDetail->save();
+        });
+
+        unset($old['account_number'], $data['account_number']);
+        AuditService::edit('OwnerBankDetail', $bankDetail->id, "{$bankDetail->bank_name} ••{$bankDetail->account_number_last4}", $old, $data);
+
+        return $this->response('Bank detail updated', $bankDetail->fresh());
     }
 
     public function makePrimary(OwnerBankDetail $bankDetail): JsonResponse

@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Listing photos - unlike KYC/business documents, these are public
  * (served from the 'public' disk, world-readable at /storage/...) since
- * they're what PublicVehicleQuery shows anonymous shoppers. Authorized
+ * they're what PublicVehicleRepo shows anonymous shoppers. Authorized
  * via VehiclePolicy's existing 'update' ability - managing a vehicle's
  * photos is part of managing the vehicle, not a separate permission.
  */
@@ -76,7 +76,14 @@ class VehicleImageController extends Controller
         $wasPrimary = $image->is_primary;
         $attachment = $image->attachment;
 
-        if ($attachment && Storage::disk($attachment->disk)->exists($attachment->file_path)) {
+        // Demo photos are shared across vehicles (see DemoVehiclePhotoSeeder) —
+        // only remove the file once no other attachment points at it.
+        $sharedFile = $attachment && Attachment::where('disk', $attachment->disk)
+            ->where('file_path', $attachment->file_path)
+            ->whereKeyNot($attachment->id)
+            ->exists();
+
+        if ($attachment && !$sharedFile && Storage::disk($attachment->disk)->exists($attachment->file_path)) {
             Storage::disk($attachment->disk)->delete($attachment->file_path);
         }
         $image->delete();

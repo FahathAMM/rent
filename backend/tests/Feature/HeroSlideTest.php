@@ -89,22 +89,9 @@ class HeroSlideTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('link_url');
     }
 
-    public function test_seeder_adds_default_slides_once_using_bundled_images(): void
-    {
-        $this->seed(\Database\Seeders\HeroSlideSeeder::class);
-        $this->seed(\Database\Seeders\HeroSlideSeeder::class);
-
-        $this->assertSame(6, HeroSlide::count());
-        $this->getJson('/api/public/hero-slides')
-            ->assertJsonCount(6, 'data')
-            ->assertJsonPath('data.0.title', 'Rent any vehicle, anywhere in Sri Lanka')
-            ->assertJsonPath('data.0.image_url', '/images/hero/saloon-highway.webp');
-    }
-
     public function test_deleting_a_default_slide_never_touches_storage(): void
     {
-        $this->seed(\Database\Seeders\HeroSlideSeeder::class);
-        $slide = HeroSlide::ordered()->first();
+        $slide = HeroSlide::create(['title' => 'Stock slide', 'image' => '/images/hero/saloon-highway.webp', 'is_active' => true]);
         Storage::disk('public')->put('images/hero/saloon-highway.webp', 'x');
 
         $this->admin()->deleteJson("/api/platform/hero-slides/{$slide->id}")->assertOk();

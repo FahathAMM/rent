@@ -3,7 +3,8 @@
 return [
     'models' => [
         'permission' => Spatie\Permission\Models\Permission::class,
-        'role' => Spatie\Permission\Models\Role::class,
+        // Adds shop_id: platform roles (NULL) + roles a shop owner creates — see App\Models\Role.
+        'role' => App\Models\Role::class,
     ],
 
     'table_names' => [

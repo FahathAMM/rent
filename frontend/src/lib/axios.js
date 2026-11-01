@@ -15,15 +15,6 @@ api.interceptors.request.use((config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
-    // The active shop for vendor-side requests — see
-    // ResolveShopContext/VendorContext on the backend and
-    // app-doc/marketplace/03-permissions-model.md "Layer 2". Only ever
-    // read here; nothing else should attach this header directly.
-    const shopId = localStorage.getItem("active_shop_id");
-    if (shopId) {
-      config.headers["X-Shop-Id"] = shopId;
-    }
   }
   return config;
 });

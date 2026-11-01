@@ -1,10 +1,12 @@
 import axios from "axios";
 import { toast } from "sonner";
+import { useCustomerAuthStore } from "@/store/customerAuthStore";
 
 /**
  * Dedicated axios instance for the customer identity — reads the
- * `customer_token` bearer token, never `pos_token`, and redirects to
- * /login (never /vendor/login) on 401. Kept fully separate from
+ * `customer_token` bearer token, never `pos_token`. On 401 it clears the
+ * customer session and, inside /account only, redirects to /login
+ * (never /vendor/login). Kept fully separate from
  * lib/axios.js so the two auth identities can never bleed into each
  * other — same pattern as lib/platformAxios.js.
  */
@@ -32,15 +34,19 @@ customerApi.interceptors.response.use(
     if (!error.response) {
       error.networkError = `Cannot reach API at ${(process.env.NEXT_PUBLIC_API_URL || "/api")}. Is the backend running?`;
     }
-    if (
-      error.response?.status === 401 &&
-      typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/login") &&
-      !window.location.pathname.startsWith("/register")
-    ) {
-      localStorage.removeItem("customer_token");
-      toast.error("Your session has expired. Please sign in again.");
-      window.location.href = "/login";
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      // Clear the whole persisted session, not just the token — otherwise
+      // the store still says isAuthenticated and every page that gates a
+      // customer-only query on it (e.g. favorites on a vehicle page) fires
+      // it again tokenless, 401s again, and loops.
+      useCustomerAuthStore.getState().logout();
+
+      // Only the signed-in area needs a login. Public pages (vehicles,
+      // shops, browse) stay viewable as a guest.
+      if (window.location.pathname.startsWith("/account")) {
+        toast.error("Your session has expired. Please sign in again.");
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+      }
     }
     return Promise.reject(error);
   }

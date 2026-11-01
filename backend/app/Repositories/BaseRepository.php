@@ -4,10 +4,6 @@ namespace App\Repositories;
 
 class BaseRepository
 {
-    public function getAll()
-    {
-        return $this->model->all();
-    }
 
     public function findOrFail($id)
     {

@@ -1,5 +1,5 @@
 "use client";
-import { React, useEffect, useState, Fragment } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   ChevronsLeft,
@@ -31,15 +31,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Label } from "../ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Field } from "../ui/field";
 
 // Debounce hook
@@ -85,6 +76,7 @@ export default function ServerDataTable({
   actions,
   api: apiInstance = api,
   filters,
+  searchable = true, // false hides the search box — for endpoints that don't filter by `search`
   ...props
 }) {
   const searchParams = useSearchParams();
@@ -118,14 +110,6 @@ export default function ServerDataTable({
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
-
-  const sizes = [
-    { label: "Select a size", value: null },
-    { label: "Small", value: "sm" },
-    { label: "Medium", value: "md" },
-    { label: "Large", value: "lg" },
-    { label: "Extra Large", value: "xl" },
-  ];
 
   // Update URL whenever state changes
   useEffect(() => {
@@ -165,12 +149,32 @@ export default function ServerDataTable({
           ...filters,
         },
       });
-      const result = res.data.record;
-      setData(result.data);
-      setLastPage(result.last_page);
-      setTotal(result.total ?? 0);
-      setFrom(result.from ?? 0);
-      setTo(result.to ?? 0);
+      const result = res.data.record ?? res.data.data;
+      if (Array.isArray(result)) {
+        // Unpaginated endpoint (a whole catalogue, e.g. brands) — search,
+        // sort and page it here so it behaves like a paginated one.
+        const term = debouncedSearch.trim().toLowerCase();
+        let rows = term ? result.filter((r) => JSON.stringify(r).toLowerCase().includes(term)) : result;
+        if (sortField) {
+          rows = [...rows].sort((a, b) => {
+            const cmp = String(a[sortField] ?? "").localeCompare(String(b[sortField] ?? ""), undefined, { numeric: true });
+            return sortOrder === "desc" ? -cmp : cmp;
+          });
+        }
+        const last = Math.max(1, Math.ceil(rows.length / perPage));
+        const start = (Math.min(page, last) - 1) * perPage;
+        setData(rows.slice(start, start + perPage));
+        setLastPage(last);
+        setTotal(rows.length);
+        setFrom(rows.length ? start + 1 : 0);
+        setTo(Math.min(start + perPage, rows.length));
+      } else {
+        setData(result.data);
+        setLastPage(result.last_page);
+        setTotal(result.total ?? 0);
+        setFrom(result.from ?? 0);
+        setTo(result.to ?? 0);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -210,7 +214,7 @@ export default function ServerDataTable({
             {/* Left Section (Search + Filters) */}
             <div className="flex flex-col md:flex-row md:items-center gap-3 flex-1">
               {/* Search */}
-              <div className="relative w-full md:w-56">
+              {searchable && <div className="relative w-full md:w-56">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={search}
@@ -221,7 +225,7 @@ export default function ServerDataTable({
                   placeholder="Search..."
                   className="h-8 pl-8 text-sm"
                 />
-              </div>
+              </div>}
 
               {/* Filters from Parent */}
               <div className="flex flex-wrap items-center gap-2">

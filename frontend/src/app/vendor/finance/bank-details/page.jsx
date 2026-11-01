@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { vendorBankDetailService } from "@/services/vendorBankDetailService";
+import { vendorService } from "@/services/vendorService";
 import { useAuthStore } from "@/store/authStore";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { ActionButton } from "@/components/Datatable/ActionButton";
@@ -16,7 +16,7 @@ import {
 import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { Fieldset } from "@/components/forms/Fieldset";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Star, Home, Loader2, Trash2 } from "lucide-react";
+import { Star, Home, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const emptyForm = {
@@ -27,32 +27,41 @@ const emptyForm = {
 export default function BankDetailsPage() {
   const { can } = useAuthStore();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const save = useMutation({
-    mutationFn: (payload) => vendorBankDetailService.create(payload),
-    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Bank detail added"); setOpen(false); setForm(emptyForm); },
+    mutationFn: (payload) => editing ? vendorService.bankDetails.update(editing.id, payload) : vendorService.bankDetails.create(payload),
+    onSuccess: () => { setRefreshKey((k) => k + 1); toast.success(editing ? "Bank detail updated" : "Bank detail added"); setOpen(false); setForm(emptyForm); setEditing(null); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   const makePrimary = useMutation({
-    mutationFn: (id) => vendorBankDetailService.makePrimary(id),
+    mutationFn: (id) => vendorService.bankDetails.makePrimary(id),
     onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Primary bank detail updated"); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed"),
   });
 
   const remove = useMutation({
-    mutationFn: (id) => vendorBankDetailService.delete(id),
+    mutationFn: (id) => vendorService.bankDetails.delete(id),
     onSuccess: () => { setRefreshKey((k) => k + 1); toast.success("Bank detail deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
 
   const fi = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  const openCreate = () => { setForm(emptyForm); setErrors({}); setOpen(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setErrors({}); setOpen(true); };
+
+  // account_number is never sent to the browser - leave it blank to keep the stored one.
+  const openEdit = (row) => {
+    setEditing(row);
+    setForm({ ...Object.fromEntries(Object.keys(emptyForm).map((k) => [k, row[k] ?? emptyForm[k]])), account_number: "" });
+    setErrors({});
+    setOpen(true);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -76,6 +85,9 @@ export default function BankDetailsPage() {
             <span className="flex items-center gap-1 text-xs font-medium text-amber-600"><Star className="h-3.5 w-3.5 fill-current" /> Primary</span>
           ) : canEdit && (
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => makePrimary.mutate(row.id)} disabled={makePrimary.isPending}>Make primary</Button>
+          )}
+          {canEdit && (
+            <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit bank detail" />
           )}
           {canEdit && (
             <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete bank detail" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
@@ -108,20 +120,34 @@ export default function BankDetailsPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Add Bank Detail</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Edit Bank Detail" : "Add Bank Detail"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3">
             <ValidationError errors={errors} />
             <Fieldset legend="Account" grid={1}>
               <TextInput label="Account Holder Name" required value={form.account_holder_name} onChange={fi("account_holder_name")} error={errors.account_holder_name?.[0]} />
               <TextInput label="Bank Name" required value={form.bank_name} onChange={fi("bank_name")} error={errors.bank_name?.[0]} />
               <TextInput label="Branch Name" value={form.branch_name} onChange={fi("branch_name")} error={errors.branch_name?.[0]} />
-              <TextInput label="Account Number" required value={form.account_number} onChange={fi("account_number")} error={errors.account_number?.[0]} />
+              <TextInput
+                label="Account Number"
+                required={!editing}
+                value={form.account_number}
+                onChange={fi("account_number")}
+                placeholder={editing ? `•••• ${editing.account_number_last4} — leave blank to keep` : undefined}
+                error={errors.account_number?.[0]}
+              />
               <TextInput label="Account Type (optional)" value={form.account_type} onChange={fi("account_type")} error={errors.account_type?.[0]} />
             </Fieldset>
+            {editing?.verification_status === "verified" && (
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Changing the bank, branch, holder or account number will need the account to be verified again.
+              </p>
+            )}
+            {!editing?.is_primary && (
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={form.is_primary} onCheckedChange={(v) => setForm({ ...form, is_primary: !!v })} />
-              Set as primary payout account
+              Set as primary account (shown to customers paying by transfer)
             </label>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={save.isPending}>

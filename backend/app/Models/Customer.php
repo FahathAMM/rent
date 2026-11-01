@@ -48,14 +48,17 @@ class Customer extends Authenticatable
         return $this->status === self::STATUS_ACTIVE;
     }
 
+    // customer_profiles, favorites and reviews keep their original `user_id`
+    // column (now a FK to customers — see the repoint_customer_fks migration),
+    // so the key must be named; Laravel would otherwise look for customer_id.
     public function customerProfile(): HasOne
     {
-        return $this->hasOne(CustomerProfile::class);
+        return $this->hasOne(CustomerProfile::class, 'user_id');
     }
 
     public function favorites(): HasMany
     {
-        return $this->hasMany(Favorite::class);
+        return $this->hasMany(Favorite::class, 'user_id');
     }
 
     public function bookings(): HasMany
@@ -65,6 +68,6 @@ class Customer extends Authenticatable
 
     public function reviews(): HasMany
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(Review::class, 'user_id');
     }
 }

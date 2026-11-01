@@ -7,7 +7,6 @@ use App\Http\Requests\Vendor\BlockAvailabilityRequest;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
 use App\Services\AuditService;
-use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,9 +37,23 @@ class VehicleAvailabilityController extends Controller
             ->orderBy('title')
             ->get(['id', 'title', 'registration_number']);
 
-        $rows = VehicleAvailability::whereIn('vehicle_id', $vehicles->pluck('id'))
+        $rows = VehicleAvailability::with('booking:id,booking_reference,status,customer_id', 'booking.customer:id,name')
+            ->whereIn('vehicle_id', $vehicles->pluck('id'))
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->get(['id', 'vehicle_id', 'date', 'status', 'booking_id', 'note']);
+            ->get(['id', 'vehicle_id', 'date', 'status', 'booking_id', 'note'])
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'vehicle_id' => $r->vehicle_id,
+                'date' => $r->date->toDateString(),
+                'status' => $r->status,
+                'note' => $r->note,
+                // Booked days link back to their booking on the calendar.
+                'booking' => $r->booking ? [
+                    'reference' => $r->booking->booking_reference,
+                    'status' => $r->booking->status,
+                    'customer' => $r->booking->customer?->name,
+                ] : null,
+            ]);
 
         return $this->response('Availability retrieved', [
             'from' => $from->toDateString(),

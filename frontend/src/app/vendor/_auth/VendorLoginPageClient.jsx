@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { useShopStore } from "@/store/shopStore";
+import { authService } from "@/services/authService";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
 import { visitService } from "@/services/visitService";
@@ -15,7 +19,7 @@ import { cn } from "@/lib/utils";
 const FEATURES = [
   { icon: Car, tile: "bg-blue-600", title: "List & manage vehicles", body: "Publish your fleet, set pricing and control availability." },
   { icon: CalendarCheck, tile: "bg-teal-600", title: "Accept bookings instantly", body: "Review requests, confirm trips and track handovers." },
-  { icon: Wallet, tile: "bg-purple-600", title: "Get paid, reliably", body: "Track payouts, commissions and earnings in one place." },
+  { icon: Wallet, tile: "bg-purple-600", title: "Get paid, reliably", body: "Track bookings, payments and earnings in one place." },
 ];
 
 /**
@@ -28,6 +32,25 @@ const FEATURES = [
  */
 export default function VendorLoginPageClient({ initialBrand, initialView = "login" }) {
   const [view, setView] = useState(initialView);
+  const router = useRouter();
+  const { isAuthenticated, _hasHydrated, updateUser } = useAuthStore();
+  const setShop = useShopStore((s) => s.setShop);
+
+  // A session left over from an unverified registration isn't treated as
+  // signed in — the vendor logs in here as normal (VendorLoginPanel then
+  // routes them). Only a shop the server confirms is verified skips straight
+  // to its panel; the persisted store may predate verification, so ask.
+  useEffect(() => {
+    if (!_hasHydrated || !isAuthenticated) return;
+    authService.me().then((res) => {
+      const user = res.data.data;
+      updateUser(user);
+      setShop(user.shop);
+      if (user.shop?.is_verified && !user.shop.is_suspended) router.replace("/vendor/dashboard");
+    }).catch(() => {});
+    // Only on arrival — a fresh login in the panel does its own redirect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_hasHydrated]);
 
   useEffect(() => {
     visitService.track("site_visit");

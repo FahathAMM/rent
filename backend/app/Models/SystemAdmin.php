@@ -15,7 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
  * guard (see config/auth.php) and must never be treated as a marketplace
  * account. admin_role splits platform duties (see
  * app-doc/marketplace/03-permissions-model.md "Platform admin roles") so
- * only finance approves payouts/refunds, only moderator acts on listings/
+ * the roles can be told apart (e.g. moderation of listings /
  * reviews, etc.
  */
 class SystemAdmin extends Authenticatable
@@ -45,21 +45,6 @@ class SystemAdmin extends Authenticatable
     public function isOwner(): bool
     {
         return $this->admin_role === self::ROLE_PLATFORM_OWNER;
-    }
-
-    public function isFinance(): bool
-    {
-        return in_array($this->admin_role, [self::ROLE_PLATFORM_OWNER, self::ROLE_FINANCE], true);
-    }
-
-    public function isModerator(): bool
-    {
-        return in_array($this->admin_role, [self::ROLE_PLATFORM_OWNER, self::ROLE_MODERATOR], true);
-    }
-
-    public function isSupport(): bool
-    {
-        return in_array($this->admin_role, [self::ROLE_PLATFORM_OWNER, self::ROLE_SUPPORT], true);
     }
 
     public function isActive(): bool

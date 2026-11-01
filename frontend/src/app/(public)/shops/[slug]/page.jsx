@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
-import { VehicleCard } from "@/components/marketplace/VehicleCard";
+import { VehicleCard } from "@/app/(public)/browse/components/VehicleCard";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, APP_TIMEZONE } from "@/lib/utils";
 import { ShopCover } from "@/components/marketplace/ShopCover";
 import { toast } from "sonner";
 import {
@@ -30,6 +30,108 @@ const DAYS = [
   { key: "sun", label: "Sunday" },
 ];
 const JS_DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+/**
+ * Sticky section tabs. Sticks directly under the site header (its height is
+ * measured — it differs between phones and desktop, so a fixed `top-14`
+ * either left a gap or slid the tabs under it), highlights the section in
+ * view, and keeps the active tab visible in the strip.
+ */
+function ShopTabs() {
+  const [headerH, setHeaderH] = useState(64);
+  const [active, setActive] = useState(TABS[0].id);
+  const navRef = useRef(null);
+  const clickLock = useRef(0);
+
+  // Track the real header height; expose header + tab bar as the sections' scroll offset.
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+    const update = () => {
+      const h = Math.round(header.getBoundingClientRect().height);
+      setHeaderH(h);
+      const navH = navRef.current?.offsetHeight ?? 48;
+      document.documentElement.style.setProperty("--shop-tabs-offset", `${h + navH + 12}px`);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(header);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty("--shop-tabs-offset");
+    };
+  }, []);
+
+  // Active = the last section whose top has passed just below the sticky bars.
+  useEffect(() => {
+    const onScroll = () => {
+      if (Date.now() < clickLock.current) return;
+      const line = headerH + (navRef.current?.offsetHeight ?? 48) + 24;
+      let current = TABS[0].id;
+      for (const t of TABS) {
+        const el = document.getElementById(t.id);
+        if (el && el.getBoundingClientRect().top <= line) current = t.id;
+      }
+      // At the very bottom the last (short) section may never reach the line.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = TABS[TABS.length - 1].id;
+      setActive(current);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [headerH]);
+
+  // Keep the active tab in view when the strip scrolls sideways (wider tab sets / small screens).
+  // Scroll only the strip — element.scrollIntoView would also scroll the page and cancel a
+  // smooth section jump halfway.
+  useEffect(() => {
+    const strip = navRef.current?.firstElementChild;
+    const tab = strip?.querySelector(`[data-tab="${active}"]`);
+    if (!strip || !tab) return;
+    const { offsetLeft: left, offsetWidth: width } = tab;
+    if (left < strip.scrollLeft || left + width > strip.scrollLeft + strip.clientWidth) {
+      strip.scrollTo({ left: left - (strip.clientWidth - width) / 2, behavior: "smooth" });
+    }
+  }, [active]);
+
+  const go = (e, id) => {
+    e.preventDefault();
+    setActive(id);
+    clickLock.current = Date.now() + 800; // don't let the smooth scroll flicker other tabs active
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    history.replaceState(null, "", `#${id}`);
+  };
+
+  return (
+    <nav ref={navRef} className="sticky z-20 mt-6 border-b bg-background/90 backdrop-blur-md" style={{ top: headerH }} aria-label="Shop sections">
+      <div className="mx-auto flex max-w-6xl overflow-x-auto px-2 no-scrollbar sm:gap-1 sm:px-4">
+        {TABS.map((t) => (
+          <a
+            key={t.id}
+            data-tab={t.id}
+            href={`#${t.id}`}
+            onClick={(e) => go(e, t.id)}
+            aria-current={active === t.id ? "true" : undefined}
+            className={cn(
+              // phones: four equal tabs that always fit; sm+: natural width
+              "relative flex-1 shrink-0 px-2 py-3 text-center text-sm font-medium transition-colors sm:flex-none sm:px-4",
+              active === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 transition-opacity sm:inset-x-4",
+                active === t.id ? "opacity-100" : "opacity-0"
+              )}
+            />
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
 
 const TABS = [
   { id: "vehicles", label: "Vehicles" },
@@ -92,13 +194,13 @@ function SectionTitle({ icon: Icon, title, children }) {
 
 function StatBox({ icon: Icon, value, label }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-sm">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/15 via-pink-500/15 to-violet-500/15 text-primary">
-        <Icon className="h-5 w-5" />
+    <div className="flex items-center gap-2 rounded-xl border bg-card px-2.5 py-2.5 shadow-sm sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/15 via-pink-500/15 to-violet-500/15 text-primary sm:size-10 sm:rounded-xl">
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-lg font-bold leading-tight">{value}</p>
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
+        <p className="truncate text-base font-bold leading-tight sm:text-lg">{value}</p>
+        <p className="line-clamp-2 text-[11px] leading-tight text-muted-foreground sm:truncate sm:text-xs">{label}</p>
       </div>
     </div>
   );
@@ -147,7 +249,7 @@ export default function ShopProfilePage() {
   return (
     <div className="pb-16">
       {/* ── Cover ──────────────────────────────────────────────────────── */}
-      <section className="relative h-56 overflow-hidden sm:h-72 lg:h-80">
+      <section className="relative h-44 overflow-hidden sm:h-72 lg:h-80">
         <ShopCover shop={shop} variant="hero" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/20" aria-hidden="true" />
         <div className="absolute inset-x-0 top-0">
@@ -160,15 +262,15 @@ export default function ShopProfilePage() {
       </section>
 
       {/* ── Identity card ─────────────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto -mt-24 max-w-6xl px-4">
+      <div className="relative z-10 mx-auto -mt-14 max-w-6xl px-4 sm:-mt-24">
         <div className="rounded-3xl border bg-card p-5 shadow-xl sm:p-7">
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               {shop.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={shop.logo} alt={shop.name} className="-mt-16 h-28 w-28 shrink-0 rounded-3xl border-4 border-card bg-card object-cover shadow-lg sm:-mt-20" />
+                <img src={shop.logo} alt={shop.name} className="-mt-12 h-20 w-20 shrink-0 rounded-2xl border-4 border-card bg-card object-cover shadow-lg sm:-mt-20 sm:h-28 sm:w-28 sm:rounded-3xl" />
               ) : (
-                <div className="-mt-16 flex h-28 w-28 shrink-0 items-center justify-center rounded-3xl border-4 border-card bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-4xl font-bold text-white shadow-lg sm:-mt-20">
+                <div className="-mt-12 flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-3xl font-bold text-white shadow-lg sm:-mt-20 sm:h-28 sm:w-28 sm:rounded-3xl sm:text-4xl">
                   {shop.name?.charAt(0)?.toUpperCase()}
                 </div>
               )}
@@ -226,7 +328,7 @@ export default function ShopProfilePage() {
           </div>
 
           {/* Stats */}
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3 lg:grid-cols-4">
             <StatBox icon={CarFront} value={shop.vehicles_count ?? 0} label="Vehicles available" />
             <StatBox icon={CalendarCheck} value={shop.completed_bookings_count ?? 0} label="Completed rentals" />
             <StatBox icon={Zap} value={shop.response_rate != null ? `${Math.round(shop.response_rate)}%` : "—"} label="Response rate" />
@@ -236,15 +338,7 @@ export default function ShopProfilePage() {
       </div>
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <nav className="sticky top-14 z-20 mt-6 border-b bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 [scrollbar-width:none]">
-          {TABS.map((t) => (
-            <a key={t.id} href={`#${t.id}`} className="shrink-0 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
-              {t.label}
-            </a>
-          ))}
-        </div>
-      </nav>
+      <ShopTabs />
 
       <div className="mx-auto mt-8 grid max-w-6xl gap-8 px-4 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-14">
@@ -330,7 +424,7 @@ function VehiclesSection({ slug, shop }) {
   const total = data?.pages[0]?.meta?.total;
 
   return (
-    <section id="vehicles" className="scroll-mt-36">
+    <section id="vehicles" className="scroll-mt-[var(--shop-tabs-offset,9rem)]">
       <SectionTitle icon={CarFront} title={`Vehicles${total != null ? ` (${total})` : ""}`}>
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-44 bg-card"><SelectValue /></SelectTrigger>
@@ -365,8 +459,8 @@ function VehiclesSection({ slug, shop }) {
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="animate-pulse overflow-hidden rounded-2xl border bg-card">
               <div className="aspect-[4/3] bg-muted" />
               <div className="space-y-2 p-3"><div className="h-4 w-3/4 rounded bg-muted" /><div className="h-3 w-1/2 rounded bg-muted" /></div>
@@ -375,7 +469,7 @@ function VehiclesSection({ slug, shop }) {
         </div>
       ) : vehicles.length ? (
         <>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
             {vehicles.map((v) => <VehicleCard key={v.id} vehicle={v} />)}
           </div>
           {hasNextPage && (
@@ -399,7 +493,7 @@ function VehiclesSection({ slug, shop }) {
 
 function AboutSection({ shop }) {
   return (
-    <section id="about" className="scroll-mt-36">
+    <section id="about" className="scroll-mt-[var(--shop-tabs-offset,9rem)]">
       <SectionTitle icon={Building2} title={`About ${shop.name}`} />
       <div className="rounded-2xl border bg-card p-6 shadow-sm">
         {shop.description ? (
@@ -434,7 +528,7 @@ function ReviewsSection({ slug, shop }) {
   const rating = Number(shop.rating_avg);
 
   return (
-    <section id="reviews" className="scroll-mt-36">
+    <section id="reviews" className="scroll-mt-[var(--shop-tabs-offset,9rem)]">
       <SectionTitle icon={Star} title="Customer reviews" />
 
       {isLoading ? (
@@ -480,7 +574,7 @@ function ReviewsSection({ slug, shop }) {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{r.reviewer_name ?? "Customer"}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric", timeZone: APP_TIMEZONE })}</p>
                     </div>
                   </div>
                   <Stars value={r.rating} className="h-3.5 w-3.5" />
@@ -523,7 +617,7 @@ function PoliciesSection({ shop }) {
   const items = (shop.policies ?? []).filter((p) => p.title && p.body);
 
   return (
-    <section id="policies" className="scroll-mt-36">
+    <section id="policies" className="scroll-mt-[var(--shop-tabs-offset,9rem)]">
       <SectionTitle icon={ScrollText} title="Rental policies" />
       {items.length ? (
         <div className="space-y-3">

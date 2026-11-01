@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformDisputeService } from "@/services/platformDisputeService";
+import { platformService } from "@/services/platformService";
 import { PageWrapper } from "@/components/shared/PageWrapper";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -30,7 +30,7 @@ function ResolveDialog({ open, onOpenChange, disputeId, onDone }) {
   const [form, setForm] = useState({ resolution: "", resolution_amount: "", resolution_in_favour_of: "", close: true });
 
   const resolve = useMutation({
-    mutationFn: () => platformDisputeService.resolve(disputeId, { ...form, resolution_amount: form.resolution_amount || undefined }),
+    mutationFn: () => platformService.disputes.resolve(disputeId, { ...form, resolution_amount: form.resolution_amount || undefined }),
     onSuccess: () => { toast.success("Dispute resolved"); onDone(); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to resolve"),
   });
@@ -68,18 +68,18 @@ export default function PlatformDisputeDetailPage() {
 
   const { data: dispute, isLoading } = useQuery({
     queryKey: ["platform-dispute", reference],
-    queryFn: () => platformDisputeService.getOne(reference).then((r) => r.data.data),
+    queryFn: () => platformService.disputes.getOne(reference).then((r) => r.data.data),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-dispute", reference] });
 
   const assign = useMutation({
-    mutationFn: () => platformDisputeService.assign(dispute.id),
+    mutationFn: () => platformService.disputes.assign(dispute.id),
     onSuccess: () => { invalidate(); toast.success("Assigned to you"); },
   });
 
   const send = useMutation({
-    mutationFn: () => platformDisputeService.addMessage(dispute.id, draft, internal),
+    mutationFn: () => platformService.disputes.addMessage(dispute.id, draft, internal),
     onSuccess: () => { invalidate(); setDraft(""); },
     onError: (err) => toast.error(err.response?.data?.message ?? "Failed to send message"),
   });

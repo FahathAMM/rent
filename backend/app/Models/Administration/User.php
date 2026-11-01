@@ -4,10 +4,10 @@ namespace App\Models\Administration;
 
 use App\Helpers\Media;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -15,14 +15,18 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
- * A marketplace account - customer, owner, shop staff or any combination.
- * There is deliberately no company_id/shop_id column and no special-cased
+ * A marketplace account - customer, owner or shop staff. A user belongs to
+ * at most one shop (shop_id); what they may do there comes only from their
+ * role, which is one of that shop's own roles (roles.shop_id): the owner
+ * holds its shop-owner role (full access, given on registration); staff hold
+ * a role the owner created.
+ * Someone running two shops uses two accounts. There is deliberately no special-cased
  * "super-admin bypasses everything" role here (the old chicken-shop app
  * had that, confusingly duplicating what the separate SystemAdmin/
  * `platform` guard already does - see app-doc/marketplace/03-permissions-
  * model.md "Layer 0"). Platform admin powers live exclusively in
- * SystemAdmin; a marketplace user's roles (customer, shop-owner,
- * shop-staff) are additive and never grant platform access.
+ * SystemAdmin; a marketplace user's roles (customer, plus their shop role)
+ * are additive and never grant platform access.
  */
 class User extends Authenticatable
 {
@@ -34,21 +38,23 @@ class User extends Authenticatable
     public const STATUS_SUSPENDED = 'suspended';
     public const STATUS_BANNED = 'banned';
 
+    public const SHOP_ROLE_OWNER = 'owner';
+    /** Anyone else in the shop: holds a role the owner created. */
+    public const SHOP_ROLE_MEMBER = 'member';
+
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'phone_country', 'avatar',
-        'date_of_birth', 'address', 'status', 'suspended_reason', 'suspended_at',
+        'name', 'email', 'password', 'phone', 'avatar', 'status',
         'last_login_at', 'registration_source',
+        'shop_id', 'employee_id', 'joining_date', 'emergency_contact',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'phone_verified_at' => 'datetime',
         'password' => 'hashed',
-        'date_of_birth' => 'date',
-        'suspended_at' => 'datetime',
         'last_login_at' => 'datetime',
+        'joining_date' => 'date',
     ];
 
     public function isActive(): bool
@@ -56,15 +62,85 @@ class User extends Authenticatable
         return $this->status === self::STATUS_ACTIVE;
     }
 
-    public function shopMemberships(): HasMany
+    public function shop(): BelongsTo
     {
-        return $this->hasMany(ShopMember::class, 'user_id');
+        return $this->belongsTo(RentalShop::class, 'shop_id');
     }
 
-    /** Memberships this user can currently act under - excludes invited/suspended/revoked rows. */
-    public function activeShopMemberships(): HasMany
+    /**
+     * The shop's registered owner (rental_shops.owner_user_id) — true even
+     * if the shop-owner role (granted on registration) is ever missing.
+     */
+    public function isShopOwner(): bool
     {
-        return $this->shopMemberships()->where('status', ShopMember::STATUS_ACTIVE);
+        return $this->shop_id !== null && (int) $this->shop?->owner_user_id === $this->id;
+    }
+
+    /** The shop role this user holds (shop-owner, or one the owner made), if any. */
+    public function memberRole(): ?Role
+    {
+        if ($this->shop_id === null) {
+            return null;
+        }
+        $this->loadMissing('roles');
+
+        return $this->roles->first(fn ($r) => (int) $r->shop_id === (int) $this->shop_id);
+    }
+
+    /** 'owner' | 'member' | null — the owner has full access, everyone else what their shop role allows. */
+    public function shopRole(): ?string
+    {
+        if ($this->shop_id === null) {
+            return null;
+        }
+        if ($this->isShopOwner()) {
+            return self::SHOP_ROLE_OWNER;
+        }
+
+        return $this->memberRole() ? self::SHOP_ROLE_MEMBER : null;
+    }
+
+    /** Display name of the member's role: "Owner", or their shop role's ("Manager", "Driver", ...). */
+    public function shopRoleLabel(): ?string
+    {
+        return match ($this->shopRole()) {
+            self::SHOP_ROLE_OWNER => 'Owner',
+            self::SHOP_ROLE_MEMBER => $this->memberRole()?->name,
+            default => null,
+        };
+    }
+
+    /**
+     * May this member do this vendor action? shop-owner can do everything;
+     * anyone else, what their role allows. Shop membership itself is checked
+     * by ShopGate / ShopScope.
+     */
+    public function hasVendorPermission(string $permission): bool
+    {
+        // checkPermissionTo returns false (rather than throwing) for an unknown permission name
+        return $this->hasRole(Role::SHOP_OWNER) || $this->checkPermissionTo($permission);
+    }
+
+    /**
+     * Give the user exactly one shop role, or none with null:
+     *   - 'owner' → their shop's shop-owner role (full access);
+     *   - a Role  → one of their shop's roles.
+     * Swaps only shop roles — `customer` stays.
+     */
+    public function setShopRole(Role|string|null $role): void
+    {
+        $wanted = $role === self::SHOP_ROLE_OWNER ? Role::shopOwnerOf($this->shop_id) : $role;
+        $this->loadMissing('roles');
+
+        foreach ($this->roles as $current) {
+            if ($current->shop_id !== null && $current->id !== $wanted?->id) {
+                $this->removeRole($current);
+            }
+        }
+        if ($wanted && !$this->roles()->whereKey($wanted->id)->exists()) {
+            $this->assignRole($wanted);
+        }
+        $this->unsetRelation('roles');
     }
 
     public function ownedShops(): HasMany

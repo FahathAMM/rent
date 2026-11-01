@@ -1,11 +1,11 @@
 "use client";
 
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformVehicleColourService } from "@/services/platformVehicleCatalogueService";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { platformService } from "@/services/platformService";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ColourSwatch } from "@/components/marketplace/ColourSwatch";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, Plus, Home, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Home, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const emptyForm = { name: "", slug: "", hex: "#FFFFFF", has_hex: true, sort_order: 0, is_active: true };
@@ -30,18 +30,15 @@ export default function PlatformVehicleColoursPage() {
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["platform-vehicle-colours"],
-    queryFn: () => platformVehicleColourService.getAll().then((r) => r.data.data),
-  });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["platform-vehicle-colours"] });
+    setRefreshKey((k) => k + 1);
     qc.invalidateQueries({ queryKey: ["public-colours"] });
   };
 
   const save = useMutation({
-    mutationFn: (payload) => editing ? platformVehicleColourService.update(editing.id, payload) : platformVehicleColourService.create(payload),
+    mutationFn: (payload) => editing ? platformService.vehicleColours.update(editing.id, payload) : platformService.vehicleColours.create(payload),
     onSuccess: () => { invalidate(); toast.success(editing ? "Colour updated" : "Colour created"); setOpen(false); },
     onError: (err) => {
       setErrors(err.response?.data?.errors ?? {});
@@ -51,7 +48,7 @@ export default function PlatformVehicleColoursPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id) => platformVehicleColourService.delete(id),
+    mutationFn: (id) => platformService.vehicleColours.delete(id),
     onSuccess: () => { invalidate(); toast.success("Colour deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
@@ -77,23 +74,23 @@ export default function PlatformVehicleColoursPage() {
     save.mutate({ ...rest, hex: has_hex ? form.hex.toUpperCase() : null, sort_order: Number(form.sort_order) || 0 });
   };
 
-  const columns = [
+  const columns = () => [
     {
-      key: "name", header: "Colour",
-      render: (row) => (
+      accessorKey: "name", header: "Colour",
+      cell: (row) => (
         <div className="flex items-center gap-2.5">
           <ColourSwatch hex={row.hex} className="size-5" />
           <span className="font-medium">{row.name}</span>
         </div>
       ),
     },
-    { key: "hex", header: "Hex", render: (row) => row.hex ?? "—" },
-    { key: "vehicles_count", header: "Vehicles", render: (row) => row.vehicles_count },
-    { key: "sort_order", header: "Order" },
-    { key: "is_active", header: "Status", render: (row) => <StatusBadge status={row.is_active} /> },
+    { accessorKey: "hex", header: "Hex", cell: (row) => row.hex ?? "—" },
+    { accessorKey: "vehicles_count", header: "Vehicles", cell: (row) => row.vehicles_count },
+    { accessorKey: "sort_order", header: "Order" },
+    { accessorKey: "is_active", header: "Status", cell: (row) => <StatusBadge status={row.is_active} /> },
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
+      accessorKey: "actions", header: "",
+      cell: (row) => (
         <div className="flex gap-1.5">
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(row)}><Trash2 className="h-4 w-4" /></Button>
@@ -109,15 +106,18 @@ export default function PlatformVehicleColoursPage() {
 
   return (
     <div>
-      <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Vehicle Colours"
-          description="The colour list vendors pick from."
-          action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> New Colour</Button>}
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          api={platformApi}
+          endpoint="/platform/vehicle-colours"
+          columns={columns}
+          breadcrumb={[]}
+          isSheet
+          openSheet={openCreate}
+          model="Colour"
         />
-
-        <DataTable columns={columns} data={data ?? []} loading={isLoading} />
-      </PageWrapper>
+      </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">

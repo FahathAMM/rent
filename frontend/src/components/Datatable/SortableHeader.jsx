@@ -2,7 +2,7 @@
 
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
-export function SortIcon({ active, dir }) {
+function SortIcon({ active, dir }) {
   if (!active) return <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-40" />;
   return dir === "desc"
     ? <ChevronDown className="h-3 w-3 shrink-0 text-primary" />

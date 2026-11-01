@@ -52,7 +52,7 @@ function Stat({ icon: Icon, value, label }) {
   );
 }
 
-function ContactActions({ shop, compact }) {
+function ContactActions({ shop }) {
   const wa = whatsappHref(shop.whatsapp);
   return (
     <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ function ContactActions({ shop, compact }) {
           <a href={wa} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${shop.name}`}><MessageCircle className="h-4 w-4" /></a>
         </Button>
       )}
-      <Button asChild size="sm" className={cn("h-9 gap-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90", compact ? "" : "flex-1")}>
+      <Button asChild size="sm" className="h-9 flex-1 gap-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
         <Link href={`/shops/${shop.slug}`}>View fleet <ArrowRight className="h-3.5 w-3.5" /></Link>
       </Button>
     </div>
@@ -99,6 +99,9 @@ function StatusBadges({ shop }) {
   const status = openStatus(shop.operating_hours);
   return (
     <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+      {shop.is_sponsored && (
+        <span className="rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">Sponsored</span>
+      )}
       {shop.is_verified && (
         <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
           <ShieldCheck className="h-3 w-3" /> Verified
@@ -188,7 +191,7 @@ export function ShopRow({ shop }) {
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:shadow-xl sm:flex-row">
       <Link href={`/shops/${shop.slug}`} className="relative block sm:w-64 sm:shrink-0" aria-label={shop.name}>
-        <Cover shop={shop} className="h-36 sm:h-full" />
+        <Cover shop={shop} className="h-20 sm:h-full" />
         <StatusBadges shop={shop} />
       </Link>
 
@@ -208,9 +211,11 @@ export function ShopRow({ shop }) {
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-row items-center justify-between gap-3 sm:flex-col sm:items-end">
+        {/* phones: price, then the action buttons on their own full-width line (one line overflowed);
+            sm+: stacked on the right. "View fleet" (flex-1) fills the phone row. */}
+        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t pt-3 sm:items-end sm:border-0 sm:pt-0">
           <FromPrice shop={shop} />
-          <ContactActions shop={shop} compact />
+          <ContactActions shop={shop} />
         </div>
       </div>
     </div>

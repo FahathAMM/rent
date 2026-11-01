@@ -4,23 +4,25 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { bookingService } from "@/services/bookingService";
-import { reviewService } from "@/services/reviewService";
+import { customerService } from "@/services/customerService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusBanner } from "@/components/shared/StatusBanner";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { WriteReviewDialog } from "@/components/account/WriteReviewDialog";
+import { BankTransferCard } from "@/components/account/BankTransferCard";
+import { CustomerPaymentsList } from "@/components/account/CustomerPaymentsList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle,
-  Car, CalendarRange, Receipt, CheckCircle2, XCircle, Ban,
+  ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle, FileText, Download,
+  Car, CalendarRange, CalendarClock, Receipt, XCircle, Ban, Banknote, Landmark, ScrollText, Clock, Wallet,
 } from "lucide-react";
-import { formatDateTime } from "@/lib/utils";
+import { downloadBlob, formatDateTime, openBlob } from "@/lib/utils";
+import { isMoneyLine } from "@/lib/statement";
 import { toast } from "sonner";
 
-const CANCELLABLE = ["pending", "accepted"];
+const CANCELLABLE = ["pending"];
 
 function SectionHeader({ icon: Icon, title }) {
   return (
@@ -31,37 +33,21 @@ function SectionHeader({ icon: Icon, title }) {
   );
 }
 
-/** Hosted-checkout redirect: PayHere needs a real browser form POST, not a fetch/XHR. */
-function submitToGateway(url, fields) {
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = url;
-  Object.entries(fields).forEach(([name, value]) => {
-    if (value === null || value === undefined) return;
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  });
-  document.body.appendChild(form);
-  form.submit();
-}
-
 export default function BookingDetailPage() {
   const { reference } = useParams();
   const qc = useQueryClient();
   const { format } = useCurrencyFormat();
   const [cancelling, setCancelling] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [voucherBusy, setVoucherBusy] = useState(null); // "view" | "download" while the PDF is being fetched
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["my-booking", reference],
-    queryFn: () => bookingService.getOne(reference).then((r) => r.data.data),
+    queryFn: () => customerService.bookings.getOne(reference).then((r) => r.data.data),
   });
 
   const cancel = useMutation({
-    mutationFn: (reason) => bookingService.cancel(reference, reason),
+    mutationFn: (reason) => customerService.bookings.cancel(reference, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-booking", reference] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
@@ -71,17 +57,8 @@ export default function BookingDetailPage() {
     onError: (err) => toast.error(err.response?.data?.message ?? "Could not cancel booking"),
   });
 
-  const checkout = useMutation({
-    mutationFn: () => bookingService.checkout(reference),
-    onSuccess: (res) => {
-      const { url, fields } = res.data.data;
-      submitToGateway(url, fields);
-    },
-    onError: (err) => toast.error(err.response?.data?.message ?? err.response?.data?.errors?.status?.[0] ?? "Could not start checkout"),
-  });
-
   const submitReview = useMutation({
-    mutationFn: (data) => reviewService.create({ booking_reference: reference, ...data }),
+    mutationFn: (data) => customerService.reviews.create({ booking_reference: reference, ...data }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-booking", reference] });
       qc.invalidateQueries({ queryKey: ["my-reviews"] });
@@ -107,11 +84,34 @@ export default function BookingDetailPage() {
     );
   }
 
-  const canCancel = CANCELLABLE.includes(booking.status);
-  const canPay = booking.status === "accepted" && ["unpaid", "failed"].includes(booking.payment_status);
+  const isCash = booking.payment_method === "cash";
+  const isBank = booking.payment_method === "bank_transfer";
+  const paidToShop = isCash || isBank;
+  // Money already sent (or waiting to be checked) → refunds follow the shop's policy, so the customer contacts the shop.
+  const sentMoney = (booking.payments ?? []).some((p) => isMoneyLine(p) && ["pending", "succeeded"].includes(p.status));
+  const canCancel = CANCELLABLE.includes(booking.status)
+    || (paidToShop && booking.status === "confirmed" && booking.payment_status === "unpaid" && !sentMoney);
+  const mustContactShop = paidToShop && booking.status === "confirmed" && !canCancel;
+  const policies = booking.shop?.policies ?? [];
   const canReview = booking.status === "completed" && !booking.review
     && (!booking.review_eligible_until || new Date(booking.review_eligible_until) > new Date());
   const pricing = booking.pricing ?? {};
+  // Shop date changes, newest first: show the latest, against the dates first booked.
+  const dateChanges = booking.date_changes ?? [];
+  const dateChange = dateChanges[0];
+  const originalDates = dateChanges[dateChanges.length - 1]?.from;
+  // The voucher the customer shows the shop at pickup — once the shop has confirmed.
+  const hasVoucher = ["confirmed", "active", "completed"].includes(booking.status);
+
+  const openVoucher = (download) => {
+    // Open the tab inside the click so popup blockers allow it, then fill it once the PDF arrives.
+    const tab = download ? null : window.open("", "_blank");
+    setVoucherBusy(download ? "download" : "view");
+    customerService.bookings.voucher(reference, download)
+      .then((res) => (download ? downloadBlob(res.data, `booking-${reference}.pdf`) : openBlob(res.data, tab)))
+      .catch(() => { tab?.close(); toast.error("Could not load the booking voucher"); })
+      .finally(() => setVoucherBusy(null));
+  };
 
   return (
     <div className="space-y-4">
@@ -129,14 +129,49 @@ export default function BookingDetailPage() {
             <p className="text-sm text-muted-foreground">{booking.booking_reference}</p>
           </div>
         </div>
-        <StatusBadge status={booking.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          {hasVoucher && (
+            <>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openVoucher(false)} disabled={!!voucherBusy}>
+                {voucherBusy === "view" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} View voucher
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openVoucher(true)} disabled={!!voucherBusy}>
+                {voucherBusy === "download" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download PDF
+              </Button>
+            </>
+          )}
+          <StatusBadge status={booking.status} />
+        </div>
       </div>
-
-      {booking.status === "accepted" && booking.payment_status === "failed" && (
-        <StatusBanner icon={XCircle} tone="destructive" title="Payment didn't go through" body="Your last payment attempt failed — you can try again below." />
+      {hasVoucher && ["confirmed", "active"].includes(booking.status) && (
+        <p className="-mt-2 text-xs text-muted-foreground">Show the voucher to the shop at pickup, printed or on your phone, with your driving licence and NIC/passport.</p>
       )}
+
+      {dateChange && (
+        <StatusBanner
+          icon={CalendarClock}
+          tone="warning"
+          title={`The shop changed your dates on ${formatDateTime(dateChange.changed_at)}`}
+          body={`Originally ${originalDates}. Now ${dateChange.to}.${dateChange.reason ? ` Reason: ${dateChange.reason}` : ""}${dateChanges.length > 1 ? ` (changed ${dateChanges.length} times)` : ""}`}
+        />
+      )}
+
       {booking.status === "confirmed" && (
-        <StatusBanner icon={CheckCircle2} tone="success" title="Booking confirmed" body="Payment received — see you at pickup!" />
+        isBank
+          ? <StatusBanner icon={Landmark} tone="success" title="Booking confirmed" body={Number(booking.balance_due) > 0
+              ? `Transfer to the shop's bank account below and upload the receipt — ${format(booking.balance_due)} still to pay.`
+              : "Fully paid by bank transfer — see you at pickup!"} />
+          : <StatusBanner icon={Banknote} tone="success" title="Booking confirmed" body={`Pay the shop ${format(booking.pricing?.total_payable)} in cash when you pick up the vehicle.`} />
+      )}
+      {booking.status === "pending" && paidToShop && (
+        <StatusBanner
+          icon={isBank ? Landmark : Clock}
+          tone="info"
+          title="Waiting for the shop to confirm"
+          body={isBank
+            ? "Nothing to pay yet. Once the shop confirms, their bank details appear here — transfer the advance or the full amount and upload the receipt."
+            : "Nothing to pay yet. Once the shop confirms, you pay them in cash when you pick up the vehicle."}
+        />
       )}
       {booking.status === "rejected" && booking.rejection_reason && (
         <StatusBanner icon={XCircle} tone="destructive" title="Booking rejected" body={booking.rejection_reason} />
@@ -159,6 +194,18 @@ export default function BookingDetailPage() {
           <div><p className="text-muted-foreground">Return</p><p className="font-medium">{formatDateTime(booking.return_at)}</p></div>
           <div><p className="text-muted-foreground">Duration</p><p className="font-medium">{booking.rental_days} day(s)</p></div>
           <div><p className="text-muted-foreground">Vehicle Reg. No.</p><p className="font-medium">{booking.vehicle?.registration_number}</p></div>
+          <div>
+            <p className="text-muted-foreground">Payment</p>
+            <p className="flex items-center gap-1.5 font-medium">
+              {isBank ? <><Landmark className="h-4 w-4" /> Bank transfer to the shop</> : isCash ? <><Banknote className="h-4 w-4" /> Cash at pickup</> : "Online"}
+            </p>
+          </div>
+          {paidToShop && booking.balance_due != null && !["pending", "rejected", "expired"].includes(booking.status) && !booking.status.startsWith("cancelled") && (
+            <div>
+              <p className="text-muted-foreground">Payment status</p>
+              <p className="font-medium">{Number(booking.balance_due) > 0 ? `${format(booking.balance_due)} due` : "Fully paid"}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -179,9 +226,51 @@ export default function BookingDetailPage() {
           {Number(pricing.delivery_amount) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>{format(pricing.delivery_amount)}</span></div>}
           {Number(pricing.tax_amount) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{format(pricing.tax_amount)}</span></div>}
           {Number(pricing.security_deposit) > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Security deposit</span><span>{format(pricing.security_deposit)}</span></div>}
-          <div className="flex justify-between border-t pt-1.5 font-semibold"><span>Total payable</span><span>{format(pricing.total_payable)}</span></div>
+          <div className="flex justify-between border-t pt-1.5 font-semibold"><span>{isCash ? "Pay in cash at pickup" : "Total payable"}</span><span>{format(pricing.total_payable)}</span></div>
+          {paidToShop && Number(booking.amount_paid) > 0 && (
+            <>
+              <div className="flex justify-between text-emerald-600"><span>Paid</span><span>− {format(booking.amount_paid)}</span></div>
+              <div className="flex justify-between font-semibold"><span>Balance</span><span>{format(booking.balance_due)}</span></div>
+            </>
+          )}
+          {paidToShop && <p className="pt-1 text-xs text-muted-foreground">Paid directly to the shop — any security deposit is refundable on return.</p>}
         </CardContent>
       </Card>
+
+      {isBank && ["confirmed", "active"].includes(booking.status) ? (
+        <BankTransferCard key={`${booking.balance_due}-${booking.payments?.length}`} booking={booking} />
+      ) : paidToShop && booking.payments?.length > 0 && (
+        // Cash bookings (and bank-transfer ones once the trip is over): the same payment history, read-only.
+        <Card className="rounded-2xl shadow-sm">
+          <SectionHeader icon={Wallet} title="Payments" />
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Paid {format(booking.amount_paid ?? 0)}{Number(booking.balance_due) > 0 ? ` · ${format(booking.balance_due)} still due` : " · fully paid"}
+            </p>
+            <CustomerPaymentsList booking={booking} />
+          </CardContent>
+        </Card>
+      )}
+
+      {paidToShop && policies.length > 0 && (
+        <Card className="rounded-2xl shadow-sm">
+          <SectionHeader icon={ScrollText} title="Shop Policies" />
+          <CardContent className="space-y-3 text-sm">
+            {policies.map((p, i) => (
+              <div key={i}>
+                <p className="font-medium">{p.title}</p>
+                <p className="whitespace-pre-line text-muted-foreground">{p.body}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {mustContactShop && (
+        <p className="text-right text-sm text-muted-foreground">
+          To cancel, contact {booking.shop?.name ?? "the shop"}{booking.shop?.phone ? ` on ${booking.shop.phone}` : ""} — refunds follow their policy.
+        </p>
+      )}
 
       {booking.customer_note && (
         <Card className="rounded-2xl shadow-sm"><CardHeader><CardTitle className="text-base">Your Note</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{booking.customer_note}</CardContent></Card>
@@ -194,7 +283,7 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {(canCancel || canPay || canReview) && (
+      {(canCancel || canReview) && (
         <div className="flex flex-wrap justify-end gap-2">
           {canCancel && (
             <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
@@ -204,12 +293,6 @@ export default function BookingDetailPage() {
           {canReview && (
             <Button variant="outline" className="gap-1.5" onClick={() => setReviewing(true)}>
               <Star className="h-4 w-4" /> Write a Review
-            </Button>
-          )}
-          {canPay && (
-            <Button size="lg" className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
-              {checkout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Pay {format(pricing.total_payable)}
             </Button>
           )}
         </div>

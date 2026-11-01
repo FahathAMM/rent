@@ -39,9 +39,4 @@ class Attachment extends Model
     {
         return $this->morphTo();
     }
-
-    public function isPublic(): bool
-    {
-        return $this->visibility === self::VISIBILITY_PUBLIC;
-    }
 }

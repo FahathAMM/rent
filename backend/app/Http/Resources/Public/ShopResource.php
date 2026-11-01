@@ -36,7 +36,9 @@ class ShopResource extends JsonResource
             'completed_bookings_count' => $this->completed_bookings_count,
             'response_rate' => $this->response_rate,
             'member_since' => $this->created_at?->toDateString(),
-            // Only set by the directory listing (PublicShopQuery::fleetStats).
+            // Only in the directory listing: sponsored right now (PublicShopRepo::searchQuery).
+            'is_sponsored' => (bool) ($this->is_sponsored ?? false),
+            // Only set by the directory listing (PublicShopRepo::fleetStats).
             $this->mergeWhen(isset($this->fleet_stats), fn () => $this->fleet_stats),
         ];
     }

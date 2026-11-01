@@ -4,19 +4,17 @@ namespace App\Http\Controllers\Api\Platform;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\BookingFinancial;
-use App\Models\OwnerPayout;
+use App\Models\BookingPricing;
 use App\Models\RentalShop;
 use App\Models\Vehicle;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 
 /**
- * "GMV · bookings · commission · payouts due · queues" - see
- * app-doc/marketplace/05-ui-and-api-map.md. Platform-wide, so every
- * query here is deliberately unscoped (ShopScope already leaves the
- * platform guard unrestricted - see Scopes\ShopScope's docblock branch
- * 2) rather than filtered to any one shop.
+ * "GMV · bookings · queues" - see app-doc/marketplace/05-ui-and-api-map.md.
+ * Platform-wide, so every query here is deliberately unscoped (ShopScope
+ * already leaves the platform guard unrestricted - see Scopes\ShopScope's
+ * docblock branch 2) rather than filtered to any one shop.
  */
 class DashboardController extends Controller
 {
@@ -27,20 +25,23 @@ class DashboardController extends Controller
         return $this->response('Dashboard retrieved', [
             'gmv' => $this->gmv(),
             'bookings' => $this->bookingCounts(),
-            'commission' => $this->commission(),
-            'payouts_due' => $this->payoutsDue(),
             'queues' => $this->queues(),
         ]);
     }
 
-    /** Gross merchandise value — total actually collected from customers on paid bookings, deposits included (it IS cash collected, just not revenue). */
+    /**
+     * Gross merchandise value — the rental value (subtotal, before tax and
+     * deposit) of every booking that is going ahead or done. Customers pay
+     * shops directly, so this is booked value, not money the platform holds.
+     */
     private function gmv(): array
     {
-        $row = BookingFinancial::whereHas('booking', fn ($q) => $q->where('payment_status', Booking::PAYMENT_PAID))
-            ->selectRaw('COALESCE(SUM(customer_paid_amount),0) as gmv, COUNT(*) as paid_booking_count')
-            ->first();
+        $goingAhead = [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED];
 
-        return ['total' => (float) $row->gmv, 'paid_booking_count' => (int) $row->paid_booking_count];
+        $total = BookingPricing::whereHas('booking', fn ($q) => $q->whereIn('status', $goingAhead))->sum('subtotal');
+        $paidCount = Booking::whereIn('status', $goingAhead)->where('payment_status', Booking::PAYMENT_PAID)->count();
+
+        return ['total' => (float) $total, 'paid_booking_count' => $paidCount];
     }
 
     private function bookingCounts(): array
@@ -61,36 +62,12 @@ class DashboardController extends Controller
         ];
     }
 
-    private function commission(): array
-    {
-        $row = BookingFinancial::whereHas('booking', fn ($q) => $q->where('payment_status', Booking::PAYMENT_PAID))
-            ->selectRaw('COALESCE(SUM(commission_amount),0) as commission_income, COALESCE(SUM(platform_net_amount),0) as platform_net')
-            ->first();
-
-        return ['commission_income' => (float) $row->commission_income, 'platform_net' => (float) $row->platform_net];
-    }
-
-    /** Owner money committed but not yet transferred — approved/processing/pending-approval payouts, plus unsettled financials not yet even built into a payout. */
-    private function payoutsDue(): array
-    {
-        $inFlight = OwnerPayout::whereIn('status', [OwnerPayout::STATUS_PENDING_APPROVAL, OwnerPayout::STATUS_APPROVED, OwnerPayout::STATUS_PROCESSING])
-            ->sum('net_amount');
-
-        $notYetBuilt = BookingFinancial::where('settlement_status', BookingFinancial::SETTLEMENT_UNSETTLED)->sum('owner_payable_amount');
-
-        return [
-            'in_flight_payouts' => (float) $inFlight,
-            'unsettled_not_yet_built' => (float) $notYetBuilt,
-        ];
-    }
-
     /** Everything sitting in an admin review queue right now — the whole reason a platform admin opens this dashboard. */
     private function queues(): array
     {
         return [
             'shop_verifications' => RentalShop::where('verification_status', 'pending')->count(),
             'listing_moderation' => Vehicle::whereIn('moderation_status', [Vehicle::MODERATION_PENDING, Vehicle::MODERATION_FLAGGED])->count(),
-            'payout_approvals' => OwnerPayout::where('status', OwnerPayout::STATUS_PENDING_APPROVAL)->count(),
         ];
     }
 }

@@ -29,9 +29,13 @@ Route::prefix('customer')->group(function () {
 Route::middleware('customer.auth')->group(function () {
     Route::get('bookings', [BookingController::class, 'index']);
     Route::post('bookings', [BookingController::class, 'store']);
+    // Before bookings/{booking}, or "summary" would be taken as a booking reference.
+    Route::get('bookings/summary', [BookingController::class, 'summary']);
     Route::get('bookings/{booking:booking_reference}', [BookingController::class, 'show']);
-    Route::post('bookings/{booking:booking_reference}/checkout', [BookingController::class, 'checkout']);
     Route::post('bookings/{booking:booking_reference}/cancel', [BookingController::class, 'cancel']);
+    Route::post('bookings/{booking:booking_reference}/transfers', [BookingController::class, 'submitTransfer']);
+    Route::get('bookings/{booking:booking_reference}/voucher', [BookingController::class, 'voucher']);
+    Route::get('bookings/{booking:booking_reference}/transfers/{payment}/proof', [BookingController::class, 'transferProof']);
 
     // Customer's own reviews — Review has no BelongsToShop/ShopScope at
     // all (unlike Booking/Vehicle), so there is no scope-bypass concern

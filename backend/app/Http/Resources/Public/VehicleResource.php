@@ -53,6 +53,9 @@ class VehicleResource extends JsonResource
                 'city' => $this->shop->city,
                 'logo' => $this->shop->logo_url,
                 'is_verified' => $this->shop->isVerified(),
+                // Only whether - the account itself is shown to the customer on their confirmed booking.
+                'accepts_bank_transfer' => $this->shop->relationLoaded('primaryBankDetail') ? $this->shop->primaryBankDetail !== null : null,
+                'advance_percentage' => $this->shop->advance_percentage,
                 'rating_avg' => $this->shop->rating_avg,
             ]),
             'pricing' => $this->whenLoaded('pricing', fn () => [
@@ -65,6 +68,8 @@ class VehicleResource extends JsonResource
                 'mileage_allowance_per_day_km' => $this->pricing->mileage_allowance_per_day_km,
                 'driver_rate_per_day' => $this->pricing->driver_rate_per_day,
                 'delivery_available' => $this->pricing->delivery_available,
+                'delivery_flat_fee' => $this->pricing->delivery_flat_fee,
+                'tax_rate' => $this->pricing->tax_rate,
                 'min_rental_days' => $this->pricing->min_rental_days,
                 'max_rental_days' => $this->pricing->max_rental_days,
             ]),
@@ -77,6 +82,8 @@ class VehicleResource extends JsonResource
             'rating_count' => $this->rating_count,
             'booking_count' => $this->booking_count,
             'is_featured' => $this->is_featured,
+            // Only in a search filtered by a category / city this shop sponsors.
+            'is_sponsored' => $this->is_sponsored,
         ];
     }
 }

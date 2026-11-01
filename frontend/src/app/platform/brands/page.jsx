@@ -1,11 +1,11 @@
 "use client";
 
+import platformApi from "@/lib/platformAxios";
+import ServerDataTable from "@/components/Datatable/ServerDataTable";
+import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { platformBrandService } from "@/services/platformBrandService";
-import { PageWrapper } from "@/components/shared/PageWrapper";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { DataTable } from "@/components/shared/DataTable";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { platformService } from "@/services/platformService";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { BrandMark } from "@/components/marketplace/BrandMark";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, Plus, Home, Loader2, UploadCloud, X } from "lucide-react";
+import { Pencil, Trash2, Home, Loader2, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 
 const emptyForm = { name: "", slug: "", sort_order: 0, is_active: true };
@@ -64,18 +64,15 @@ export default function PlatformBrandsPage() {
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["platform-brands"],
-    queryFn: () => platformBrandService.getAll().then((r) => r.data.data),
-  });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["platform-brands"] });
+    setRefreshKey((k) => k + 1);
     qc.invalidateQueries({ queryKey: ["public-brands"] });
   };
 
   const save = useMutation({
-    mutationFn: (fd) => editing ? platformBrandService.update(editing.id, fd) : platformBrandService.create(fd),
+    mutationFn: (fd) => editing ? platformService.brands.update(editing.id, fd) : platformService.brands.create(fd),
     onSuccess: () => { invalidate(); toast.success(editing ? "Brand updated" : "Brand created"); setOpen(false); },
     onError: (err) => {
       setErrors(err.response?.data?.errors ?? {});
@@ -85,7 +82,7 @@ export default function PlatformBrandsPage() {
   });
 
   const remove = useMutation({
-    mutationFn: (id) => platformBrandService.delete(id),
+    mutationFn: (id) => platformService.brands.delete(id),
     onSuccess: () => { invalidate(); toast.success("Brand deleted"); setDeleteTarget(null); },
     onError: (err) => { toast.error(err.response?.data?.errors?.brand?.[0] ?? err.response?.data?.message ?? "Failed to delete"); setDeleteTarget(null); },
   });
@@ -125,23 +122,23 @@ export default function PlatformBrandsPage() {
   useEffect(() => () => { if (filePreview) URL.revokeObjectURL(filePreview); }, [filePreview]);
   const previewUrl = filePreview ?? (!removeLogo ? editing?.logo_url : null);
 
-  const columns = [
+  const columns = () => [
     {
-      key: "name", header: "Brand",
-      render: (row) => (
+      accessorKey: "name", header: "Brand",
+      cell: (row) => (
         <div className="flex items-center gap-2.5">
           <BrandMark brand={row} className="size-8" />
           <span className="font-medium">{row.name}</span>
         </div>
       ),
     },
-    { key: "slug", header: "Slug" },
-    { key: "vehicles_count", header: "Vehicles", render: (row) => row.vehicles_count },
-    { key: "sort_order", header: "Order" },
-    { key: "is_active", header: "Status", render: (row) => <StatusBadge status={row.is_active} /> },
+    { accessorKey: "slug", header: "Slug" },
+    { accessorKey: "vehicles_count", header: "Vehicles", cell: (row) => row.vehicles_count },
+    { accessorKey: "sort_order", header: "Order" },
+    { accessorKey: "is_active", header: "Status", cell: (row) => <StatusBadge status={row.is_active} /> },
     {
-      key: "actions", header: "Actions",
-      render: (row) => (
+      accessorKey: "actions", header: "",
+      cell: (row) => (
         <div className="flex gap-1.5">
           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(row)}><Trash2 className="h-4 w-4" /></Button>
@@ -157,15 +154,18 @@ export default function PlatformBrandsPage() {
 
   return (
     <div>
-      <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader
-          title="Vehicle Brands"
-          description="The brand list vendors pick from, and the brand filter and logo row customers see."
-          action={<Button onClick={openCreate} className="gap-1.5"><Plus className="h-4 w-4" /> New Brand</Button>}
+      <HomePageWrapper breadcrumb={breadcrumbItems}>
+        <ServerDataTable
+          key={refreshKey}
+          api={platformApi}
+          endpoint="/platform/brands"
+          columns={columns}
+          breadcrumb={[]}
+          isSheet
+          openSheet={openCreate}
+          model="Brand"
         />
-
-        <DataTable columns={columns} data={data ?? []} loading={isLoading} />
-      </PageWrapper>
+      </HomePageWrapper>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">

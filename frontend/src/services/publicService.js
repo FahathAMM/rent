@@ -4,6 +4,8 @@ import api from "@/lib/axios";
 export const publicService = {
   vehicles: (params) => api.get("/public/vehicles", { params }),
   vehicle: (slug) => api.get(`/public/vehicles/${slug}`),
+  /** Booked / blocked days and the earliest pickup — feeds the booking date picker. */
+  vehicleAvailability: (slug) => api.get(`/public/vehicles/${slug}/availability`),
   vehicleReviews: (slug, params) => api.get(`/public/vehicles/${slug}/reviews`, { params }),
   shops: (params) => api.get("/public/shops", { params }),
   shop: (slug) => api.get(`/public/shops/${slug}`),

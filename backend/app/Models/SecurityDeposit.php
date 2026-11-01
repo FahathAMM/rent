@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A liability, never revenue - excluded from the commission base and the
- * owner payable until the return inspection decides it.
+ * Held by the shop (taken in cash at handover) and settled at the return
+ * inspection: released, partly kept (deductions_amount) or forfeited.
  */
 class SecurityDeposit extends Model
 {
@@ -21,7 +21,7 @@ class SecurityDeposit extends Model
     protected $fillable = [
         'booking_id', 'amount_required', 'amount_collected', 'hold_method', 'status',
         'collected_at', 'released_at', 'deductions_amount', 'deduction_reason',
-        'release_refund_id', 'decided_by',
+        'decided_by',
     ];
 
     protected $casts = [
@@ -35,11 +35,6 @@ class SecurityDeposit extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
-    }
-
-    public function releaseRefund(): BelongsTo
-    {
-        return $this->belongsTo(Refund::class, 'release_refund_id');
     }
 
     public function decidedBy(): BelongsTo

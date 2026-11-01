@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Administration\User;
 use App\Models\Review;
-use App\Support\ShopAbility;
 use App\Support\ShopGate;
 use App\Support\VendorContext;
 
@@ -19,6 +18,6 @@ class ReviewPolicy
     public function reply(User $user, Review $review): bool
     {
         return $review->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, ShopAbility::ReviewsReply);
+            && ShopGate::allowsCurrent($user, 'vendor-vehicles-reviews-edit');
     }
 }

@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * moderation_status = approved AND its shop is active + is_published -
  * see app-doc/marketplace/01-phase1-architecture.md section 3.1. Public
  * reads never load this model directly with ->toArray(); they go through
- * App\Queries\PublicVehicleQuery and a Public resource column allow-list
+ * App\Repositories\PublicVehicleRepo and a Public resource column allow-list
  * (later phase) so registration_number and other private fields can never
  * leak by being added here.
  */
@@ -42,19 +42,50 @@ class Vehicle extends Model
         'transmission', 'fuel_type', 'engine_capacity_cc', 'seating_capacity', 'luggage_capacity',
         'doors', 'air_conditioned', 'features', 'description', 'condition_notes',
         'status', 'moderation_status', 'moderation_note', 'published_at', 'archived_at',
-        'is_featured', 'featured_until',
     ];
 
     protected $casts = [
         'features' => 'array',
         'air_conditioned' => 'boolean',
-        'is_featured' => 'boolean',
         'published_at' => 'datetime',
         'archived_at' => 'datetime',
-        'featured_until' => 'datetime',
         'rating_avg' => 'decimal:2',
         'last_booked_at' => 'datetime',
     ];
+
+    private ?bool $featuredCache = null;
+
+    /**
+     * Featured right now (a live "featured" promotion). Search adds it as a column
+     * (withExists in PublicVehicleRepo::searchQuery); otherwise it's looked up once.
+     */
+    public function getIsFeaturedAttribute($value): bool
+    {
+        if (array_key_exists('is_featured', $this->attributes)) {
+            return (bool) $value;
+        }
+
+        // Cached on a property, not in $attributes — there is no is_featured column to save.
+        return $this->featuredCache ??= Promotion::live()->where('type', Promotion::TYPE_FEATURED)->where('vehicle_id', $this->id)->exists();
+    }
+
+    /** Sponsored in the current search (only set by PublicVehicleRepo::searchQuery). */
+    public function getIsSponsoredAttribute($value): bool
+    {
+        return (bool) $value;
+    }
+
+    /** Featured promotions of this vehicle. */
+    public function promotions(): HasMany
+    {
+        return $this->hasMany(Promotion::class, 'vehicle_id');
+    }
+
+    /** Promotions of the vehicle's shop (sponsorships) — matched on shop_id. */
+    public function shopPromotions(): HasMany
+    {
+        return $this->hasMany(Promotion::class, 'shop_id', 'shop_id');
+    }
 
     public function category(): BelongsTo
     {
@@ -104,11 +135,6 @@ class Vehicle extends Model
     public function availability(): HasMany
     {
         return $this->hasMany(VehicleAvailability::class);
-    }
-
-    public function reservationHolds(): HasMany
-    {
-        return $this->hasMany(ReservationHold::class);
     }
 
     public function moderationHistory(): HasMany

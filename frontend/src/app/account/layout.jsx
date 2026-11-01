@@ -48,12 +48,11 @@ export default function AccountLayout({ children }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/30">
+    <div className="flex min-h-screen bg-muted/60">
       <AccountSidebar
         navigation={CUSTOMER_NAV_ITEMS}
         user={customer}
         onLogout={logout}
-        isVendor={false}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -65,8 +64,17 @@ export default function AccountLayout({ children }) {
           </Button>
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">{children}</div>
+        {/* Every page sits in one framed panel on the tinted background, left/right edges shared — pages don't add their own centering. */}
+        <main className="relative isolate flex flex-1 flex-col p-3 sm:p-5 lg:p-6">
+          {/* Soft brand-colour washes behind the panel so the page never reads as flat grey. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute -top-32 right-0 size-[28rem] rounded-full bg-pink-400/15 blur-3xl" />
+            <div className="absolute bottom-0 -left-24 size-[24rem] rounded-full bg-orange-300/15 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 size-[22rem] -translate-x-1/2 rounded-full bg-violet-400/10 blur-3xl" />
+          </div>
+          <div className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-4 shadow-sm sm:p-6">
+            {children}
+          </div>
         </main>
       </div>
     </div>

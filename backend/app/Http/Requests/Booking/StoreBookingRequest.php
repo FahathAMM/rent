@@ -21,6 +21,8 @@ class StoreBookingRequest extends FormRequest
             'delivery_requested' => ['nullable', 'boolean'],
             'with_driver' => ['nullable', 'boolean'],
             'customer_note' => ['nullable', 'string', 'max:1000'],
+            // Only used while online payments are off; bank_transfer needs the shop to have a primary bank account (BookingService).
+            'payment_method' => ['nullable', 'in:cash,bank_transfer'],
         ];
     }
 }

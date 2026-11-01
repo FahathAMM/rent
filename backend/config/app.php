@@ -54,9 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    // The Next.js marketplace frontend's own origin — used to build
-    // gateway return/cancel URLs (see PayHereGateway) that must point at
-    // the SPA, not this API. Same value config/cors.php already reads.
+    // The Next.js marketplace frontend's own origin — for links that must
+    // point at the SPA, not this API. Same value config/cors.php already reads.
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3001'),
 
     /*
@@ -71,6 +70,10 @@ return [
     */
 
     'timezone' => 'UTC',
+
+    // Storage and app logic stay UTC (above); times shown to people — emails,
+    // log viewer, the frontend's formatDate() — use Sri Lanka time.
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Colombo'),
 
     /*
     |--------------------------------------------------------------------------

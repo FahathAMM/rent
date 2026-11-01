@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useCustomerAuthStore } from "@/store/customerAuthStore";
-import { customerAuthService } from "@/services/customerAuthService";
+import { customerService } from "@/services/customerService";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/forms/FormField";
@@ -92,7 +92,7 @@ export function CustomerProfileForm() {
       fd.append("email", form.email);
       if (form.phone) fd.append("phone", form.phone);
       if (avatarFile) fd.append("avatar", avatarFile);
-      const res = await customerAuthService.updateProfile(fd);
+      const res = await customerService.updateProfile(fd);
       updateCustomer(res.data.data);
       setAvatarFile(null);
       toast.success("Profile updated successfully");
@@ -108,7 +108,7 @@ export function CustomerProfileForm() {
     setPasswordErrors({});
     setChangingPassword(true);
     try {
-      await customerAuthService.changePassword(passwordForm);
+      await customerService.changePassword(passwordForm);
       setPasswordForm({ current_password: "", new_password: "", new_password_confirmation: "" });
       toast.success("Password changed successfully");
     } catch (err) {
@@ -122,7 +122,7 @@ export function CustomerProfileForm() {
   if (!customer) return null;
 
   return (
-    <div className="space-y-4 pb-6 max-w-4xl mx-auto">
+    <div className="space-y-4">
       {/* Header card */}
       <div className="rounded-xl border bg-card px-6 py-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">

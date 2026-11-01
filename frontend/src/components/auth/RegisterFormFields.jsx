@@ -20,6 +20,7 @@ export function RegisterFormFields({
   loading,
   onSubmit,
   onSwitchToLogin,
+  cancelHref, // optional — shows a Cancel button linking here
 }) {
   const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
 
@@ -78,10 +79,17 @@ export function RegisterFormFields({
             inputClassName="h-9 text-sm"
           />
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Create account
-        </Button>
+        <div className="flex gap-2">
+          {cancelHref && (
+            <Button type="button" variant="outline" className="flex-1" asChild>
+              <Link href={cancelHref}>Cancel</Link>
+            </Button>
+          )}
+          <Button type="submit" className="flex-1" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create account
+          </Button>
+        </div>
       </form>
 
       <p className="text-xs text-center text-muted-foreground mt-4">

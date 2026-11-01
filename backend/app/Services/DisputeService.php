@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Administration\User;
 use App\Models\Booking;
-use App\Models\BookingFinancial;
 use App\Models\Dispute;
 use App\Models\DisputeMessage;
 use App\Models\SystemAdmin;
@@ -14,11 +13,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * An open dispute sets bookings.has_open_dispute and the booking's
- * booking_financials.settlement_status to on_hold - the payout builder
- * already only selects settlement_status=unsettled, so an on_hold
- * booking is skipped with no change needed there. See Dispute's
- * docblock and app-doc/marketplace/02-data-model.md "disputes".
+ * An open dispute sets bookings.has_open_dispute until every dispute on the
+ * booking is resolved or closed. See Dispute's docblock and
+ * app-doc/marketplace/02-data-model.md "disputes".
  */
 class DisputeService
 {
@@ -46,7 +43,6 @@ class DisputeService
             ]);
 
             $booking->update(['has_open_dispute' => true]);
-            $booking->financials?->update(['settlement_status' => BookingFinancial::SETTLEMENT_ON_HOLD]);
 
             $this->notifyCounterpart($booking, $raisedBySide, new MarketplaceNotification(
                 type: 'dispute_opened',
@@ -150,11 +146,6 @@ class DisputeService
         }
 
         $booking->update(['has_open_dispute' => false]);
-
-        $financials = $booking->financials;
-        if ($financials && $financials->settlement_status === BookingFinancial::SETTLEMENT_ON_HOLD) {
-            $financials->update(['settlement_status' => BookingFinancial::SETTLEMENT_UNSETTLED]);
-        }
     }
 
     private function notifyCounterpart(Booking $booking, string $raisedBySide, MarketplaceNotification $notification): void

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -71,7 +71,7 @@ class MenuSeeder extends Seeder
         ],
     ];
 
-    /** @var array<int, array> Owner / shop-staff facing vendor app. */
+    /** @var array<int, array> Vendor app (shop owner and staff). */
     private array $vendorModules = [
         [
             'key' => 'dashboard',
@@ -87,7 +87,7 @@ class MenuSeeder extends Seeder
             'sort_order' => 2,
             'children' => [
                 ['key' => 'list', 'name' => 'My Vehicles', 'route_name' => '/vendor/vehicles', 'icon' => 'Car', 'sort_order' => 1],
-                ['key' => 'calendar', 'name' => 'Calendar', 'route_name' => '/vendor/vehicles/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2],
+                ['key' => 'calendar', 'name' => 'Calendar', 'route_name' => '/vendor/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2],
                 ['key' => 'categories', 'name' => 'Categories', 'route_name' => '/vendor/vehicles/categories', 'icon' => 'Tag', 'sort_order' => 3],
                 ['key' => 'bookings', 'name' => 'Bookings', 'route_name' => '/vendor/bookings', 'icon' => 'CalendarCheck', 'sort_order' => 4],
                 ['key' => 'reviews', 'name' => 'Reviews', 'route_name' => '/vendor/reviews', 'icon' => 'Star', 'sort_order' => 5],
@@ -101,8 +101,7 @@ class MenuSeeder extends Seeder
             'sort_order' => 3,
             'children' => [
                 ['key' => 'earnings', 'name' => 'Earnings', 'route_name' => '/vendor/finance/earnings', 'icon' => 'TrendingUp', 'sort_order' => 1],
-                ['key' => 'payouts', 'name' => 'Payouts', 'route_name' => '/vendor/finance/payouts', 'icon' => 'Banknote', 'sort_order' => 2],
-                ['key' => 'bank_details', 'name' => 'Bank Details', 'route_name' => '/vendor/finance/bank-details', 'icon' => 'Landmark', 'sort_order' => 3],
+                ['key' => 'bank_details', 'name' => 'Bank Details', 'route_name' => '/vendor/finance/bank-details', 'icon' => 'Landmark', 'sort_order' => 2],
             ],
         ],
         [
@@ -116,10 +115,11 @@ class MenuSeeder extends Seeder
             ],
         ],
         [
-            'key' => 'staff',
-            'name' => 'Staff',
-            'route_name' => '/vendor/staff',
-            'icon' => 'Users',
+            // Buying visibility — featured vehicles, category / city sponsorship. Shop owner only (Role::OWNER_ONLY_PREFIXES).
+            'key' => 'promotions',
+            'name' => 'Promotions',
+            'route_name' => '/vendor/promotions',
+            'icon' => 'Megaphone',
             'sort_order' => 5,
         ],
         [
@@ -130,6 +130,13 @@ class MenuSeeder extends Seeder
             'children' => [
                 ['key' => 'shop', 'name' => 'Shop Profile', 'route_name' => '/vendor/settings/shop', 'icon' => 'Building2', 'sort_order' => 1],
                 ['key' => 'locations', 'name' => 'Locations', 'route_name' => '/vendor/settings/locations', 'icon' => 'MapPin', 'sort_order' => 2],
+                // Staff and roles sit under Settings in the nav but keep their own slugs, so their
+                // permissions stay "vendor-staff-*" / "vendor-roles-*" (StaffController, Role::OWNER_ONLY_PREFIXES).
+                ['key' => 'staff', 'slug' => 'staff', 'name' => 'Staff', 'route_name' => '/vendor/staff', 'icon' => 'Users', 'sort_order' => 3],
+                // The shop's own roles — shop owner only (its permissions come only with the owner role).
+                ['key' => 'roles', 'slug' => 'roles', 'name' => 'Roles & Permissions', 'route_name' => '/vendor/roles', 'icon' => 'KeyRound', 'sort_order' => 4],
+                // The shop's plan & paying for it — shop owner only (Role::OWNER_ONLY_PREFIXES).
+                ['key' => 'subscription', 'slug' => 'subscription', 'name' => 'Subscription', 'route_name' => '/vendor/settings/subscription', 'icon' => 'Crown', 'sort_order' => 5],
             ],
         ],
     ];
@@ -138,9 +145,9 @@ class MenuSeeder extends Seeder
      * Which "{slug}-{action}" permissions each marketplace role gets. The
      * single source of truth for "what can role X see in the nav" - see
      * app-doc/marketplace/03-permissions-model.md "Layer 1 — Roles".
-     * Fine-grained per-shop abilities (can THIS staff member respond to
-     * bookings at THIS shop) are a separate layer on shop_members.abilities,
-     * not here.
+     * Only platform roles live here (just `customer`). Each shop's roles
+     * belong to that shop: shop-owner (created on registration, full access)
+     * and any the owner creates.
      */
     /**
      * Which navigation audience each role's permissions below are
@@ -150,8 +157,6 @@ class MenuSeeder extends Seeder
      */
     private array $roleAudience = [
         'customer'   => 'customer',
-        'shop-owner' => 'vendor',
-        'shop-staff' => 'vendor',
     ];
 
     private array $rolePermissions = [
@@ -163,47 +168,22 @@ class MenuSeeder extends Seeder
             'disputes'           => ['view', 'create'],
             'profile'            => ['view', 'edit'],
         ],
-        'shop-owner' => [
-            'dashboard'          => ['view'],
-            'vehicles-list'      => ['view', 'create', 'edit', 'delete'],
-            'vehicles-calendar'  => ['view', 'edit'],
-            'vehicles-categories' => ['view'],
-            'vehicles-bookings'  => ['view', 'create', 'edit'],
-            'vehicles-reviews'   => ['view', 'edit'],
-            'vehicles-inquiries' => ['view', 'edit'],
-            'finance-earnings'   => ['view'],
-            'finance-payouts'    => ['view'],
-            'finance-bank_details' => ['view', 'edit'],
-            'expense-expenses'   => ['view', 'create', 'edit', 'delete'],
-            'expense-categories' => ['view', 'create', 'edit', 'delete'],
-            'staff'              => ['view', 'create', 'edit', 'delete'],
-            'settings-shop'      => ['view', 'edit'],
-            'settings-locations' => ['view', 'create', 'edit', 'delete'],
-        ],
-        'shop-staff' => [
-            'dashboard'          => ['view'],
-            'vehicles-list'      => ['view', 'edit'],
-            'vehicles-calendar'  => ['view', 'edit'],
-            'vehicles-categories' => ['view'],
-            'vehicles-bookings'  => ['view', 'edit'],
-            'vehicles-reviews'   => ['view', 'edit'],
-            'vehicles-inquiries' => ['view', 'edit'],
-            'expense-expenses'   => ['view'],
-        ],
     ];
 
     public function run(): void
     {
+        // Menus are rebuilt from the definitions above every run. Permissions
+        // and role assignments are NOT wiped: they're only created when
+        // missing, so role changes made on the platform's Roles & Permissions
+        // page survive a re-seed (see the role loop below).
         Schema::disableForeignKeyConstraints();
         DB::table('model_has_permissions')->truncate();
-        DB::table('role_has_permissions')->truncate();
-        Permission::truncate();
         Menu::truncate();
         Schema::enableForeignKeyConstraints();
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         foreach (array_keys($this->rolePermissions) as $roleName) {
-            Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+            Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web', 'shop_id' => null]);
         }
 
         DB::transaction(function () {
@@ -222,6 +202,13 @@ class MenuSeeder extends Seeder
         foreach ($this->rolePermissions as $roleName => $slugActions) {
             $role = Role::findByName($roleName, 'web');
             $audience = $this->roleAudience[$roleName];
+
+            // Defaults only on a fresh install — after that the platform's
+            // Roles & Permissions page owns them.
+            if ($role->permissions()->exists()) {
+                continue;
+            }
+
             $permissionNames = [];
             foreach ($slugActions as $slug => $actions) {
                 foreach ($actions as $action) {
@@ -237,10 +224,12 @@ class MenuSeeder extends Seeder
     /**
      * Recursively upserts a module (and its children, if any), building the
      * stored slug as parent-child-child... by chaining each ancestor's key.
+     * A module may set its own 'slug' to keep its permission names when it
+     * is moved under a different parent.
      */
     private function seedModule(array $module, string $audience, ?string $parentSlug, ?int $parentId): void
     {
-        $slug = $parentSlug ? "{$parentSlug}-{$module['key']}" : $module['key'];
+        $slug = $module['slug'] ?? ($parentSlug ? "{$parentSlug}-{$module['key']}" : $module['key']);
 
         if (isset($module['children'])) {
             $parent = $this->section($audience, $slug, $module['name'], $module['sort_order'], $module['icon'] ?? null, $parentId);
@@ -289,15 +278,17 @@ class MenuSeeder extends Seeder
     private function generatePermissions(): void
     {
         $menus = Menu::whereNotNull('route_name')->get(['audience', 'slug']);
+        $names = [];
 
         foreach ($menus as $menu) {
             foreach (['view', 'create', 'edit', 'delete'] as $action) {
-                Permission::firstOrCreate([
-                    'name'       => "{$menu->audience}-{$menu->slug}-{$action}",
-                    'guard_name' => 'web',
-                ]);
+                $names[] = $name = "{$menu->audience}-{$menu->slug}-{$action}";
+                Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
             }
         }
+
+        // Drop permissions for menus that no longer exist (their role links go with them).
+        Permission::whereNotIn('name', $names)->get()->each->delete();
     }
 
     private function section(string $audience, string $slug, string $name, int $sortOrder, ?string $icon = null, ?int $parentId = null): Menu

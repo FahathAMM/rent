@@ -20,7 +20,7 @@ class ReportController extends Controller
     public function index(Request $request): JsonResponse
     {
         $reports = Report::with(['reportedBy:id,name,email', 'reviewedBy:id,name'])
-            ->when($request->status, fn ($q) => $q->where('status', $request->status), fn ($q) => $q->where('status', Report::STATUS_NEW))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->reason, fn ($q) => $q->where('reason', $request->reason))
             ->orderByDesc('created_at')
             ->paginate(min((int) $request->get('perPage', 20), 100));

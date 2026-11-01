@@ -50,6 +50,9 @@ return [
     |
     */
 
+    // Folder for the daily public visit logs (<date>.log) — VisitLogController.
+    'public_visit_path' => storage_path('logs/public_visit'),
+
     'channels' => [
 
         'stack' => [

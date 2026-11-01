@@ -5,20 +5,20 @@ namespace App\Http\Controllers\Api\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Public\VehicleBrandResource;
 use App\Models\VehicleBrand;
-use App\Queries\PublicVehicleQuery;
+use App\Repositories\PublicVehicleRepo;
 use Illuminate\Http\JsonResponse;
 
 class BrandController extends Controller
 {
     /**
      * Active brands, each with how many publicly visible vehicles it has
-     * (the same visibility rules as search, via PublicVehicleQuery) - so
+     * (the same visibility rules as search, via PublicVehicleRepo) - so
      * the vendor form can list every brand while the home page / browse
      * filter can hide brands nobody is renting out yet.
      */
     public function index(): JsonResponse
     {
-        $visibleCounts = PublicVehicleQuery::base()
+        $visibleCounts = app(PublicVehicleRepo::class)->base()
             ->whereNotNull('brand_id')
             ->selectRaw('brand_id, count(*) as aggregate')
             ->groupBy('brand_id')

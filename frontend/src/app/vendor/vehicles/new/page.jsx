@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { VehicleForm } from "@/components/vendor/VehicleForm";
-import { VehicleFormPage } from "@/components/vendor/VehicleFormPage";
+import { VehicleForm } from "../components/VehicleForm";
+import { VehicleFormPage } from "../components/VehicleFormPage";
 
 export default function NewVehiclePage() {
   const router = useRouter();

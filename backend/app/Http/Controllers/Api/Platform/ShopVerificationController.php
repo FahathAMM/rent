@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\Platform;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\ReasonRequest;
+use App\Models\Booking;
 use App\Models\RentalShop;
 use App\Models\ShopVerification;
 use App\Models\SystemAdmin;
+use App\Models\Vehicle;
 use App\Services\AuditService;
 use App\Services\ShopOnboardingService;
 use App\Traits\JsonResponse as JsonResponseTrait;
@@ -35,9 +37,38 @@ class ShopVerificationController extends Controller
 
     public function show(RentalShop $rentalShop): JsonResponse
     {
-        $rentalShop->load('owner:id,name,email', 'verifications.attachment', 'members.user:id,name,email');
+        $rentalShop->load(
+            'owner:id,name,email,phone,created_at',
+            'verifications.attachment',
+            'members:id,shop_id,name,email,status',
+            'locations:id,shop_id,name,type,address,city,district,is_active',
+        )->loadCount([
+            'vehicles',
+            'vehicles as published_vehicles_count' => fn ($q) => $q->where('status', Vehicle::STATUS_PUBLISHED),
+            'bookings',
+            'bookings as open_bookings_count' => fn ($q) => $q->whereIn('status', [
+                Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE,
+            ]),
+        ]);
 
-        return $this->response('Shop retrieved', $rentalShop);
+        // The detail page's member list shows each person's role in this shop.
+        $rentalShop->members->each(fn ($m) => $m->setAttribute('shop_role_label', $m->shopRoleLabel()));
+
+        $recentVehicles = $rentalShop->vehicles()
+            ->with(['pricing:id,vehicle_id,daily_rate', 'images' => fn ($q) => $q->where('is_primary', true)->with('attachment:id,file_path,disk')])
+            ->latest()
+            ->limit(6)
+            ->get(['id', 'shop_id', 'title', 'status', 'moderation_status', 'year', 'created_at'])
+            ->map(fn (Vehicle $v) => [
+                'id' => $v->id,
+                'title' => $v->title,
+                'status' => $v->status,
+                'moderation_status' => $v->moderation_status,
+                'daily_rate' => $v->pricing?->daily_rate,
+                'image' => ($a = $v->images->first()?->attachment) ? Storage::disk($a->disk)->url($a->file_path) : null,
+            ]);
+
+        return $this->response('Shop retrieved', $rentalShop->toArray() + ['recent_vehicles' => $recentVehicles]);
     }
 
     public function verify(RentalShop $rentalShop): JsonResponse
@@ -66,6 +97,13 @@ class ShopVerificationController extends Controller
         $shop = $this->service->activate($this->admin(), $rentalShop);
 
         return $this->response('Shop activated', $shop);
+    }
+
+    public function destroy(ReasonRequest $request, RentalShop $rentalShop): JsonResponse
+    {
+        $this->service->delete($this->admin(), $rentalShop, $request->validated('reason'));
+
+        return $this->response('Shop deleted');
     }
 
     /** A platform admin reviewing a submitted document — every access audited (see AuditService::view()). */

@@ -5,6 +5,7 @@ import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Globe2, Monitor, Home } from "lucide-react";
+import { APP_TIMEZONE } from "@/lib/utils";
 
 const ACTION_VARIANTS = {
   create: "success",
@@ -23,7 +24,7 @@ function ActionBadge({ action }) {
 
 function formatDateTime(value) {
   if (!value) return "—";
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString(undefined, { timeZone: APP_TIMEZONE });
 }
 
 export default function AuditLogsPage() {

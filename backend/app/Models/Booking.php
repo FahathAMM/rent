@@ -26,7 +26,6 @@ class Booking extends Model
     use HasFactory, BelongsToShop, SoftDeletes;
 
     public const STATUS_PENDING = 'pending';
-    public const STATUS_ACCEPTED = 'accepted';
     public const STATUS_CONFIRMED = 'confirmed';
     public const STATUS_ACTIVE = 'active';
     public const STATUS_COMPLETED = 'completed';
@@ -37,15 +36,14 @@ class Booking extends Model
     public const STATUS_CANCELLED_BY_ADMIN = 'cancelled_by_admin';
     public const STATUS_NO_SHOW = 'no_show';
 
+    // What the shop has actually received (cash or verified transfers) against total_payable.
     public const PAYMENT_UNPAID = 'unpaid';
-    public const PAYMENT_INITIATED = 'initiated';
-    public const PAYMENT_AUTHORIZED = 'authorized';
     public const PAYMENT_PARTIALLY_PAID = 'partially_paid';
     public const PAYMENT_PAID = 'paid';
-    public const PAYMENT_REFUND_PENDING = 'refund_pending';
-    public const PAYMENT_PARTIALLY_REFUNDED = 'partially_refunded';
-    public const PAYMENT_REFUNDED = 'refunded';
-    public const PAYMENT_FAILED = 'failed';
+
+    // Always paid to the shop directly - see app-doc/marketplace/09-online-payments-archive.md for the removed 'online' method.
+    public const METHOD_CASH = 'cash';
+    public const METHOD_BANK_TRANSFER = 'bank_transfer';
 
     protected $fillable = [
         'booking_reference', 'vehicle_id', 'shop_id', 'customer_id',
@@ -53,7 +51,7 @@ class Booking extends Model
         'return_location_id', 'return_address', 'delivery_requested', 'delivery_distance_km',
         'pickup_at', 'return_at', 'rental_days', 'actual_pickup_at', 'actual_return_at',
         'with_driver', 'driver_days',
-        'status', 'payment_status', 'owner_response_deadline_at', 'payment_deadline_at',
+        'status', 'payment_status', 'payment_method', 'owner_response_deadline_at',
         'accepted_at', 'decided_by', 'rejected_at', 'rejection_reason', 'confirmed_at',
         'cancelled_at', 'cancelled_by_type', 'cancelled_by_id', 'cancellation_reason',
         'completed_at', 'expired_at', 'expiry_reason',
@@ -69,7 +67,6 @@ class Booking extends Model
         'with_driver' => 'boolean',
         'delivery_requested' => 'boolean',
         'owner_response_deadline_at' => 'datetime',
-        'payment_deadline_at' => 'datetime',
         'accepted_at' => 'datetime',
         'rejected_at' => 'datetime',
         'confirmed_at' => 'datetime',
@@ -110,11 +107,6 @@ class Booking extends Model
         return $this->hasOne(BookingPricing::class);
     }
 
-    public function financials(): HasOne
-    {
-        return $this->hasOne(BookingFinancial::class);
-    }
-
     public function securityDeposit(): HasOne
     {
         return $this->hasOne(SecurityDeposit::class);
@@ -128,6 +120,12 @@ class Booking extends Model
     public function statusHistories(): HasMany
     {
         return $this->hasMany(BookingStatusHistory::class);
+    }
+
+    /** Date changes made by the shop (TransitionBooking::reschedule()), newest first - shown to the customer and on the voucher. */
+    public function dateChanges(): HasMany
+    {
+        return $this->hasMany(BookingStatusHistory::class)->where('field', 'dates')->latest('id');
     }
 
     public function inspections(): HasMany
@@ -145,11 +143,6 @@ class Booking extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function refunds(): HasMany
-    {
-        return $this->hasMany(Refund::class);
-    }
-
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);
@@ -160,9 +153,29 @@ class Booking extends Model
         return $this->hasMany(Dispute::class);
     }
 
-    public function isAwaitingPayment(): bool
+    /** Paid to the shop directly (cash at the counter or bank transfer) - the platform never holds this money. */
+    public function isPaidToShop(): bool
     {
-        return $this->status === self::STATUS_ACCEPTED
-            && in_array($this->payment_status, [self::PAYMENT_UNPAID, self::PAYMENT_INITIATED, self::PAYMENT_FAILED], true);
+        return in_array($this->payment_method, [self::METHOD_CASH, self::METHOD_BANK_TRANSFER], true);
+    }
+
+    /**
+     * Money the shop has actually received, net of anything paid back -
+     * money lines only (cash / bank); the booking charge and price
+     * adjustments are statement lines, not money. An uploaded but unverified
+     * transfer does not count.
+     */
+    public function amountPaid(): float
+    {
+        $sum = $this->relationLoaded('payments')
+            ? $this->payments->where('status', Payment::STATUS_SUCCEEDED)->whereNotNull('method')->sum(fn ($p) => (float) $p->credit - (float) $p->debit)
+            : $this->payments()->money()->where('status', Payment::STATUS_SUCCEEDED)->selectRaw('COALESCE(SUM(credit - debit), 0) as net')->value('net');
+
+        return round((float) $sum, 2);
+    }
+
+    public function balanceDue(): float
+    {
+        return max(0, round((float) ($this->pricing?->total_payable ?? 0) - $this->amountPaid(), 2));
     }
 }

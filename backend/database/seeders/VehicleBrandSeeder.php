@@ -6,16 +6,24 @@ use App\Models\VehicleBrand;
 use App\Models\VehicleModel;
 use App\Models\VehicleVariant;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
  * Starting brand -> model -> variant list for the Sri Lankan market.
  * Platform admins manage it (and upload brand logos) from /platform/brands
- * and /platform/vehicle-models. No logos are seeded; the frontend falls
- * back to the brand's initial. Safe to re-run.
+ * and /platform/vehicle-models. Safe to re-run.
+ *
+ * Logos: a brand gets storage/app/public/brand-logos/<brand-slug>.<ext>
+ * (kept in git) when that file exists. A logo an admin uploaded is kept,
+ * unless its file has gone missing. Brands without a file fall back to
+ * their initial in the frontend.
  */
 class VehicleBrandSeeder extends Seeder
 {
+    private const LOGO_DIR = 'brand-logos';
+    private const LOGO_EXTENSIONS = ['png', 'svg', 'webp', 'jpg', 'jpeg'];
+
     /** brand => [model => [variants]] */
     private const CATALOGUE = [
         'Toyota' => [
@@ -59,6 +67,7 @@ class VehicleBrandSeeder extends Seeder
                 ['slug' => Str::slug($brandName)],
                 ['name' => $brandName, 'sort_order' => ++$brandOrder, 'is_active' => true],
             );
+            $this->attachLogo($brand);
 
             $modelOrder = 0;
             foreach ($models as $modelName => $variants) {
@@ -73,6 +82,23 @@ class VehicleBrandSeeder extends Seeder
                         ['sort_order' => $i + 1, 'is_active' => true],
                     );
                 }
+            }
+        }
+    }
+
+    /** Point the brand at its bundled logo file, if there is one and it has no (working) logo yet. */
+    private function attachLogo(VehicleBrand $brand): void
+    {
+        $disk = Storage::disk('public');
+        if ($brand->logo && $disk->exists($brand->logo)) {
+            return;
+        }
+
+        foreach (self::LOGO_EXTENSIONS as $ext) {
+            $path = self::LOGO_DIR . "/{$brand->slug}.{$ext}";
+            if ($disk->exists($path)) {
+                $brand->update(['logo' => $path]);
+                return;
             }
         }
     }

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Vendor\SubscriptionController as VendorSubscriptionController;
+use App\Http\Controllers\Api\Vendor\PromotionController as VendorPromotionController;
 use App\Http\Controllers\Api\Administration\AuditLogController;
 use App\Http\Controllers\Api\Administration\MenuController;
 use App\Http\Controllers\Api\AttachmentController;
@@ -9,7 +11,6 @@ use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\PayHereWebhookController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ShopOnboardingController;
@@ -18,10 +19,10 @@ use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController
 use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
 use App\Http\Controllers\Api\Vendor\EarningsController as VendorEarningsController;
 use App\Http\Controllers\Api\Vendor\InquiryController as VendorInquiryController;
-use App\Http\Controllers\Api\Vendor\PayoutController as VendorPayoutController;
 use App\Http\Controllers\Api\Vendor\ReviewController as VendorReviewController;
 use App\Http\Controllers\Api\Vendor\ShopProfileController as VendorShopProfileController;
 use App\Http\Controllers\Api\Vendor\StaffController as VendorStaffController;
+use App\Http\Controllers\Api\Vendor\ShopRoleController as VendorShopRoleController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
 use App\Http\Controllers\Api\VehicleAvailabilityController;
@@ -40,15 +41,9 @@ Route::prefix('auth')->group(function () {
 // before auth.
 Route::get('platform-details', [PlatformDetailController::class, 'show']);
 
-// Simple traffic logging (site visits, pricing preview) — writes to a log
-// file only, no database table.
+// Simple traffic logging (public page visits, link clicks) — one log file
+// per day in storage/logs/public_visit/, no database table.
 Route::post('visits', [VisitLogController::class, 'track']);
-
-// PayHere server-to-server notification — public, unauthenticated, no
-// CSRF (api.php routes never get the web CSRF middleware group). See
-// PayHereWebhookController's docblock and
-// app-doc/marketplace/04-lifecycles.md "Payment lifecycle".
-Route::post('webhooks/payhere', [PayHereWebhookController::class, 'handle']);
 
 // The public marketplace catalogue (search, vehicle detail, shop profile,
 // categories, reviews) — see routes/public.php.
@@ -74,8 +69,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('menus/flat',       [MenuController::class, 'flat']);
 
     // Shop onboarding — deliberately NOT behind shop.context: shop
-    // registration is how the first shop is created at all, and an
-    // unverified shop's owner has no vendor role yet. See
+    // registration is how the first shop is created at all, and until a
+    // platform admin verifies the shop these endpoints are all its owner
+    // can reach (shop.verified closes the vendor workspace). See
     // app-doc/marketplace/01-phase1-architecture.md section 3.1.
     Route::prefix('onboarding')->group(function () {
         Route::get('shops',                       [ShopOnboardingController::class, 'index']);
@@ -109,10 +105,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
 
     // ─── Vendor-side — requires an active shop context ───────────────────────
-    // shop.context validates X-Shop-Id against the caller's shop_members
-    // rows and pins it for ShopScope/BelongsToShop — see
+    // shop.context pins the caller's own shop (users.shop_id) as the
+    // active shop for ShopScope/BelongsToShop — see
     // app-doc/marketplace/03-permissions-model.md "Layer 2".
-    Route::middleware('shop.context')->group(function () {
+    // shop.verified then keeps the whole workspace closed until a platform
+    // admin verifies the shop — before that the owner only has onboarding.
+    // subscription.active then locks it again for an unpaid shop (no running plan) — only the
+    // vendor/subscription endpoints stay open so the owner can pay. See EnsureSubscriptionActive.
+    Route::middleware(['shop.context', 'shop.verified', 'subscription.active'])->group(function () {
         Route::get('dashboard', [VendorDashboardController::class, 'index']);
 
         Route::apiResource('vehicles', VendorVehicleController::class);
@@ -131,16 +131,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('vehicle-images/{image}', [VehicleImageController::class, 'destroy']);
         Route::post('vehicle-images/{image}/primary', [VehicleImageController::class, 'setPrimary']);
 
-        Route::apiResource('expense-categories', ExpenseCategoryController::class)->parameters(['expense-categories' => 'expenseCategory']);
-        Route::apiResource('expenses', ExpenseController::class);
+        // Plan features (see SubscriptionPlan::FEATURES) — 403 code=plan_feature when the shop's plan lacks them.
+        Route::middleware('plan.feature:expenses')->group(function () {
+            Route::apiResource('expense-categories', ExpenseCategoryController::class)->parameters(['expense-categories' => 'expenseCategory']);
+            Route::apiResource('expenses', ExpenseController::class);
+        });
 
         // The shop's branches / pickup points — see App\Repositories\LocationRepo.
         Route::apiResource('locations', LocationController::class);
 
         // All-vehicle availability calendar.
-        Route::get('vehicles-availability', [VehicleAvailabilityController::class, 'index']);
-        Route::post('vehicles/{vehicle}/availability/block', [VehicleAvailabilityController::class, 'block']);
-        Route::post('vehicles/{vehicle}/availability/unblock', [VehicleAvailabilityController::class, 'unblock']);
+        Route::middleware('plan.feature:calendar')->group(function () {
+            Route::get('vehicles-availability', [VehicleAvailabilityController::class, 'index']);
+            Route::post('vehicles/{vehicle}/availability/block', [VehicleAvailabilityController::class, 'block']);
+            Route::post('vehicles/{vehicle}/availability/unblock', [VehicleAvailabilityController::class, 'unblock']);
+        });
 
         // Attachments — generic polymorphic uploads. Permission is resolved
         // per attachable_type inside the controller (see
@@ -161,9 +166,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // above (same auth:sanctum group, no other path segment would
         // otherwise distinguish them); matches
         // app-doc/marketplace/05-ui-and-api-map.md's `/vendor/bookings`
-        // exactly. confirm/active/completed transitions (payment
-        // webhook, handover, return) land in Phases 5-6 once payments
-        // and inspections exist.
+        // exactly.
         Route::prefix('vendor')->group(function () {
             Route::get('bookings', [VendorBookingController::class, 'index']);
             Route::get('bookings/{booking:booking_reference}', [VendorBookingController::class, 'show']);
@@ -172,8 +175,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('bookings/{booking:booking_reference}/cancel', [VendorBookingController::class, 'cancel']);
             Route::post('bookings/{booking:booking_reference}/handover', [VendorBookingController::class, 'handover']);
             Route::post('bookings/{booking:booking_reference}/return', [VendorBookingController::class, 'return']);
-            Route::get('payouts', [VendorPayoutController::class, 'index']);
-            Route::get('payouts/{payout}', [VendorPayoutController::class, 'show']);
+            Route::post('bookings/{booking:booking_reference}/payments', [VendorBookingController::class, 'recordPayment']);
+            Route::post('bookings/{booking:booking_reference}/reschedule/preview', [VendorBookingController::class, 'previewReschedule']);
+            Route::post('bookings/{booking:booking_reference}/reschedule', [VendorBookingController::class, 'reschedule']);
+            Route::get('bookings/{booking:booking_reference}/voucher', [VendorBookingController::class, 'voucher']);
+            Route::post('bookings/{booking:booking_reference}/transfers/{payment}/verify', [VendorBookingController::class, 'verifyTransfer']);
+            Route::post('bookings/{booking:booking_reference}/transfers/{payment}/reject', [VendorBookingController::class, 'rejectTransfer']);
+            Route::get('bookings/{booking:booking_reference}/transfers/{payment}/proof', [VendorBookingController::class, 'transferProof']);
             Route::get('reviews', [VendorReviewController::class, 'index']);
             Route::post('reviews/{review}/reply', [VendorReviewController::class, 'reply']);
             Route::get('inquiries', [VendorInquiryController::class, 'index']);
@@ -188,14 +196,36 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::get('bank-details', [VendorBankDetailController::class, 'index']);
             Route::post('bank-details', [VendorBankDetailController::class, 'store']);
+            Route::put('bank-details/{bankDetail}', [VendorBankDetailController::class, 'update']);
             Route::post('bank-details/{bankDetail}/primary', [VendorBankDetailController::class, 'makePrimary']);
             Route::delete('bank-details/{bankDetail}', [VendorBankDetailController::class, 'destroy']);
 
-            Route::get('staff', [VendorStaffController::class, 'index']);
-            Route::get('staff/abilities', [VendorStaffController::class, 'abilities']);
-            Route::post('staff', [VendorStaffController::class, 'store']);
-            Route::put('staff/{staff}', [VendorStaffController::class, 'update']);
-            Route::delete('staff/{staff}', [VendorStaffController::class, 'destroy']);
+            Route::middleware('plan.feature:staff')->group(function () {
+                Route::get('staff', [VendorStaffController::class, 'index']);
+                Route::get('staff/roles', [VendorStaffController::class, 'roles']);
+                Route::post('staff', [VendorStaffController::class, 'store']);
+                Route::put('staff/{staff}', [VendorStaffController::class, 'update']);
+                Route::delete('staff/{staff}', [VendorStaffController::class, 'destroy']);
+
+                // The shop's own roles — shop owner only (enforced in the controller).
+                Route::get('roles', [VendorShopRoleController::class, 'index']);
+                Route::get('roles/permissions', [VendorShopRoleController::class, 'permissions']);
+                Route::post('roles', [VendorShopRoleController::class, 'store']);
+                Route::put('roles/{role}', [VendorShopRoleController::class, 'update']);
+                Route::delete('roles/{role}', [VendorShopRoleController::class, 'destroy']);
+            });
+
+            // Paid visibility — featured vehicles and category / city sponsorship (owner only, see the controller).
+            Route::get('promotions', [VendorPromotionController::class, 'index']);
+            Route::get('promotions/availability', [VendorPromotionController::class, 'availability']);
+            Route::post('promotions/payments', [VendorPromotionController::class, 'pay']);
+            Route::get('promotions/{promotion}/proof', [VendorPromotionController::class, 'proof']);
+
+            // The shop's plan — summary for everyone in the shop, the rest owner-only (see the controller).
+            Route::get('subscription/summary', [VendorSubscriptionController::class, 'summary']);
+            Route::get('subscription', [VendorSubscriptionController::class, 'index']);
+            Route::post('subscription/payments', [VendorSubscriptionController::class, 'pay']);
+            Route::get('subscription/payments/{payment}/proof', [VendorSubscriptionController::class, 'proof']);
         });
     });
 });

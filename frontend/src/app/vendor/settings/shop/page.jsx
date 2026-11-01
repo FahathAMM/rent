@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { vendorShopProfileService } from "@/services/vendorShopProfileService";
+import { vendorService } from "@/services/vendorService";
 import { useAuthStore } from "@/store/authStore";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { publicService } from "@/services/publicService";
+import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { cn } from "@/lib/utils";
 import { ShopCover } from "@/components/marketplace/ShopCover";
 import {
@@ -35,6 +36,7 @@ import {
   MapPin,
   Clock,
   ScrollText,
+  Landmark,
   Upload,
   Trash2,
   Camera,
@@ -112,6 +114,14 @@ const SECTIONS = [
     description:
       "Add your own policy sections — each one shows on your public shop page in this order.",
     fields: ["policies"],
+  },
+  {
+    id: "payments",
+    label: "Bank Transfer",
+    icon: Landmark,
+    description:
+      "Customers can pay by bank transfer when you have a primary bank account on file. Set the advance as a % of the booking.",
+    fields: ["advance_percentage"],
   },
 ];
 
@@ -286,7 +296,7 @@ function BrandingSection({ shop, canEdit }) {
   const [busy, setBusy] = useState(null);
 
   const upload = useMutation({
-    mutationFn: (fd) => vendorShopProfileService.updateBranding(fd),
+    mutationFn: (fd) => vendorService.shopProfile.updateBranding(fd),
     onSuccess: (res) => {
       qc.setQueryData(["vendor-shop-profile"], res.data.data);
       toast.success("Branding updated");
@@ -484,13 +494,14 @@ function HoursSection({ hours, setHours, canEdit }) {
 export default function ShopProfileSettingsPage() {
   const qc = useQueryClient();
   const { can } = useAuthStore();
+  const { format } = useCurrencyFormat();
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState({});
   const [active, setActive] = useState("branding");
 
   const { data: shop, isLoading } = useQuery({
     queryKey: ["vendor-shop-profile"],
-    queryFn: () => vendorShopProfileService.show().then((r) => r.data.data),
+    queryFn: () => vendorService.shopProfile.show().then((r) => r.data.data),
   });
 
   const { data: districts } = useQuery({
@@ -514,7 +525,7 @@ export default function ShopProfileSettingsPage() {
   };
 
   const save = useMutation({
-    mutationFn: (payload) => vendorShopProfileService.update(payload),
+    mutationFn: (payload) => vendorService.shopProfile.update(payload),
     onSuccess: (res) => {
       qc.setQueryData(["vendor-shop-profile"], res.data.data);
       setForm(pickForm(res.data.data));
@@ -763,6 +774,41 @@ export default function ShopProfileSettingsPage() {
                     <p className="text-right text-xs text-muted-foreground">
                       {form.description?.length ?? 0} / 5000
                     </p>
+                  </div>
+                )}
+
+                {section.id === "payments" && (
+                  <div className="space-y-3">
+                    <TextInput
+                      label="Advance (% of booking total)"
+                      type="number"
+                      min="1"
+                      max="99"
+                      step="0.5"
+                      value={form.advance_percentage ?? ""}
+                      onChange={fi("advance_percentage")}
+                      disabled={!canEdit}
+                      error={err("advance_percentage")}
+                      placeholder="Leave empty to ask for the full amount"
+                    />
+                    <div className="space-y-1.5 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                      <p>
+                        <span className="font-medium text-foreground">How the advance works.</span> The advance is this
+                        percentage of the booking total (rental, tax and deposit), rounded up. The default is 5%.
+                      </p>
+                      <p>
+                        Example: with 5% on a {format(26000)} booking, the customer&apos;s first transfer can be any
+                        amount from <span className="font-medium text-foreground">{format(1300)}</span> (the advance) up
+                        to the full <span className="font-medium text-foreground">{format(26000)}</span>. Whatever is left
+                        can be sent in more transfers or paid in cash at pickup.
+                      </p>
+                      <p>
+                        A transfer only counts once you verify it against your bank account. Leave this empty if you
+                        want the full amount up front. Add a cancellation / refund section under Policies — customers
+                        see it on their booking. Manage your account under{" "}
+                        <Link href="/vendor/finance/bank-details" className="underline">Bank details</Link>.
+                      </p>
+                    </div>
                   </div>
                 )}
 

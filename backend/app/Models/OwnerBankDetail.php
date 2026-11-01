@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * account_number is encrypted at rest. No resource/endpoint should ever
- * expose it - only account_number_last4 is meant for display.
+ * account_number is encrypted at rest and never exposed in vendor/platform
+ * listings - only account_number_last4 is meant for display there. The one
+ * deliberate exception: the primary account's full number is shown to a
+ * customer on their own confirmed bank-transfer booking (Account\BookingResource),
+ * since they need it to make the transfer.
  */
 class OwnerBankDetail extends Model
 {

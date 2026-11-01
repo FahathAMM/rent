@@ -4,14 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Administration\User;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleCategory;
 use App\Models\VehicleColour;
 use App\Models\VehicleModel;
 use App\Models\VehicleVariant;
-use App\Support\ShopAbility;
+use Database\Seeders\MenuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -39,6 +38,7 @@ class VehicleAuthorizationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(MenuSeeder::class); // vendor permissions
 
         $this->category = VehicleCategory::create(['name' => 'Car', 'slug' => 'car', 'sort_order' => 1, 'is_active' => true]);
         $this->brand = VehicleBrand::create(['name' => 'Toyota', 'slug' => 'toyota', 'is_active' => true]);
@@ -47,7 +47,8 @@ class VehicleAuthorizationTest extends TestCase
         $this->colour = VehicleColour::create(['name' => 'White', 'slug' => 'white', 'hex' => '#FFFFFF', 'is_active' => true]);
         $owner = User::factory()->create();
         $this->shop = RentalShop::factory()->create(['owner_user_id' => $owner->id]);
-        ShopMember::create(['shop_id' => $this->shop->id, 'user_id' => $owner->id, 'role' => 'owner', 'status' => 'active']);
+        $owner->update(['shop_id' => $this->shop->id]);
+        $owner->setShopRole('owner');
     }
 
     private function as(User $user)
@@ -67,7 +68,6 @@ class VehicleAuthorizationTest extends TestCase
     public function test_owner_can_create_a_vehicle(): void
     {
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertCreated();
     }
@@ -80,13 +80,11 @@ class VehicleAuthorizationTest extends TestCase
     public function test_pricing_saves_with_optional_fields_left_empty(): void
     {
         $id = $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertCreated()
             ->json('data.id');
 
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->putJson("/api/vehicles/{$id}/pricing", [
                 'daily_rate' => '5500',
                 'weekly_rate' => '', 'monthly_rate' => '', 'security_deposit' => '',
@@ -103,7 +101,6 @@ class VehicleAuthorizationTest extends TestCase
     public function test_make_model_variant_and_colour_names_come_from_the_catalogue_not_the_request(): void
     {
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', [
                 'make' => 'Typo Motors', 'model' => 'Aqqua',
                 'variant_id' => $this->variant->id, 'colour_id' => $this->colour->id,
@@ -122,7 +119,6 @@ class VehicleAuthorizationTest extends TestCase
         $alto = VehicleModel::create(['brand_id' => $suzuki->id, 'name' => 'Alto', 'slug' => 'alto', 'is_active' => true]);
 
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', ['model_id' => $alto->id] + $this->payload())
             ->assertUnprocessable()
             ->assertJsonValidationErrors('model_id');
@@ -134,7 +130,6 @@ class VehicleAuthorizationTest extends TestCase
         $premioX = VehicleVariant::create(['model_id' => $premio->id, 'name' => 'X', 'is_active' => true]);
 
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', ['variant_id' => $premioX->id] + $this->payload())
             ->assertUnprocessable()
             ->assertJsonValidationErrors('variant_id');
@@ -143,14 +138,12 @@ class VehicleAuthorizationTest extends TestCase
     public function test_changing_the_model_drops_a_variant_that_belonged_to_the_old_one(): void
     {
         $created = $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', ['variant_id' => $this->variant->id] + $this->payload())
             ->assertCreated();
 
         $premio = VehicleModel::create(['brand_id' => $this->brand->id, 'name' => 'Premio', 'slug' => 'premio', 'is_active' => true]);
 
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->putJson('/api/vehicles/' . $created->json('data.id'), ['model_id' => $premio->id])
             ->assertOk()
             ->assertJsonPath('data.model', 'Premio')
@@ -163,76 +156,61 @@ class VehicleAuthorizationTest extends TestCase
         $this->brand->update(['is_active' => false]);
 
         $this->as($this->shop->owner)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertUnprocessable()
             ->assertJsonValidationErrors('brand_id');
     }
 
-    public function test_staff_without_listings_create_ability_is_denied(): void
+    /** A role like the owner might make for front-desk staff: view/edit vehicles, no create/delete. */
+    private const STAFF = ['vendor-vehicles-list-view', 'vendor-vehicles-list-edit'];
+    private const MANAGER = ['vendor-vehicles-list-view', 'vendor-vehicles-list-create', 'vendor-vehicles-list-edit', 'vendor-vehicles-list-delete'];
+
+    public function test_staff_role_cannot_create_vehicles(): void
     {
-        $staff = User::factory()->create();
-        ShopMember::create([
-            'shop_id' => $this->shop->id, 'user_id' => $staff->id, 'role' => 'staff',
-            'abilities' => ShopAbility::presetFor('staff'), // has listings.view, not listings.create
-            'status' => 'active',
-        ]);
+        $staff = User::factory()->memberOf($this->shop, self::STAFF)->create();
 
         $this->as($staff)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertForbidden();
     }
 
-    public function test_manager_with_listings_create_ability_succeeds(): void
+    public function test_manager_role_can_create_vehicles(): void
     {
-        $manager = User::factory()->create();
-        ShopMember::create([
-            'shop_id' => $this->shop->id, 'user_id' => $manager->id, 'role' => 'manager',
-            'abilities' => ShopAbility::presetFor('manager'),
-            'status' => 'active',
-        ]);
+        $manager = User::factory()->memberOf($this->shop, self::MANAGER)->create();
 
         $this->as($manager)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertCreated();
     }
 
-    public function test_staff_can_view_but_not_edit_pricing_without_the_ability(): void
+    public function test_staff_role_can_view_and_edit_but_not_archive_vehicles(): void
     {
         $vehicle = Vehicle::create($this->payload() + [
             'shop_id' => $this->shop->id, 'slug' => 'staff-view-car',
             'status' => Vehicle::STATUS_PUBLISHED, 'moderation_status' => Vehicle::MODERATION_APPROVED,
         ]);
 
-        $staff = User::factory()->create();
-        ShopMember::create([
-            'shop_id' => $this->shop->id, 'user_id' => $staff->id, 'role' => 'staff',
-            'abilities' => ShopAbility::presetFor('staff'), 'status' => 'active',
-        ]);
+        $staff = User::factory()->memberOf($this->shop, self::STAFF)->create();
 
         $this->as($staff)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->getJson("/api/vehicles/{$vehicle->id}")
             ->assertOk();
 
         $this->as($staff)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->putJson("/api/vehicles/{$vehicle->id}/pricing", ['daily_rate' => 5000])
+            ->assertOk();
+
+        // archiving needs vendor-vehicles-list-delete, which this role doesn't have
+        $this->as($staff)
+            ->postJson("/api/vehicles/{$vehicle->id}/archive")
             ->assertForbidden();
     }
 
-    public function test_a_suspended_members_ability_grant_is_revoked(): void
+    public function test_a_suspended_account_loses_its_role_permissions(): void
     {
-        $staff = User::factory()->create();
-        ShopMember::create([
-            'shop_id' => $this->shop->id, 'user_id' => $staff->id, 'role' => 'manager',
-            'abilities' => ShopAbility::presetFor('manager'), 'status' => 'suspended',
-        ]);
+        $staff = User::factory()->suspended()->memberOf($this->shop, self::MANAGER)->create();
 
         $this->as($staff)
-            ->withHeader('X-Shop-Id', (string) $this->shop->id)
             ->postJson('/api/vehicles', $this->payload())
             ->assertForbidden();
     }

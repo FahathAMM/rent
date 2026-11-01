@@ -2,10 +2,10 @@
 
 namespace App\Queries;
 
+use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\Dispute;
 use App\Models\Scopes\ShopScope;
-use App\Models\ShopMember;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -44,29 +44,24 @@ class CustomerDisputeQuery
      */
     public static function resolveSide(int $userId, Booking $booking): ?string
     {
-        $member = ShopMember::where('shop_id', $booking->shop_id)
-            ->where('user_id', $userId)
-            ->where('status', ShopMember::STATUS_ACTIVE)
-            ->first();
+        $user = User::find($userId);
 
-        if (!$member) {
+        if (!$user || (int) $user->shop_id !== $booking->shop_id) {
             return null;
         }
 
-        return $member->role === ShopMember::ROLE_OWNER ? 'owner' : 'staff';
+        return $user->isShopOwner() ? 'owner' : 'staff';
     }
 
     /** Every dispute this user is a party to, either as raiser or as the shop side of the booking. */
     public static function forUser(int $userId): Builder
     {
-        $shopIds = ShopMember::where('user_id', $userId)
-            ->where('status', ShopMember::STATUS_ACTIVE)
-            ->pluck('shop_id');
+        $shopId = User::whereKey($userId)->value('shop_id');
 
         return Dispute::where('raised_by_user_id', $userId)
-            ->orWhereHas('booking', fn (Builder $q) => $q
+            ->when($shopId, fn (Builder $d) => $d->orWhereHas('booking', fn (Builder $q) => $q
                 ->withoutGlobalScope(ShopScope::class)
-                ->whereIn('shop_id', $shopIds))
+                ->where('shop_id', $shopId)))
             ->with(['booking' => fn ($q) => $q->withoutGlobalScope(ShopScope::class), 'raisedBy:id,name']);
     }
 }

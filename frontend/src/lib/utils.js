@@ -5,36 +5,9 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount, settings = null) {
-  const num = amount ?? 0;
-
-  // No settings means no company context (platform admin, or pre-signup
-  // public pages like the pricing dialog) — default to AED, this platform's
-  // own operating currency, matching useCompanyCurrencyFormat's default
-  // rather than an unrelated USD fallback.
-  if (!settings || !Object.keys(settings).length) {
-    return new Intl.NumberFormat("en-AE", {
-      style: "currency",
-      currency: "AED",
-      minimumFractionDigits: 2,
-    }).format(num);
-  }
-
-  const symbol   = settings.currency_symbol    ?? "$";
-  const position = settings.currency_position  ?? "left";
-  const decimals = Math.max(0, parseInt(settings.decimal_places    ?? "2", 10));
-  const decSep   = settings.decimal_separator  ?? ".";
-  const thouSep  = settings.thousand_separator ?? ",";
-
-  const abs      = Math.abs(num);
-  const fixed    = abs.toFixed(decimals);
-  const [intPart, decPart = ""] = fixed.split(".");
-  const intFmt   = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, thouSep);
-  const numStr   = decimals > 0 ? `${intFmt}${decSep}${decPart}` : intFmt;
-  const sign     = num < 0 ? "-" : "";
-
-  return position === "right" ? `${sign}${numStr}${symbol}` : `${sign}${symbol}${numStr}`;
-}
+// The API sends UTC timestamps; everyone sees them in Sri Lanka time
+// regardless of their device's timezone (backend config/app.php display_timezone).
+export const APP_TIMEZONE = "Asia/Colombo";
 
 export function formatDate(date, options = {}) {
   if (!date) return "—";
@@ -42,6 +15,7 @@ export function formatDate(date, options = {}) {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: APP_TIMEZONE,
     ...options,
   }).format(new Date(date));
 }
@@ -74,15 +48,24 @@ export function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-export function localISODate(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+/** Shows a blob (PDF/image) in a new tab instead of saving it. Pass a tab opened synchronously in the click handler so popup blockers allow it. */
+export function openBlob(blob, tab = window.open("", "_blank")) {
+  const url = URL.createObjectURL(blob);
+  if (tab) tab.location.href = url;
+  else window.location.href = url;
+  // Revoke later — the new tab needs the URL while it loads.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-export function todayLocalISO() {
-  return localISODate(new Date());
+/**
+ * The `?next=` path to return to after login/register — only a path on
+ * this site ("/vehicles/x"), never "//evil.com" or "https://..." (an open
+ * redirect), else `fallback`.
+ */
+export function safeNextPath(fallback) {
+  if (typeof window === "undefined") return fallback;
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : fallback;
 }
 
 export function getInitials(name) {

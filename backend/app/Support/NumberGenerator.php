@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * Generates sequential document numbers (bookings, payouts, agreements,
+ * Generates sequential document numbers (bookings, agreements,
  * expenses) safely under concurrent requests by locking the shop's
  * settings row for the duration of the increment.
  *
@@ -19,7 +19,6 @@ final class NumberGenerator
 {
     private const TYPES = [
         'booking'   => ['booking_prefix', 'next_booking_number', true, 5],
-        'payout'    => ['payout_prefix', 'next_payout_number', true, 5],
         'agreement' => ['agreement_prefix', 'next_agreement_number', true, 5],
         'expense'   => ['expense_prefix', 'next_expense_number', true, 5],
         'branch'    => ['branch_prefix', 'next_branch_number', false, 3],

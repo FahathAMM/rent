@@ -28,12 +28,12 @@ class ShopOnboardingController extends Controller
 
     public function __construct(private ShopOnboardingService $service) {}
 
-    /** Every shop (of any status) the caller owns or staffs — not shop-scoped, this IS the shop-discovery endpoint. */
+    /** The caller's shop (of any status), as a list — not shop-scoped, this IS the shop-discovery endpoint. */
     public function index(): JsonResponse
     {
         $shops = RentalShop::query()
-            ->whereHas('members', fn ($q) => $q->where('user_id', AuthUser::id()))
-            ->with('verifications')
+            ->whereHas('members', fn ($q) => $q->whereKey(AuthUser::id()))
+            ->with('verifications.attachment')
             ->get();
 
         return $this->response('Shops retrieved', $shops);
@@ -52,7 +52,7 @@ class ShopOnboardingController extends Controller
     {
         $shopModel = RentalShop::query()
             ->where('id', $shop)
-            ->whereHas('members', fn ($q) => $q->where('user_id', AuthUser::id())->where('role', 'owner'))
+            ->where('owner_user_id', AuthUser::id())
             ->firstOrFail();
 
         $file = $request->file('file');
@@ -84,7 +84,7 @@ class ShopOnboardingController extends Controller
     {
         $shopModel = RentalShop::query()
             ->where('id', $shop)
-            ->whereHas('members', fn ($q) => $q->where('user_id', AuthUser::id())->where('role', 'owner'))
+            ->where('owner_user_id', AuthUser::id())
             ->firstOrFail();
 
         $shopModel = $this->service->submitForVerification($shopModel);
@@ -92,14 +92,14 @@ class ShopOnboardingController extends Controller
         return $this->response('Shop submitted for verification', $shopModel);
     }
 
-    /** An owner/manager of the shop viewing their own uploaded document — never anyone else's. */
+    /** The shop's owner (or a member allowed to see the shop profile) viewing its own uploaded document — never another shop's. */
     public function downloadDocument(ShopVerification $verification): StreamedResponse
     {
-        $isMember = $verification->shop->members()
-            ->where('user_id', AuthUser::id())
-            ->whereIn('role', ['owner', 'manager'])
-            ->exists();
-        abort_unless($isMember, 403);
+        $shop = $verification->shop;
+        $user = AuthUser::user();
+        $allowed = (int) $shop->owner_user_id === $user->id
+            || ((int) $user->shop_id === $shop->id && $user->hasVendorPermission('vendor-settings-shop-view'));
+        abort_unless($allowed, 403);
 
         $attachment = $verification->attachment;
         abort_unless(Storage::disk($attachment->disk)->exists($attachment->file_path), 404);

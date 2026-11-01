@@ -7,18 +7,14 @@ use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\BookingPricing;
 use App\Models\Customer;
-use App\Models\Payment;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
 use App\Models\VehicleCategory;
-use App\Services\CommissionResolver;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -53,7 +49,7 @@ class BookingConcurrencyTest extends TestCase
         $category = VehicleCategory::create(['name' => 'Car', 'slug' => 'car', 'sort_order' => 1, 'is_active' => true]);
         $this->owner = User::factory()->create();
         $this->shop = RentalShop::factory()->create(['owner_user_id' => $this->owner->id]);
-        ShopMember::create(['shop_id' => $this->shop->id, 'user_id' => $this->owner->id, 'role' => 'owner', 'status' => 'active']);
+        $this->owner->update(['shop_id' => $this->shop->id]);
 
         $this->vehicle = Vehicle::create([
             'shop_id' => $this->shop->id, 'category_id' => $category->id, 'title' => 'Race Test Car',
@@ -103,38 +99,11 @@ class BookingConcurrencyTest extends TestCase
 
         $action = app(TransitionBooking::class);
 
-        $action->accept($bookingA, $this->owner->id, 12);
-        $action->confirm($bookingA->fresh(), $this->makePayment($bookingA), app(CommissionResolver::class));
+        // Accepting confirms straight away and books the dates under the vehicle row lock.
+        $action->accept($bookingA, $this->owner->id);
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        $action->accept($bookingB->fresh(), $this->owner->id, 12);
-    }
-
-    public function test_confirming_one_booking_rejects_a_second_confirm_for_overlapping_dates(): void
-    {
-        $pickup = now()->addDays(5)->startOfDay();
-        $return = now()->addDays(8)->startOfDay();
-
-        $bookingA = $this->makeBooking($this->customerA, 'BKG-RACE-C', $pickup, $return);
-        $bookingB = $this->makeBooking($this->customerB, 'BKG-RACE-D', $pickup->copy()->addDay(), $return->copy()->addDay());
-
-        $action = app(TransitionBooking::class);
-        $resolver = app(CommissionResolver::class);
-
-        // Jump both straight to "accepted" via a raw update rather than
-        // TransitionBooking::accept() — accept() would itself reject the
-        // second one via its own ReservationHold overlap check, which is
-        // exactly the mechanism the FIRST test above already covers. This
-        // test isolates the other, independent layer: assertNoOverlap's
-        // re-check against CONFIRMED/ACTIVE bookings run again inside
-        // confirm() itself, regardless of how either booking got to
-        // "accepted" in the first place.
-        Booking::whereIn('id', [$bookingA->id, $bookingB->id])->update(['status' => Booking::STATUS_ACCEPTED]);
-
-        $action->confirm($bookingA->fresh(), $this->makePayment($bookingA), $resolver);
-
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        $action->confirm($bookingB->fresh(), $this->makePayment($bookingB), $resolver);
+        $action->accept($bookingB->fresh(), $this->owner->id);
     }
 
     public function test_the_unique_constraint_on_vehicle_availability_is_a_hard_backstop_independent_of_the_lock(): void
@@ -200,20 +169,5 @@ class BookingConcurrencyTest extends TestCase
         }
 
         $this->assertTrue($blocked, 'A second connection should have been blocked by the row lock the first connection held.');
-    }
-
-    private function makePayment(Booking $booking): Payment
-    {
-        return Payment::create([
-            'booking_id' => $booking->id,
-            'payment_reference' => 'PAY-' . Str::upper(Str::random(10)),
-            'gateway' => 'payhere',
-            'type' => 'rental',
-            'amount' => $booking->pricing->total_payable,
-            'currency' => $booking->pricing->currency,
-            'status' => Payment::STATUS_SUCCEEDED,
-            'idempotency_key' => (string) Str::uuid(),
-            'initiated_by' => $booking->customer_id,
-        ]);
     }
 }

@@ -4,9 +4,9 @@ namespace Database\Factories\Administration;
 
 use App\Models\Administration\User;
 use App\Models\RentalShop;
-use App\Models\ShopMember;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
+use App\Models\Role;
 
 class UserFactory extends Factory
 {
@@ -21,7 +21,7 @@ class UserFactory extends Factory
         ];
     }
 
-    /** Assign a marketplace role (customer, shop-owner, shop-staff). */
+    /** Assign a platform role (customer). */
     public function role(string $name): static
     {
         return $this->afterCreating(function (User $user) use ($name) {
@@ -30,17 +30,22 @@ class UserFactory extends Factory
         });
     }
 
-    /** Create (or attach to) a shop membership for this user. */
-    public function memberOf(?RentalShop $shop = null, string $role = ShopMember::ROLE_OWNER): static
+    /**
+     * Link this user to a shop (a new one if none given): as its owner
+     * ('owner' → the shop's shop-owner role), or as staff holding a new shop
+     * role with the given permissions. Seed MenuSeeder first so they exist.
+     */
+    public function memberOf(?RentalShop $shop = null, string|array $role = User::SHOP_ROLE_OWNER): static
     {
         return $this->afterCreating(function (User $user) use ($shop, $role) {
-            ShopMember::create([
-                'shop_id' => ($shop ?? RentalShop::factory()->create())->id,
-                'user_id' => $user->id,
-                'role'    => $role,
-                'status'  => ShopMember::STATUS_ACTIVE,
-                'accepted_at' => now(),
-            ]);
+            $shop ??= RentalShop::factory()->create(['owner_user_id' => $user->id]);
+            $user->update(['shop_id' => $shop->id]);
+            if (is_array($role)) {
+                $permissions = $role;
+                $role = Role::create(['name' => 'Role ' . Str::random(6), 'guard_name' => 'web', 'shop_id' => $shop->id]);
+                $role->syncPermissions($permissions);
+            }
+            $user->setShopRole($role);
         });
     }
 
