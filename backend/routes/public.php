@@ -28,6 +28,7 @@ Route::prefix('public')->group(function () {
     Route::get('vehicles', [VehicleController::class, 'index']);
     Route::get('vehicles/{slug}', [VehicleController::class, 'show']);
     Route::get('vehicles/{slug}/reviews', [VehicleController::class, 'reviews']);
+    Route::get('vehicles/{slug}/availability', [VehicleController::class, 'availability']);
 
     Route::get('shops', [ShopController::class, 'index']);
     Route::get('shops/{slug}', [ShopController::class, 'show']);

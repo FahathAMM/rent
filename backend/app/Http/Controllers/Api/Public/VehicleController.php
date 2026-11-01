@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Public\ReviewResource;
 use App\Http\Resources\Public\VehicleResource;
 use App\Models\Review;
+use App\Models\VehicleAvailability;
 use App\Queries\PublicVehicleQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,5 +61,45 @@ class VehicleController extends Controller
             ->paginate(10);
 
         return response()->json(['data' => ReviewResource::collection($reviews)]);
+    }
+
+    /**
+     * What the booking calendar needs to grey out dates: the days (nights) the
+     * vehicle is booked, blocked or in maintenance, plus the earliest pickup
+     * date the shop's advance notice allows. Only dates — no booking details.
+     * Mirrors BookingService::assertRequestIsValid(): a rental from A to B
+     * (10:00 pickup/return) uses the days A … B-1, so B itself may be taken.
+     */
+    public function availability(string $slug): JsonResponse
+    {
+        $vehicle = PublicVehicleQuery::findBySlug($slug);
+        abort_if(!$vehicle, 404, 'Vehicle not found.');
+
+        $today = now()->startOfDay();
+        $until = $today->copy()->addYear();
+
+        $unavailable = VehicleAvailability::where('vehicle_id', $vehicle->id)
+            ->whereIn('status', [VehicleAvailability::STATUS_BOOKED, VehicleAvailability::STATUS_BLOCKED, VehicleAvailability::STATUS_MAINTENANCE])
+            ->whereBetween('date', [$today->toDateString(), $until->toDateString()])
+            ->orderBy('date')
+            ->pluck('date')
+            ->map(fn ($date) => $date->toDateString())
+            ->unique()
+            ->values();
+
+        // The booking widget sends a fixed 10:00 pickup; the first day whose 10:00 clears the notice period.
+        $noticeEnds = now()->addHours((int) ($vehicle->pricing?->advance_notice_hours ?? 0));
+        $earliest = $today->copy()->setTime(10, 0);
+        while ($earliest->lessThan($noticeEnds)) {
+            $earliest->addDay();
+        }
+
+        return response()->json(['data' => [
+            'unavailable_dates' => $unavailable,
+            'earliest_pickup_date' => $earliest->toDateString(),
+            'bookable_until' => $until->toDateString(),
+            'min_rental_days' => $vehicle->pricing?->min_rental_days,
+            'max_rental_days' => $vehicle->pricing?->max_rental_days,
+        ]]);
     }
 }
