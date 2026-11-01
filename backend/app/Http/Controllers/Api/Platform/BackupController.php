@@ -77,7 +77,7 @@ class BackupController extends Controller
             ->send(new DatabaseBackupMail(
                 appName: config('app.name'),
                 backupFilename: basename($backup->path()),
-                backupDate: $backup->date()->toDayDateTimeString(),
+                backupDate: $backup->date()->setTimezone(config('app.display_timezone'))->toDayDateTimeString(),
                 backupSize: Number::fileSize($backup->sizeInBytes(), precision: 1),
                 customMessage: $data['message'] ?? null,
                 zipBinary: $backup->disk()->get($backup->path()),
