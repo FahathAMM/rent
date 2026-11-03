@@ -25,6 +25,8 @@ import {
   BadgeCheck,
   ExternalLink,
   Layers,
+  ClipboardCopy,
+  Send,
 } from "lucide-react";
 
 export function WhatsAppIcon({ className = "size-4" }) {
@@ -192,11 +194,74 @@ export function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
 }
 
 /**
+ * Copies BOTH image (as PNG blob) AND text description (as text/plain)
+ * to the system clipboard in a single ClipboardItem.
+ */
+export async function copyBothImageAndDescription(imageUrl, text) {
+  try {
+    if (!imageUrl) {
+      await navigator.clipboard.writeText(text);
+      return { success: true, mode: "text-only" };
+    }
+
+    // Convert image to PNG blob for clipboard
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageUrl;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    const textBlob = new Blob([text], { type: "text/plain" });
+
+    if (typeof ClipboardItem !== "undefined") {
+      try {
+        // Multi-mime write: BOTH image/png AND text/plain in one clipboard item!
+        const item = new ClipboardItem({
+          "image/png": imageBlob,
+          "text/plain": textBlob,
+        });
+        await navigator.clipboard.write([item]);
+        return { success: true, mode: "both" };
+      } catch (err) {
+        console.warn("Multi-mime clipboard write failed, writing image:", err);
+      }
+    }
+
+    // Fallback: write image to clipboard
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": imageBlob })]);
+      return { success: true, mode: "image" };
+    } catch {
+      await navigator.clipboard.writeText(text);
+      return { success: true, mode: "text" };
+    }
+  } catch (err) {
+    console.error("Failed to copy both:", err);
+    try {
+      await navigator.clipboard.writeText(text);
+      return { success: true, mode: "text-fallback" };
+    } catch {
+      return { success: false };
+    }
+  }
+}
+
+/**
  * Modal dialog displaying the vehicle image and WhatsApp share options
  */
 export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
-  const [copied, setCopied] = useState(false);
-  const [copiedImage, setCopiedImage] = useState(false);
+  const [copiedBoth, setCopiedBoth] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
+  const [copiedPhoto, setCopiedPhoto] = useState(false);
   const [templateMode, setTemplateMode] = useState("full"); // "full" | "short"
   const images = getVehicleImages(vehicle);
   const [selectedImgIndex, setSelectedImgIndex] = useState(0);
@@ -211,25 +276,24 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
     }
   }, [vehicle, templateMode]);
 
-  const handleCopyText = async () => {
-    try {
-      await navigator.clipboard.writeText(message);
-      setCopied(true);
-      toast.success("Detailed post text copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy text");
+  /**
+   * SINGLE BUTTON: Copies BOTH image & description together!
+   */
+  const handleCopyBoth = async () => {
+    const res = await copyBothImageAndDescription(activeImage, message);
+    if (res.success) {
+      setCopiedBoth(true);
+      toast.success("Both Image & Description copied! Press Ctrl+V in WhatsApp to paste both.", {
+        duration: 4000,
+      });
+      setTimeout(() => setCopiedBoth(false), 3000);
+    } else {
+      toast.error("Failed to copy to clipboard");
     }
   };
 
-  const handleOpenWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-    toast.success("Opening WhatsApp with full vehicle post...");
-  };
-
   /**
-   * Helper to fetch an image and return a File / Blob object
+   * Helper to fetch active image as File
    */
   const getActiveImageFile = async () => {
     if (!activeImage) return null;
@@ -240,11 +304,17 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
   };
 
   /**
-   * Native Share with Image File + Text (Web Share API for Mobile / Supported Browsers)
+   * SINGLE BUTTON: 1-Click Share All Details + Image directly to WhatsApp
    */
-  const handleShareWithImage = async () => {
+  const handleShareAllToWhatsApp = async () => {
+    // 1. Auto-copy both to clipboard in background
     try {
-      if (typeof navigator !== "undefined" && navigator.share && activeImage) {
+      copyBothImageAndDescription(activeImage, message);
+    } catch {}
+
+    // 2. Try native share with image file if supported
+    if (typeof navigator !== "undefined" && navigator.share && activeImage) {
+      try {
         const file = await getActiveImageFile();
         if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -252,35 +322,39 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
             text: message,
             files: [file],
           });
-          toast.success("Shared image and details to WhatsApp!");
+          toast.success("Shared image & all details to WhatsApp!");
           return;
         }
+      } catch (err) {
+        if (err.name === "AbortError") return;
       }
-    } catch (err) {
-      if (err.name === "AbortError") return;
     }
 
-    // Fallback: Copy full post text to clipboard, download the photo, then open WhatsApp!
+    // 3. Fallback: Open WhatsApp with full pre-filled text & link
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.success("Opening WhatsApp! Image & description are also copied to your clipboard (Ctrl+V).", {
+      duration: 5000,
+    });
+  };
+
+  const handleCopyTextOnly = async () => {
     try {
       await navigator.clipboard.writeText(message);
-      await handleDownloadImage(false);
-      handleOpenWhatsApp();
-      toast.success("Photo saved & caption copied! Select your WhatsApp Channel and paste (Ctrl+V) the photo with caption.");
+      setCopiedText(true);
+      toast.success("Description text copied to clipboard!");
+      setTimeout(() => setCopiedText(false), 2000);
     } catch {
-      handleOpenWhatsApp();
+      toast.error("Failed to copy text");
     }
   };
 
-  /**
-   * Copy actual Image to system Clipboard (so user can just Ctrl+V in WhatsApp Web)
-   */
-  const handleCopyImageToClipboard = async () => {
+  const handleCopyPhotoOnly = async () => {
     if (!activeImage) {
-      toast.error("No vehicle image available to copy");
+      toast.error("No vehicle image available");
       return;
     }
     try {
-      // Browsers usually require image/png for clipboard.write
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = activeImage;
@@ -296,19 +370,13 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
       ctx.drawImage(img, 0, 0);
 
       canvas.toBlob(async (blob) => {
-        if (!blob) {
-          toast.error("Failed to process image");
-          return;
-        }
+        if (!blob) return;
         try {
-          await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob }),
-          ]);
-          setCopiedImage(true);
-          toast.success("Photo copied to clipboard! You can now paste (Ctrl+V) directly into WhatsApp.");
-          setTimeout(() => setCopiedImage(false), 2500);
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          setCopiedPhoto(true);
+          toast.success("Photo copied to clipboard! (Ctrl+V in WhatsApp)");
+          setTimeout(() => setCopiedPhoto(false), 2500);
         } catch {
-          // If ClipboardItem fails, download image
           handleDownloadImage(true);
         }
       }, "image/png");
@@ -335,7 +403,7 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
       if (notify) {
-        toast.success("Vehicle photo downloaded! You can now drag/attach it to your WhatsApp post.");
+        toast.success("Vehicle photo downloaded!");
       }
     } catch {
       window.open(activeImage, "_blank");
@@ -353,10 +421,10 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
             </div>
             <div>
               <DialogTitle className="text-base font-semibold text-white">
-                Share Vehicle with Photo to WhatsApp
+                Share Vehicle to WhatsApp Channel
               </DialogTitle>
               <DialogDescription className="text-xs text-emerald-100">
-                Post high-resolution photo with full specs, rates, and booking link to your Channel
+                1-Click copy both image & details or share directly to your Channel
               </DialogDescription>
             </div>
           </div>
@@ -386,7 +454,50 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
           </div>
         </div>
 
-        <div className="max-h-[76vh] space-y-4 overflow-y-auto p-5">
+        {/* ── TOP HIGHLIGHTED 1-CLICK ACTION BAR ─────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-b bg-emerald-50/70 p-3 dark:bg-emerald-950/30">
+          {/* 1. SEPARATE SINGLE BUTTON: COPIES BOTH IMAGE AND DESCRIPTION */}
+          <Button
+            type="button"
+            onClick={handleCopyBoth}
+            variant="outline"
+            className={cn(
+              "h-11 justify-center gap-2 border-emerald-300 bg-white font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100/70 dark:bg-slate-900 dark:text-emerald-300 transition-all active:scale-[0.98]",
+              copiedBoth && "border-emerald-600 bg-emerald-100 text-emerald-900 ring-2 ring-emerald-500/30"
+            )}
+          >
+            {copiedBoth ? (
+              <Check className="size-4 text-emerald-600" />
+            ) : (
+              <ClipboardCopy className="size-4 text-emerald-700" />
+            )}
+            <div className="text-left leading-tight">
+              <span className="block text-xs font-bold">
+                {copiedBoth ? "Image & Details Copied!" : "Copy Image & Description"}
+              </span>
+              <span className="block text-[10px] font-normal text-muted-foreground">
+                1-Click copies both to paste (Ctrl+V)
+              </span>
+            </div>
+          </Button>
+
+          {/* 2. SINGLE BUTTON: SHARES ALL DETAILS + IMAGE DIRECTLY */}
+          <Button
+            type="button"
+            onClick={handleShareAllToWhatsApp}
+            className="h-11 justify-center gap-2 bg-emerald-600 font-semibold text-white shadow-sm hover:bg-emerald-700 transition-all active:scale-[0.98]"
+          >
+            <WhatsAppIcon className="size-5 fill-current" />
+            <div className="text-left leading-tight">
+              <span className="block text-xs font-bold">Share All to WhatsApp</span>
+              <span className="block text-[10px] font-normal text-emerald-100">
+                1-Click sends image & full post
+              </span>
+            </div>
+          </Button>
+        </div>
+
+        <div className="max-h-[68vh] space-y-4 overflow-y-auto p-5">
           {/* ── Vehicle Photo Gallery Card ────────────────────────────── */}
           <div className="overflow-hidden rounded-2xl border bg-muted/20 shadow-sm">
             <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-900">
@@ -426,12 +537,12 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
                 <div className="absolute right-3 top-3 flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={handleCopyImageToClipboard}
+                    onClick={handleCopyPhotoOnly}
                     className="inline-flex items-center gap-1 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition hover:bg-black/80"
-                    title="Copy Photo to paste directly into WhatsApp"
+                    title="Copy Photo Only"
                   >
-                    {copiedImage ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
-                    <span>{copiedImage ? "Copied" : "Copy Photo"}</span>
+                    {copiedPhoto ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+                    <span>{copiedPhoto ? "Copied" : "Photo Only"}</span>
                   </button>
 
                   <button
@@ -504,11 +615,11 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleCopyText}
+                  onClick={handleCopyTextOnly}
                   className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
                 >
-                  {copied ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                  <span>{copied ? "Caption Copied!" : "Copy Caption"}</span>
+                  {copiedText ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                  <span>{copiedText ? "Text Copied!" : "Copy Text Only"}</span>
                 </button>
               </div>
             </div>
@@ -528,7 +639,7 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
             </div>
 
             <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground px-1">
-              <span>💡 Tip: Click <b>Share Image + Caption</b> to share the photo directly with text into WhatsApp!</span>
+              <span>💡 Press <b>Ctrl+V</b> in WhatsApp after clicking <b>Copy Image & Description</b>!</span>
               {vehicle?.slug && (
                 <a
                   href={`/vehicles/${vehicle.slug}`}
@@ -544,21 +655,9 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
           </div>
         </div>
 
-        {/* ── Action Buttons ────────────────────────────────────────── */}
+        {/* ── Action Buttons Footer ─────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-5 py-3.5">
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleCopyImageToClipboard}
-              className="gap-1.5 text-xs"
-              title="Copy image to clipboard so you can paste (Ctrl+V) into WhatsApp Web"
-            >
-              {copiedImage ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              <span>{copiedImage ? "Photo Copied" : "Copy Photo"}</span>
-            </Button>
-
             <Button
               type="button"
               variant="outline"
@@ -572,26 +671,30 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* 1. SEPARATE SINGLE BUTTON: COPY BOTH IMAGE AND DESCRIPTION */}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleCopyText}
-              className="gap-1.5 text-xs"
+              onClick={handleCopyBoth}
+              className={cn(
+                "gap-1.5 text-xs font-semibold border-emerald-300 text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300",
+                copiedBoth && "bg-emerald-100 border-emerald-500 text-emerald-900"
+              )}
             >
-              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              <span>{copied ? "Copied" : "Copy Caption"}</span>
+              {copiedBoth ? <Check className="size-3.5 text-emerald-600" /> : <ClipboardCopy className="size-3.5 text-emerald-700" />}
+              <span>{copiedBoth ? "Both Copied!" : "Copy Image & Description"}</span>
             </Button>
 
-            {/* Main Action: Share Image + Caption to WhatsApp */}
+            {/* 2. SINGLE BUTTON: 1-CLICK SHARE ALL */}
             <Button
               type="button"
               size="sm"
-              onClick={handleShareWithImage}
+              onClick={handleShareAllToWhatsApp}
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md transition-transform active:scale-95"
             >
               <WhatsAppIcon className="size-4 fill-current" />
-              <span>Share Image & Post to WhatsApp</span>
+              <span>Share All to WhatsApp</span>
             </Button>
           </div>
         </div>
@@ -605,22 +708,59 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
  */
 export function WhatsAppShareButton({ vehicle, className, size = "sm", variant = "default" }) {
   const [open, setOpen] = useState(false);
+  const [quickCopied, setQuickCopied] = useState(false);
+
+  const images = getVehicleImages(vehicle);
+  const activeImage = images[0] || null;
+
+  const handleQuickCopyBoth = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = buildDetailedVehicleWhatsAppText(vehicle, "full");
+    const res = await copyBothImageAndDescription(activeImage, text);
+    if (res.success) {
+      setQuickCopied(true);
+      toast.success("Both Image & Description copied! Press Ctrl+V in WhatsApp.", { duration: 3500 });
+      setTimeout(() => setQuickCopied(false), 2500);
+    } else {
+      toast.error("Failed to copy");
+    }
+  };
 
   return (
     <>
-      <Button
-        type="button"
-        size={size}
-        variant={variant}
-        className={cn(
-          "gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors",
-          className
-        )}
-        onClick={() => setOpen(true)}
-      >
-        <WhatsAppIcon className="h-4 w-4 fill-current" />
-        <span>Share to WhatsApp Channel</span>
-      </Button>
+      <div className="inline-flex items-center gap-1.5">
+        {/* Single button click: open share dialog */}
+        <Button
+          type="button"
+          size={size}
+          variant={variant}
+          className={cn(
+            "gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors",
+            className
+          )}
+          onClick={() => setOpen(true)}
+        >
+          <WhatsAppIcon className="h-4 w-4 fill-current" />
+          <span>Share to WhatsApp Channel</span>
+        </Button>
+
+        {/* Separate single copy button: copies both image & description in 1 click! */}
+        <Button
+          type="button"
+          size={size}
+          variant="outline"
+          className={cn(
+            "gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-400 font-medium",
+            quickCopied && "border-emerald-500 bg-emerald-100 text-emerald-900"
+          )}
+          onClick={handleQuickCopyBoth}
+          title="1-Click copy both vehicle image and full description to clipboard"
+        >
+          {quickCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <ClipboardCopy className="h-3.5 w-3.5 text-emerald-700" />}
+          <span>{quickCopied ? "Both Copied!" : "Copy Image & Details"}</span>
+        </Button>
+      </div>
 
       <WhatsAppShareDialog vehicle={vehicle} open={open} onOpenChange={setOpen} />
     </>
