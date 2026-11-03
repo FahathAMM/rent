@@ -57,6 +57,8 @@ class BookingResource extends JsonResource
             'payments' => $this->whenLoaded('payments', fn () => Payment::statementOrder($this->payments)->map->summary()->values()),
             'amount_paid' => $this->whenLoaded('payments', fn () => $this->amountPaid()),
             'balance_due' => $this->whenLoaded('payments', fn () => $this->balanceDue()),
+            // Shop terms signed by the customer at handover (RentalAgreementService).
+            'agreement' => app(\App\Services\RentalAgreementService::class)->status($this->resource),
             // Next transfer: quick picks (advance / full, then the balance) and the least they may type in.
             'transfer_options' => $this->when(
                 $this->payment_method === Booking::METHOD_BANK_TRANSFER && $this->relationLoaded('pricing'),

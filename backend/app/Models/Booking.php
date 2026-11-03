@@ -174,8 +174,20 @@ class Booking extends Model
         return round((float) $sum, 2);
     }
 
+    /**
+     * Still owed: what was payable, adjusted by how the deposit was settled at
+     * return (the deposit charge closed, any part kept for damage), less the
+     * money received net of anything handed back. Before a return there are no
+     * settlement lines, so this is simply total_payable − paid.
+     */
     public function balanceDue(): float
     {
-        return max(0, round((float) ($this->pricing?->total_payable ?? 0) - $this->amountPaid(), 2));
+        $settlement = $this->relationLoaded('payments')
+            ? $this->payments->where('status', Payment::STATUS_SUCCEEDED)->whereIn('type', [Payment::TYPE_DAMAGE, Payment::TYPE_DEPOSIT_RELEASE])
+                ->sum(fn ($p) => (float) $p->debit - (float) $p->credit)
+            : (float) $this->payments()->where('status', Payment::STATUS_SUCCEEDED)->whereIn('type', [Payment::TYPE_DAMAGE, Payment::TYPE_DEPOSIT_RELEASE])
+                ->selectRaw('COALESCE(SUM(debit - credit), 0) as net')->value('net');
+
+        return max(0, round((float) ($this->pricing?->total_payable ?? 0) + $settlement - $this->amountPaid(), 2));
     }
 }
