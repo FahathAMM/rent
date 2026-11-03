@@ -125,6 +125,37 @@ class CashBookingTest extends TestCase
         $this->assertSame(SecurityDeposit::STATUS_RELEASED, $deposit->status);
         $this->assertEquals(0, $deposit->deductions_amount);
         $this->assertNotNull($deposit->released_at);
+
+        // Statement: deposit closed, all 5,000 handed back in cash, nothing owed.
+        $this->assertSettlement($booking, released: 5000, damage: null, handedBack: 5000);
+    }
+
+    /** The lines posted at return, and that the statement ends settled. */
+    private function assertSettlement(Booking $booking, float $released, ?float $damage, ?float $handedBack): void
+    {
+        $lines = Payment::where('booking_id', $booking->id)->where('status', Payment::STATUS_SUCCEEDED)->get();
+
+        $release = $lines->where('type', Payment::TYPE_DEPOSIT_RELEASE);
+        $this->assertCount(1, $release);
+        $this->assertEquals($released, $release->first()->credit);
+        $this->assertNull($release->first()->method);
+
+        $kept = $lines->where('type', Payment::TYPE_DAMAGE);
+        $this->assertCount($damage === null ? 0 : 1, $kept);
+        if ($damage !== null) {
+            $this->assertEquals($damage, $kept->first()->debit);
+            $this->assertNotEmpty($kept->first()->note);
+        }
+
+        $back = $lines->where('type', Payment::TYPE_SECURITY_DEPOSIT)->where('method', Payment::METHOD_CASH)->where('debit', '>', 0);
+        $this->assertCount($handedBack === null ? 0 : 1, $back);
+        if ($handedBack !== null) {
+            $this->assertEquals($handedBack, $back->first()->debit);
+        }
+
+        $this->assertEquals(0, $lines->sum(fn ($l) => (float) $l->debit - (float) $l->credit), 'debits and credits net to zero');
+        $this->assertEquals(0, $lines->sortBy('id')->last()->balance, 'the last line leaves nothing owed');
+        $this->assertEquals(0, $booking->fresh()->balanceDue());
     }
 
     public function test_return_records_a_partial_deposit_deduction(): void
@@ -136,6 +167,18 @@ class CashBookingTest extends TestCase
         $this->assertEquals(1500, $deposit->deductions_amount);
         $this->assertSame('Scratched bumper', $deposit->deduction_reason);
         $this->assertSame($this->owner->id, $deposit->decided_by);
+
+        // Statement: deposit closed, 1,500 kept for damage (with the reason), 3,500 handed back.
+        $this->assertSettlement($booking, released: 5000, damage: 1500, handedBack: 3500);
+        $this->assertSame('Scratched bumper', Payment::where('booking_id', $booking->id)->where('type', Payment::TYPE_DAMAGE)->value('note'));
+    }
+
+    public function test_keeping_the_whole_deposit_hands_nothing_back(): void
+    {
+        $booking = app(TransitionBooking::class)->returnVehicle($this->handOver(), $this->owner->id, [], [], 5000, 'Write-off repair');
+
+        $this->assertSame(SecurityDeposit::STATUS_FORFEITED, $booking->securityDeposit->status);
+        $this->assertSettlement($booking, released: 5000, damage: 5000, handedBack: null);
     }
 
     public function test_deposit_deduction_needs_a_reason_and_cannot_exceed_the_deposit(): void

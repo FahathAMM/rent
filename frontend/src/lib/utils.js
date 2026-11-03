@@ -6,7 +6,7 @@ export function cn(...inputs) {
 }
 
 // The API sends UTC timestamps; everyone sees them in Sri Lanka time
-// regardless of their device's timezone (backend config/app.php display_timezone).
+// regardless of their device's timezone (backend config/app.php timezone).
 export const APP_TIMEZONE = "Asia/Colombo";
 
 export function formatDate(date, options = {}) {

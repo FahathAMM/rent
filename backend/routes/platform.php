@@ -231,5 +231,8 @@ Route::prefix('platform')->group(function () {
         Route::get('bookings',                       [PlatformBookingController::class, 'index']);
         Route::get('bookings/{reference}',             [PlatformBookingController::class, 'show']);
         Route::post('bookings/{reference}/cancel',     [PlatformBookingController::class, 'cancel']);
+        Route::middleware('platform.owner')->group(function () {
+            Route::delete('bookings/{reference}', [PlatformBookingController::class, 'destroy']); // soft delete, with a reason
+        });
     });
 });

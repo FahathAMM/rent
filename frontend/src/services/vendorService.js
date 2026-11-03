@@ -23,6 +23,8 @@ export const vendorService = {
     recordPayment: (reference, data) => api.post(`/vendor/bookings/${reference}/payments`, data, multipart),
     /** The booking voucher PDF (same one the customer gets) — a blob, since it needs the staff token. */
     voucher: (reference, download = false) => api.get(`/vendor/bookings/${reference}/voucher`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    /** The rental agreement PDF — the shop's terms with the customer's handover signature. */
+    agreement: (reference, download = false) => api.get(`/vendor/bookings/${reference}/agreement`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
     /** { pickup_at, return_at } as ISO strings — what changing the dates would cost; nothing is saved. */
     previewReschedule: (reference, data) => api.post(`/vendor/bookings/${reference}/reschedule/preview`, data),
     /** { pickup_at, return_at, reason? } — moves the booking's dates (confirmed bookings, before handover). */
@@ -71,6 +73,12 @@ export const vendorService = {
     invite: (data) => api.post("/vendor/staff", data),
     update: (id, data) => api.put(`/vendor/staff/${id}`, data),
     remove: (id) => api.delete(`/vendor/staff/${id}`),
+  },
+
+  /** The shop's own terms & conditions — the customer signs them at handover. */
+  terms: {
+    get: () => api.get("/vendor/terms"),
+    update: (terms) => api.put("/vendor/terms", { terms }),
   },
 
   /** Paid visibility — featured vehicles and category / city sponsorship. Shop owner only. */

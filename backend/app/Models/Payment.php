@@ -38,8 +38,12 @@ class Payment extends Model
     // Statement lines that are not money changing hands.
     public const TYPE_BOOKING_CHARGE = 'booking_charge';
     public const TYPE_ADJUSTMENT = 'adjustment';
-    // As a charge line (no method): the deposit owed at confirmation. As a money line: the deposit taken in cash.
+    // As a charge line (no method): the deposit owed at confirmation. As a money line: the deposit taken
+    // in cash (credit) or handed back at return (debit).
     public const TYPE_SECURITY_DEPOSIT = 'security_deposit';
+    // At return: the deposit charge closed (credit), and the part the shop keeps for damage (debit, reason in note).
+    public const TYPE_DEPOSIT_RELEASE = 'deposit_release';
+    public const TYPE_DAMAGE = 'damage';
 
     // pending = transfer receipt waiting for the shop; failed = rejected receipt; cancelled = closed with the booking.
     public const STATUS_PENDING = 'pending';
@@ -51,7 +55,7 @@ class Payment extends Model
         'booking_id', 'payment_reference', 'type', 'credit', 'debit', 'balance', 'currency', 'status',
         'method', 'paid_at',
         'idempotency_key', 'initiated_by',
-        'transfer_reference', 'verified_by', 'verified_at',
+        'transfer_reference', 'note', 'verified_by', 'verified_at',
     ];
 
     protected $casts = [
@@ -83,16 +87,19 @@ class Payment extends Model
      * and security deposit at confirmation, a price change, a charge reversed
      * on cancellation.
      */
-    public static function postLine(Booking $booking, string $type, float $debit, float $credit, ?int $actorId = null): self
+    public static function postLine(Booking $booking, string $type, float $debit, float $credit, ?int $actorId = null, ?string $note = null): self
     {
         $line = static::create([
             'booking_id' => $booking->id,
             'payment_reference' => (match ($type) {
                 self::TYPE_BOOKING_CHARGE => 'CHG-',
                 self::TYPE_SECURITY_DEPOSIT => 'DEP-',
+                self::TYPE_DEPOSIT_RELEASE => 'REL-',
+                self::TYPE_DAMAGE => 'DMG-',
                 default => 'ADJ-',
             }) . Str::upper(Str::random(10)),
             'type' => $type,
+            'note' => $note,
             'debit' => round($debit, 2),
             'credit' => round($credit, 2),
             'currency' => $booking->pricing?->currency ?? 'LKR',
@@ -173,6 +180,7 @@ class Payment extends Model
             'balance' => $this->balance,
             'status' => $this->status,
             'transfer_reference' => $this->transfer_reference,
+            'note' => $this->note,
             'has_proof' => $this->relationLoaded('proof') ? $this->proof !== null : null,
             'paid_at' => $this->paid_at?->toISOString(),
             'verified_at' => $this->verified_at?->toISOString(),

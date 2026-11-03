@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
-  CreditCard, MapPin, GalleryHorizontal, ChevronDown, KeyRound, Activity, Crown, Megaphone,
+  CreditCard, MapPin, GalleryHorizontal, ChevronDown, KeyRound, Activity, Crown, Megaphone, ListTree,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -73,6 +73,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/platform/users", label: "Users", icon: Users },
       { href: "/platform/roles", label: "Roles & Permissions", icon: KeyRound },
+      { href: "/platform/menus", label: "Menus", icon: ListTree },
       { href: "/platform/audit-logs", label: "Audit Logs", icon: ScrollText },
       { href: "/platform/settings", label: "Settings", icon: Settings },
     ],

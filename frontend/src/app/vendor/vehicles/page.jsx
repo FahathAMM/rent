@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { toast } from "sonner";
-import { Pencil, Trash2, Home, UploadCloud, DownloadCloud, Archive } from "lucide-react";
+import { Pencil, Trash2, Home, UploadCloud, DownloadCloud, Archive, Eye } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 export default function VehiclesPage() {
@@ -88,6 +88,9 @@ export default function VehiclesPage() {
       header: "Actions",
       cell: (row) => (
         <div className="flex gap-1">
+          {can("vendor-vehicles-list-view") && (
+            <ActionButton onClick={() => router.push(`/vendor/vehicles/${row.id}`)} icon={Eye} label="View vehicle" className="text-sky-700 border-sky-300 hover:text-sky-800 hover:bg-sky-50 hover:border-sky-400" />
+          )}
           {can("vendor-vehicles-list-edit") && (
             <>
               <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit vehicle" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />

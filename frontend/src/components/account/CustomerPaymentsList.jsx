@@ -16,6 +16,10 @@ function describe(p) {
   if (p.type === "booking_charge") return "Your booking (rental)";
   if (p.type === "security_deposit" && !isMoneyLine(p)) return "Security deposit (refundable)";
   if (p.type === "adjustment") return Number(p.debit) > 0 ? "Price increased (dates changed)" : "Price reduced / charge cancelled";
+  // Deposit settled when you returned the vehicle.
+  if (p.type === "deposit_release") return "Security deposit settled at return";
+  if (p.type === "damage") return p.note ? `Kept from your deposit — ${p.note}` : "Kept from your deposit for damage";
+  if (isMoneyLine(p) && Number(p.debit) > 0) return p.type === "security_deposit" ? "Deposit handed back to you (cash)" : "Paid back to you";
   const what = p.method === "bank" ? "Your bank transfer" : "Cash paid to the shop";
   return p.status === "succeeded" ? what : `${what} · ${UPLOAD_STATUS[p.status] ?? p.status}`;
 }

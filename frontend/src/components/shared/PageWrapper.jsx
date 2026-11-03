@@ -12,7 +12,6 @@ export function PageWrapper({ children, className, maxWidth = "max-w-7xl", child
   return (
     <div className="w-full rounded-2xl from-muted/40 to-transparent px-1 sm:px-6 sm:py-2">
             <DynamicBreadcrumb items={breadcrumb} />
-      
       <div
         className={cn(
           "mx-auto w-full mt-3 rounded-xl border bg-card p-5 pb-10 shadow-sm sm:p-6",

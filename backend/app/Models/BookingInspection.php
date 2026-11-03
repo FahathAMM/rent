@@ -16,10 +16,11 @@ class BookingInspection extends Model
     protected $fillable = [
         'booking_id', 'type', 'odometer_reading', 'fuel_level',
         'exterior_checklist', 'interior_checklist', 'accessories_checklist',
-        'notes', 'customer_present', 'customer_signature_path', 'conducted_by', 'conducted_at',
+        'notes', 'customer_present', 'customer_signature_path', 'terms_snapshot', 'terms_accepted_at', 'conducted_by', 'conducted_at',
     ];
 
     protected $casts = [
+        'terms_accepted_at' => 'datetime',
         'exterior_checklist' => 'array',
         'interior_checklist' => 'array',
         'accessories_checklist' => 'array',

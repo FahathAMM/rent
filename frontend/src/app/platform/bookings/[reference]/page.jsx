@@ -1,22 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { platformService } from "@/services/platformService";
 import { PageWrapper } from "@/components/shared/PageWrapper";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
+import { usePlatformAuthStore } from "@/store/platformAuthStore";
 import { BookingDetail } from "../components/BookingDetail";
 import { Button } from "@/components/ui/button";
-import { Ban, Home, Loader2 } from "lucide-react";
+import { Ban, Home, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const CANCELLABLE = ["pending", "confirmed", "active"];
+// Live bookings hold the vehicle — cancel first, then delete (the API refuses them too).
+const NOT_DELETABLE = ["confirmed", "active"];
 
 export default function PlatformBookingDetailPage() {
   const { reference } = useParams();
   const qc = useQueryClient();
+  const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isOwner = usePlatformAuthStore((s) => s.admin?.admin_role === "platform_owner");
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["platform-booking", reference],
@@ -33,6 +39,17 @@ export default function PlatformBookingDetailPage() {
     onError: (err) => toast.error(err.response?.data?.errors?.status?.[0] ?? err.response?.data?.message ?? "Failed to cancel"),
   });
 
+  const remove = useMutation({
+    mutationFn: (reason) => platformService.bookings.delete(reference, reason),
+    onSuccess: () => {
+      toast.success("Booking deleted");
+      setDeleting(false);
+      qc.removeQueries({ queryKey: ["platform-booking", reference] });
+      router.push("/platform/bookings");
+    },
+    onError: (err) => toast.error(err.response?.data?.errors?.booking?.[0] ?? err.response?.data?.errors?.reason?.[0] ?? err.response?.data?.message ?? "Failed to delete"),
+  });
+
   const breadcrumbItems = [
     { label: "Dashboard", href: "/platform/dashboard", icon: <Home className="size-4" /> },
     { label: "Bookings", href: "/platform/bookings" },
@@ -46,10 +63,19 @@ export default function PlatformBookingDetailPage() {
       ) : (
         <BookingDetail
           booking={booking}
-          actions={CANCELLABLE.includes(booking.status) && (
-            <Button variant="outline" size="sm" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setCancelling(true)}>
-              <Ban className="h-3.5 w-3.5" /> Cancel booking
-            </Button>
+          actions={(CANCELLABLE.includes(booking.status) || (isOwner && !NOT_DELETABLE.includes(booking.status))) && (
+            <div className="flex flex-wrap gap-2">
+              {CANCELLABLE.includes(booking.status) && (
+                <Button variant="outline" size="sm" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setCancelling(true)}>
+                  <Ban className="h-3.5 w-3.5" /> Cancel booking
+                </Button>
+              )}
+              {isOwner && !NOT_DELETABLE.includes(booking.status) && (
+                <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleting(true)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete booking
+                </Button>
+              )}
+            </div>
           )}
         />
       )}
@@ -62,6 +88,15 @@ export default function PlatformBookingDetailPage() {
         confirmText="Cancel Booking"
         loading={cancel.isPending}
         onConfirm={(reason) => cancel.mutate(reason)}
+      />
+      <ReasonDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title="Delete Booking"
+        description={`${reference} disappears from every booking list — platform, shop and customer. Its payments, history and disputes stay in the database, and the deletion is recorded in the audit log.`}
+        confirmText="Delete Booking"
+        loading={remove.isPending}
+        onConfirm={(reason) => remove.mutate(reason)}
       />
     </PageWrapper>
   );

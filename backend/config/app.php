@@ -64,16 +64,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions. The app serves
+    | Sri Lanka only, so everything runs and is stored in Sri Lanka time.
     |
     */
 
-    'timezone' => 'UTC',
-
-    // Storage and app logic stay UTC (above); times shown to people — emails,
-    // log viewer, the frontend's formatDate() — use Sri Lanka time.
-    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Colombo'),
+    'timezone' => 'Asia/Colombo',
 
     /*
     |--------------------------------------------------------------------------

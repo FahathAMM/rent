@@ -41,7 +41,7 @@ class PublicVisitTest extends TestCase
 
         $this->assertSame(['/browse'], PublicVisit::pluck('path')->all());
 
-        $file = $this->logDir . '/' . now(config('log-viewer.timezone'))->toDateString() . '.log';
+        $file = $this->logDir . '/' . now()->toDateString() . '.log';
         $this->assertFileExists($file);
         $this->assertStringContainsString('site_visit | path: /login', File::get($file), 'every type still goes to the daily file');
     }

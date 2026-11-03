@@ -130,13 +130,15 @@ class MenuSeeder extends Seeder
             'children' => [
                 ['key' => 'shop', 'name' => 'Shop Profile', 'route_name' => '/vendor/settings/shop', 'icon' => 'Building2', 'sort_order' => 1],
                 ['key' => 'locations', 'name' => 'Locations', 'route_name' => '/vendor/settings/locations', 'icon' => 'MapPin', 'sort_order' => 2],
+                // The shop's own terms & conditions — the customer signs them at handover.
+                ['key' => 'terms', 'name' => 'Terms & Conditions', 'route_name' => '/vendor/settings/terms', 'icon' => 'FileText', 'sort_order' => 3],
                 // Staff and roles sit under Settings in the nav but keep their own slugs, so their
                 // permissions stay "vendor-staff-*" / "vendor-roles-*" (StaffController, Role::OWNER_ONLY_PREFIXES).
-                ['key' => 'staff', 'slug' => 'staff', 'name' => 'Staff', 'route_name' => '/vendor/staff', 'icon' => 'Users', 'sort_order' => 3],
+                ['key' => 'staff', 'slug' => 'staff', 'name' => 'Staff', 'route_name' => '/vendor/staff', 'icon' => 'Users', 'sort_order' => 4],
                 // The shop's own roles — shop owner only (its permissions come only with the owner role).
-                ['key' => 'roles', 'slug' => 'roles', 'name' => 'Roles & Permissions', 'route_name' => '/vendor/roles', 'icon' => 'KeyRound', 'sort_order' => 4],
+                ['key' => 'roles', 'slug' => 'roles', 'name' => 'Roles & Permissions', 'route_name' => '/vendor/roles', 'icon' => 'KeyRound', 'sort_order' => 5],
                 // The shop's plan & paying for it — shop owner only (Role::OWNER_ONLY_PREFIXES).
-                ['key' => 'subscription', 'slug' => 'subscription', 'name' => 'Subscription', 'route_name' => '/vendor/settings/subscription', 'icon' => 'Crown', 'sort_order' => 5],
+                ['key' => 'subscription', 'slug' => 'subscription', 'name' => 'Subscription', 'route_name' => '/vendor/settings/subscription', 'icon' => 'Crown', 'sort_order' => 6],
             ],
         ],
     ];
