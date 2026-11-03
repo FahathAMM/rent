@@ -307,6 +307,9 @@ class TransitionBooking
         if ($booking->status !== Booking::STATUS_CONFIRMED) {
             throw ValidationException::withMessages(['status' => ['Only a confirmed booking can be handed over.']]);
         }
+
+        //  throw ValidationException::withMessages(['status' => [$booking->pickup_at]]);
+        
         if (now()->lessThan($booking->pickup_at->copy()->subHours(2))) {
             throw ValidationException::withMessages(['status' => ['Too early for handover — check back closer to the pickup time.']]);
         }
@@ -441,6 +444,17 @@ class TransitionBooking
                 ->delete();
 
             if ($shopHeldDeposit) {
+                // On the statement: close the deposit charge, keep the damage part, hand the rest back in cash.
+                $collected = (float) $shopHeldDeposit->amount_collected;
+                $handedBack = round($collected - $deduction, 2);
+                Payment::postLine($booking, Payment::TYPE_DEPOSIT_RELEASE, debit: 0, credit: $collected, actorId: $actorId, note: 'Deposit settled at return');
+                if ($deduction > 0) {
+                    Payment::postLine($booking, Payment::TYPE_DAMAGE, debit: $deduction, credit: 0, actorId: $actorId, note: $deductionReason);
+                }
+                if ($handedBack > 0) {
+                    $this->recordCashPayment($booking, Payment::TYPE_SECURITY_DEPOSIT, $handedBack, paidBack: true);
+                }
+
                 $shopHeldDeposit->update([
                     'deductions_amount' => $deduction,
                     'deduction_reason' => $deduction > 0 ? $deductionReason : null,
@@ -523,8 +537,7 @@ class TransitionBooking
             $vehicle = Vehicle::whereKey($booking->vehicle_id)->lockForUpdate()->firstOrFail();
             $this->assertNoOverlap($vehicle->id, $pickupAt, $returnAt, $booking->id);
 
-            $tz = config('app.display_timezone');
-            $describe = fn (Carbon $from, Carbon $to) => $from->copy()->setTimezone($tz)->format('d M Y H:i') . ' → ' . $to->copy()->setTimezone($tz)->format('d M Y H:i');
+            $describe = fn (Carbon $from, Carbon $to) => $from->format('d M Y H:i') . ' → ' . $to->format('d M Y H:i');
             $oldRange = $describe($booking->pickup_at, $booking->return_at);
             $newRange = $describe($pickupAt, $returnAt);
 
@@ -651,14 +664,16 @@ class TransitionBooking
      * initiated_by is the paying customer (FK to customers); the staff member who took it is on the
      * payment_status history row and the handover inspection.
      */
-    private function recordCashPayment(Booking $booking, string $type, float $amount): void
+    /** Cash received from the customer (credit), or handed back to them (debit) when $paidBack. */
+    private function recordCashPayment(Booking $booking, string $type, float $amount, bool $paidBack = false): void
     {
         $payment = Payment::create([
             'booking_id' => $booking->id,
             'payment_reference' => 'PAY-' . Str::upper(Str::random(10)),
             'method' => Payment::METHOD_CASH,
             'type' => $type,
-            'credit' => $amount,
+            'credit' => $paidBack ? 0 : $amount,
+            'debit' => $paidBack ? $amount : 0,
             'currency' => $booking->pricing->currency,
             'status' => Payment::STATUS_SUCCEEDED,
             'paid_at' => now(),
