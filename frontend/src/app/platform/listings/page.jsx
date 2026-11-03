@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { FilterSelect } from "@/components/Datatable/FilterSelect";
 import { Eye, Home, ImageOff, Star } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
+import { WhatsAppTableActionButton } from "@/components/shared/WhatsAppShareButton";
 
 const MODERATION_OPTIONS = [
   { value: "pending", label: "Pending" },
@@ -53,7 +54,12 @@ export default function PlatformListingsPage() {
     { accessorKey: "created_at", header: "Submitted", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
       accessorKey: "actions", header: "",
-      cell: (row) => <ActionButton href={`/platform/listings/${row.id}`} icon={Eye} label="Review" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />,
+      cell: (row) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <WhatsAppTableActionButton vehicle={row} />
+          <ActionButton href={`/platform/listings/${row.id}`} icon={Eye} label="Review" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />
+        </div>
+      ),
     },
   ];
 
