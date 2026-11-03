@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\DB;
  * The shop's earnings per booking, read-only and scoped by Booking's ShopScope.
  *
  * Customers pay the shop directly (cash / bank transfer), so earnings are
- * the rental subtotal and "received" is what the shop has recorded as paid -
- * security-deposit payments excluded (that money is handed back), capped at
- * the booking's earnings.
+ * the rental subtotal plus any deposit kept for damage; "received" is what the
+ * shop has recorded as paid - security-deposit payments excluded (that money
+ * is handed back) but the kept damage included - capped at the earnings.
  */
 class EarningsController extends Controller
 {
@@ -41,7 +41,10 @@ class EarningsController extends Controller
             ->where('status', Payment::STATUS_SUCCEEDED)
             ->where('type', '!=', 'security_deposit');
 
-        $earnings = 'COALESCE(bp.subtotal, 0)';
+        // Deposit kept for damage at return (a "damage" statement line) — income, and already in the shop's hands.
+        $damageKept = "(SELECT COALESCE(SUM(dp.debit), 0) FROM payments dp WHERE dp.booking_id = bookings.id"
+            . " AND dp.type = 'damage' AND dp.status = 'succeeded' AND dp.deleted_at IS NULL)";
+        $earnings = "(COALESCE(bp.subtotal, 0) + {$damageKept})";
 
         return Booking::query()
             ->leftJoin('booking_pricing as bp', 'bp.booking_id', '=', 'bookings.id')
@@ -54,10 +57,10 @@ class EarningsController extends Controller
                 'bookings.id', 'bookings.booking_reference', 'bookings.status', 'bookings.payment_method',
                 'bookings.payment_status', 'bookings.pickup_at', 'bookings.return_at', 'bookings.created_at',
                 'bp.currency',
-                DB::raw("{$earnings} as rental_amount"),
+                DB::raw('COALESCE(bp.subtotal, 0) as rental_amount'),
                 DB::raw("{$earnings} as earnings_amount"),
             ])
-            ->selectRaw("LEAST(({$directReceived->toSql()}), {$earnings}) as received_amount", $directReceived->getBindings());
+            ->selectRaw("LEAST(({$directReceived->toSql()}) + {$damageKept}, {$earnings}) as received_amount", $directReceived->getBindings());
     }
 
     public function index(Request $request): JsonResponse
