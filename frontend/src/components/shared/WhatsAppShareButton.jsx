@@ -20,6 +20,7 @@ import {
   FileText,
   ExternalLink,
   ClipboardCopy,
+  Copy,
 } from "lucide-react";
 
 export function WhatsAppIcon({ className = "size-4" }) {
@@ -173,8 +174,7 @@ export function buildDetailedVehicleWhatsAppText(vehicle) {
 }
 
 /**
- * Copies BOTH image (as PNG blob) AND text description (as text/plain)
- * to the system clipboard in a single ClipboardItem.
+ * Copies BOTH image AND text description together to the system clipboard
  */
 export async function copyBothImageAndDescription(imageUrl, text) {
   try {
@@ -183,46 +183,89 @@ export async function copyBothImageAndDescription(imageUrl, text) {
       return { success: true };
     }
 
-    // Convert image to PNG blob for clipboard
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = imageUrl;
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
+    // 1. Fetch image and convert to data URI / blob
+    let dataUrl = imageUrl;
+    let imageBlob = null;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0);
+    try {
+      const response = await fetch(imageUrl);
+      imageBlob = await response.blob();
+      dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(imageBlob);
+      });
+    } catch {
+      dataUrl = imageUrl;
+    }
 
-    const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-    const textBlob = new Blob([text], { type: "text/plain" });
+    // 2. Method A: DOM Selection Copy (places CF_DIB image + text/plain + text/html onto OS clipboard)
+    try {
+      const wrapper = document.createElement("div");
+      wrapper.setAttribute("contenteditable", "true");
+      wrapper.style.position = "fixed";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
+      wrapper.style.opacity = "0";
+      wrapper.style.pointerEvents = "none";
+      wrapper.style.zIndex = "-1";
 
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.alt = "Vehicle";
+      img.style.maxWidth = "800px";
+      img.style.display = "block";
+      img.style.marginBottom = "14px";
+      wrapper.appendChild(img);
+
+      const textEl = document.createElement("div");
+      textEl.style.whiteSpace = "pre-wrap";
+      textEl.style.fontFamily = "sans-serif";
+      textEl.innerText = text;
+      wrapper.appendChild(textEl);
+
+      document.body.appendChild(wrapper);
+
+      const range = document.createRange();
+      range.selectNodeContents(wrapper);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const ok = document.execCommand("copy");
+      selection.removeAllRanges();
+      document.body.removeChild(wrapper);
+
+      if (ok) {
+        return { success: true };
+      }
+    } catch (e) {
+      console.warn("DOM copy fallback:", e);
+    }
+
+    // 3. Method B: Async Clipboard API with text/html (contains <img> and text) + text/plain
     if (typeof ClipboardItem !== "undefined") {
       try {
-        // Multi-mime write: BOTH image/png AND text/plain in one clipboard item!
+        const safeTextHtml = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>");
+        const htmlContent = `<div><img src="${dataUrl}" style="max-width:800px;display:block;margin-bottom:12px;" /><br/><div style="font-family:sans-serif;white-space:pre-wrap;">${safeTextHtml}</div></div>`;
+
+        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+        const textBlob = new Blob([text], { type: "text/plain" });
+
         const item = new ClipboardItem({
-          "image/png": imageBlob,
+          "text/html": htmlBlob,
           "text/plain": textBlob,
         });
         await navigator.clipboard.write([item]);
         return { success: true };
       } catch (err) {
-        console.warn("Multi-mime clipboard write failed, writing image:", err);
+        console.warn("Async clipboard write failed:", err);
       }
     }
 
-    // Fallback: write image to clipboard
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": imageBlob })]);
-      return { success: true };
-    } catch {
-      await navigator.clipboard.writeText(text);
-      return { success: true };
-    }
+    // Fallback: write text to clipboard
+    await navigator.clipboard.writeText(text);
+    return { success: true };
   } catch (err) {
     console.error("Failed to copy both:", err);
     try {
@@ -239,6 +282,7 @@ export async function copyBothImageAndDescription(imageUrl, text) {
  */
 export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
   const [copiedBoth, setCopiedBoth] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
   const images = getVehicleImages(vehicle);
   const [selectedImgIndex, setSelectedImgIndex] = useState(0);
   const activeImage = images[selectedImgIndex] || images[0] || null;
@@ -258,7 +302,7 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
     const res = await copyBothImageAndDescription(activeImage, message);
     if (res.success) {
       setCopiedBoth(true);
-      toast.success("Both Image & Description copied! Press Ctrl+V in WhatsApp to paste both.", {
+      toast.success("Both Image & Description copied! Press Ctrl+V in WhatsApp to paste.", {
         duration: 4000,
       });
       setTimeout(() => setCopiedBoth(false), 3000);
@@ -308,9 +352,20 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
     // 3. Fallback: Open WhatsApp with full pre-filled text & link
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank", "noopener,noreferrer");
-    toast.success("Opening WhatsApp! Image & description are copied to your clipboard (Ctrl+V).", {
+    toast.success("Opening WhatsApp! Image & description are also copied to your clipboard (Ctrl+V).", {
       duration: 5000,
     });
+  };
+
+  const handleCopyTextOnly = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopiedText(true);
+      toast.success("Caption text copied to clipboard!");
+      setTimeout(() => setCopiedText(false), 2000);
+    } catch {
+      toast.error("Failed to copy text");
+    }
   };
 
   return (
@@ -332,7 +387,7 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
         </div>
 
         <div className="max-h-[70vh] space-y-4 overflow-y-auto p-5">
-          {/* ── Vehicle Photo Gallery (Clean, No Save Button) ─────────── */}
+          {/* ── Vehicle Photo (Clean, No Save Button) ─────────────────── */}
           <div className="overflow-hidden rounded-2xl border bg-slate-900 shadow-sm">
             <div className="relative aspect-[16/9] w-full overflow-hidden">
               {activeImage ? (
@@ -422,17 +477,28 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
                 <span>Post Description (Editable)</span>
               </label>
 
-              {vehicle?.slug && (
-                <a
-                  href={`/vehicles/${vehicle.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyTextOnly}
+                  className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-800 hover:underline"
                 >
-                  <span>Public Page</span>
-                  <ExternalLink className="size-3" />
-                </a>
-              )}
+                  {copiedText ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                  <span>{copiedText ? "Text Copied" : "Copy Text Only"}</span>
+                </button>
+
+                {vehicle?.slug && (
+                  <a
+                    href={`/vehicles/${vehicle.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
+                  >
+                    <span>Public Page</span>
+                    <ExternalLink className="size-3" />
+                  </a>
+                )}
+              </div>
             </div>
 
             {/* Authentic WhatsApp Bubble */}
