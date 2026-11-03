@@ -221,7 +221,7 @@ async function getImagePngBlobAndDataUrl(imageUrl) {
     const res = await fetch(imageUrl);
     const blob = await res.blob();
 
-    const img = document.createElement("img");
+    const img = new Image();
     img.crossOrigin = "anonymous";
     const objectUrl = URL.createObjectURL(blob);
     img.src = objectUrl;
@@ -248,7 +248,8 @@ async function getImagePngBlobAndDataUrl(imageUrl) {
 }
 
 /**
- * INCLUDED BOTH BUTTON ACTION: Copies BOTH image AND description together
+ * INCLUDED BOTH BUTTON ACTION: Copies BOTH image AND description together!
+ * Places image bitmap (CF_DIB) + plain text (CF_UNICODETEXT) + rich HTML onto clipboard
  */
 export async function copyBothImageAndDescription(imageUrl, text) {
   try {
@@ -259,55 +260,68 @@ export async function copyBothImageAndDescription(imageUrl, text) {
 
     const { pngBlob, dataUrl } = await getImagePngBlobAndDataUrl(imageUrl);
 
-    const safeTextHtml = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n/g, "<br/>");
-
-    const htmlContent = `<div><img src="${dataUrl || imageUrl}" alt="Vehicle" style="max-width:750px;display:block;margin-bottom:12px;border-radius:8px;" /><br/><div style="font-family:sans-serif;white-space:pre-wrap;font-size:14px;line-height:1.5;">${safeTextHtml}</div></div>`;
-    const htmlBlob = new Blob([htmlContent], { type: "text/html" });
-    const textBlob = new Blob([text], { type: "text/plain" });
-
-    // 1. Multi-representation Async Clipboard write
-    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
-      if (pngBlob) {
-        try {
-          // Modern Chromium 124+ allows multi-mime: PNG bitmap + rich HTML + plain text
-          const item = new ClipboardItem({
-            "image/png": pngBlob,
-            "text/html": htmlBlob,
-            "text/plain": textBlob,
-          });
-          await navigator.clipboard.write([item]);
-          return { success: true };
-        } catch (e1) {
-          console.warn("Multi-mime with image/png not permitted together, trying html + plain:", e1);
-        }
-      }
-
-      // Fallback to HTML (which embeds the base64 image + formatted text) and plain text
+    // 1. Try modern Chromium multi-mime write if supported (writes PNG bitmap + HTML + plain text)
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write && pngBlob) {
       try {
+        const safeTextHtml = text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br/>");
+        const htmlContent = `<div><img src="${dataUrl || imageUrl}" alt="Vehicle" style="max-width:750px;display:block;margin-bottom:12px;border-radius:8px;" /><br/><div style="font-family:sans-serif;white-space:pre-wrap;font-size:14px;line-height:1.5;">${safeTextHtml}</div></div>`;
+        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+        const textBlob = new Blob([text], { type: "text/plain" });
+
         const item = new ClipboardItem({
+          "image/png": pngBlob,
           "text/html": htmlBlob,
           "text/plain": textBlob,
         });
         await navigator.clipboard.write([item]);
         return { success: true };
-      } catch (e2) {
-        console.warn("HTML + plain clipboard write failed:", e2);
+      } catch (e1) {
+        console.warn("Async multi-mime write not supported by browser, falling back to DOM selection copy:", e1);
       }
     }
 
-    // 2. DOM Selection Copy fallback (places CF_DIB + CF_HTML + CF_UNICODETEXT onto OS clipboard)
+    // 2. High-Fidelity DOM Selection Copy (places CF_DIB image bitmap + CF_UNICODETEXT + HTML on Windows clipboard)
     try {
       const wrapper = document.createElement("div");
       wrapper.contentEditable = "true";
       wrapper.style.position = "fixed";
-      wrapper.style.left = "-9999px";
       wrapper.style.top = "0";
+      wrapper.style.left = "0";
+      wrapper.style.width = "400px";
+      wrapper.style.height = "400px";
       wrapper.style.opacity = "0.01";
-      wrapper.innerHTML = htmlContent;
+      wrapper.style.zIndex = "-9999";
+      wrapper.style.pointerEvents = "none";
+      wrapper.style.overflow = "hidden";
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = dataUrl || imageUrl;
+      img.style.display = "block";
+      img.style.maxWidth = "400px";
+      img.style.marginBottom = "10px";
+
+      // Wait for image decode so Chromium layout has the bitmap ready in memory
+      if (img.decode) {
+        await img.decode().catch(() => {});
+      } else {
+        await new Promise((res) => {
+          img.onload = res;
+          img.onerror = res;
+        });
+      }
+      wrapper.appendChild(img);
+
+      const textEl = document.createElement("div");
+      textEl.style.whiteSpace = "pre-wrap";
+      textEl.style.fontFamily = "sans-serif";
+      textEl.innerText = text;
+      wrapper.appendChild(textEl);
+
       document.body.appendChild(wrapper);
 
       const range = document.createRange();
@@ -321,11 +335,34 @@ export async function copyBothImageAndDescription(imageUrl, text) {
       document.body.removeChild(wrapper);
 
       if (ok) return { success: true };
-    } catch (e3) {
-      console.warn("DOM copy fallback failed:", e3);
+    } catch (e2) {
+      console.warn("DOM copy failed:", e2);
     }
 
-    // 3. Fallback: plain text
+    // 3. Fallback: Write HTML + plain text
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      try {
+        const safeTextHtml = text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br/>");
+        const htmlContent = `<div><img src="${dataUrl || imageUrl}" alt="Vehicle" style="max-width:750px;display:block;margin-bottom:12px;border-radius:8px;" /><br/><div style="font-family:sans-serif;white-space:pre-wrap;font-size:14px;line-height:1.5;">${safeTextHtml}</div></div>`;
+        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+        const textBlob = new Blob([text], { type: "text/plain" });
+
+        const item = new ClipboardItem({
+          "text/html": htmlBlob,
+          "text/plain": textBlob,
+        });
+        await navigator.clipboard.write([item]);
+        return { success: true };
+      } catch (e3) {
+        console.warn("Async HTML copy fallback failed:", e3);
+      }
+    }
+
+    // 4. Final fallback: plain text
     await navigator.clipboard.writeText(text);
     return { success: true };
   } catch (err) {
