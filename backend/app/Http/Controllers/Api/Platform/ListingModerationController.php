@@ -26,7 +26,7 @@ class ListingModerationController extends Controller
                 'vehicleModel:id,name',
                 'vehicleVariant:id,name',
                 'vehicleColour:id,name,hex',
-                'shop:id,name,slug,city,district,phone,verification_status,is_verified,owner_user_id',
+                'shop:id,name,slug,city,district,phone,verification_status,is_published,owner_user_id',
                 'shop.owner:id,name,phone',
                 'pricing',
                 'images' => fn ($q) => $q->where('is_primary', true)->with('attachment'),
