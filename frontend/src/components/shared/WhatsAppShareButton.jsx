@@ -401,9 +401,10 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
     const res = await copyBothImageAndDescription(activeImage, message);
     if (res.success) {
       setCopiedBoth(true);
-      toast.success("Both Image & Description copied! Press Ctrl+V in WhatsApp to paste.", {
-        duration: 4000,
-      });
+      toast.success(
+        "Both Image & Description copied! In WhatsApp: Ctrl+V attaches photo, then Ctrl+V in 'Add a caption' pastes description.",
+        { duration: 5500 }
+      );
       setTimeout(() => setCopiedBoth(false), 3000);
     } else {
       toast.error("Failed to copy to clipboard");
@@ -451,7 +452,7 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
     // 3. Fallback: Open WhatsApp with full pre-filled text & link
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank", "noopener,noreferrer");
-    toast.success("Opening WhatsApp! All vehicle details & image are copied to clipboard (Ctrl+V).", {
+    toast.success("Opening WhatsApp with all vehicle details & photo link preview!", {
       duration: 5000,
     });
   };
@@ -590,6 +591,18 @@ export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
                 />
                 <span className="block text-right text-[10px] text-gray-500 mt-1">LankaLane ✓✓</span>
               </div>
+            </div>
+
+            {/* Quick guide for WhatsApp Web pasting */}
+            <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-2.5 text-xs text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <p className="font-semibold flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+                <span>💡</span>
+                <span>Pasting in WhatsApp Web:</span>
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
+                1. Press <strong>Ctrl + V</strong> in your WhatsApp chat to attach the photo.<br/>
+                2. Click inside WhatsApp&apos;s <em>&quot;Add a caption...&quot;</em> box and press <strong>Ctrl + V</strong> to paste the complete description!
+              </p>
             </div>
           </div>
         </div>
