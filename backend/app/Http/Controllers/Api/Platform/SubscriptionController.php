@@ -188,20 +188,19 @@ class SubscriptionController extends Controller
     /**
      * Give a shop a plan until a date (a deal, a comp, a manual renewal, a trial
      * extension) — or shorten the one running. See SubscriptionService::setPlanUntil().
-     * `ends_at` is a calendar date; the plan runs to the end of that day (display timezone).
+     * `ends_at` is a calendar date; the plan runs to the end of that day.
      */
     public function grant(Request $request, RentalShop $rentalShop): JsonResponse
     {
-        $tz = config('app.display_timezone');
         $data = $request->validate([
             'plan_id' => ['required', 'integer', 'exists:subscription_plans,id'],
-            'ends_at' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . now($tz)->toDateString(), 'before:' . now($tz)->addYears(10)->toDateString()],
+            'ends_at' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . now()->toDateString(), 'before:' . now()->addYears(10)->toDateString()],
             'note' => ['nullable', 'string', 'max:255'],
             // Only used when the plan starts today (another plan / grace / unpaid) — saves it as a free trial.
             'trial' => ['boolean'],
         ]);
 
-        $endsAt = Carbon::createFromFormat('Y-m-d', $data['ends_at'], $tz)->endOfDay()->utc();
+        $endsAt = Carbon::createFromFormat('Y-m-d', $data['ends_at'])->endOfDay();
         $result = $this->subscriptions->setPlanUntil($rentalShop->id, SubscriptionPlan::findOrFail($data['plan_id']), $endsAt, $data['note'] ?? null, $this->admin()->id, (bool) ($data['trial'] ?? false));
 
         return response()->json(['message' => match ($result['change']) {

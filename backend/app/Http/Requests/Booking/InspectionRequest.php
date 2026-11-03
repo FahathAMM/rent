@@ -20,6 +20,9 @@ class InspectionRequest extends FormRequest
             'customer_present' => ['nullable', 'boolean'],
             // Handover: staff confirm the cash due at pickup was handed over (enforced in TransitionBooking::handover()).
             'cash_received' => ['nullable', 'boolean'],
+            // Handover: the customer agrees to the shop's terms and signs on screen (PNG data URL) — RentalAgreementService.
+            'terms_accepted' => ['nullable', 'boolean'],
+            'customer_signature' => ['nullable', 'string', 'max:1500000'],
             // Return: what the shop keeps from a deposit it holds in cash.
             'deposit_deduction' => ['nullable', 'numeric', 'min:0'],
             'deposit_deduction_reason' => ['nullable', 'string', 'max:255'],
