@@ -12,6 +12,7 @@ use App\Http\Resources\Vendor\BookingResource;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\AuditService;
+use App\Services\RentalAgreementService;
 use App\Services\BankTransferService;
 use App\Services\AuthUser;
 use App\Traits\JsonResponse as JsonResponseTrait;
@@ -33,7 +34,7 @@ class BookingController extends Controller
     use JsonResponseTrait;
 
     /** InspectionRequest fields that are not columns on booking_inspections. */
-    private const NON_INSPECTION_FIELDS = ['damages', 'cash_received', 'deposit_deduction', 'deposit_deduction_reason'];
+    private const NON_INSPECTION_FIELDS = ['damages', 'cash_received', 'deposit_deduction', 'deposit_deduction_reason', 'terms_accepted', 'customer_signature'];
 
     public function __construct(private TransitionBooking $transitions, private BankTransferService $transfers) {}
 
@@ -139,8 +140,8 @@ class BookingController extends Controller
 
         $preview = $this->transitions->previewReschedule(
             $booking,
-            Carbon::parse($request->validated('pickup_at')),
-            Carbon::parse($request->validated('return_at')),
+            Carbon::parse($request->validated('pickup_at'))->tz(config('app.timezone')),
+            Carbon::parse($request->validated('return_at'))->tz(config('app.timezone')),
         );
 
         return $this->response('Reschedule preview', [
@@ -163,8 +164,8 @@ class BookingController extends Controller
         $booking = $this->transitions->reschedule(
             $booking,
             AuthUser::id(),
-            Carbon::parse($request->validated('pickup_at')),
-            Carbon::parse($request->validated('return_at')),
+            Carbon::parse($request->validated('pickup_at'))->tz(config('app.timezone')),
+            Carbon::parse($request->validated('return_at'))->tz(config('app.timezone')),
             $request->validated('reason'),
         );
 
@@ -210,7 +211,19 @@ class BookingController extends Controller
             'pricing' => $booking->pricing,
         ])->setPaper('a4');
 
-        $filename = "booking-{$booking->booking_reference}.pdf";
+        $filename = "{$booking->booking_reference}.pdf";
+
+        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+    }
+
+    /** The rental agreement: booking, the shop's terms and the customer's handover signature. ?download=1 saves it. */
+    public function agreement(Request $request, Booking $booking): Response
+    {
+        $this->authorize('view', $booking);
+        abort_unless(in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true), 422, 'The agreement is available once the booking is confirmed.');
+
+        $pdf = app(RentalAgreementService::class)->pdf($booking);
+        $filename = "{$booking->booking_reference}.pdf";
 
         return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
     }
@@ -228,10 +241,13 @@ class BookingController extends Controller
     {
         $this->authorize('conductHandover', $booking);
 
+        // The customer agrees to the shop's terms and signs on screen (required when the shop has terms).
+        $signed = app(RentalAgreementService::class)->captureAtHandover($booking, $request->input('customer_signature'), $request->boolean('terms_accepted'));
+
         $booking = $this->transitions->handover(
             $booking,
             AuthUser::id(),
-            $request->safe()->except(self::NON_INSPECTION_FIELDS),
+            $request->safe()->except(self::NON_INSPECTION_FIELDS) + $signed,
             $request->boolean('cash_received'),
         );
 
