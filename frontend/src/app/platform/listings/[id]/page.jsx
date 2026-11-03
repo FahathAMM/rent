@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { WhatsAppShareButton } from "@/components/shared/WhatsAppShareButton";
 
 const imageUrl = (img) => (img?.attachment ? `/storage/${img.attachment.file_path}` : null);
 const label = (v) => (v ? String(v).replace(/[-_]/g, " ") : null);
@@ -243,6 +244,7 @@ export default function PlatformListingDetailPage() {
                     <Link href={`/vehicles/${v.slug}`} target="_blank"><ExternalLink className="h-3.5 w-3.5" /> Public page</Link>
                   </Button>
                 )}
+                <WhatsAppShareButton vehicle={v} />
               </div>
             </div>
           </div>
