@@ -22,8 +22,13 @@ class ListingModerationController extends Controller
         $vehicles = Vehicle::query()
             ->with([
                 'category:id,name',
-                'shop:id,name,city,district',
-                'pricing:id,vehicle_id,daily_rate,weekly_rate,monthly_rate,security_deposit,driver_rate_per_day,mileage_allowance_per_day_km',
+                'brand:id,name',
+                'vehicleModel:id,name',
+                'vehicleVariant:id,name',
+                'vehicleColour:id,name,hex',
+                'shop:id,name,slug,city,district,phone,verification_status,is_verified,owner_user_id',
+                'shop.owner:id,name,phone',
+                'pricing',
                 'images' => fn ($q) => $q->where('is_primary', true)->with('attachment'),
             ])
             ->when($request->moderation_status, fn ($q) => $q->where('moderation_status', $request->moderation_status))
