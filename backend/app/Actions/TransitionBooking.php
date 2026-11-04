@@ -322,7 +322,8 @@ class TransitionBooking
             && (float) $deposit->amount_required > 0;
 
         if ($booking->payments()->where('method', Payment::METHOD_BANK)->where('status', Payment::STATUS_PENDING)->exists()) {
-            throw ValidationException::withMessages(['status' => ["Verify or reject the customer's pending bank transfer before handing over."]]);
+            throw ValidationException::withMessages(
+                ['status' => ["Verify or reject the customer's pending bank transfer before handing over."]]);
         }
 
         // Paid to the shop: total_payable (deposit included) less what the shop has already verified.
