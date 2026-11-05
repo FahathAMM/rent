@@ -35,6 +35,23 @@ class CustomerDisputeQuery
             ->first();
     }
 
+    public static function findForCustomer(int $customerId, string $reference): ?Dispute
+    {
+        return Dispute::where('dispute_reference', $reference)
+            ->whereHas('booking', fn ($q) => $q->withoutGlobalScope(ShopScope::class)->where('customer_id', $customerId))
+            ->with([
+                'booking' => fn ($q) => $q->withoutGlobalScope(ShopScope::class)->with(['shop', 'vehicle' => fn ($v) => $v->withoutGlobalScope(ShopScope::class)]),
+                'raisedByCustomer:id,name',
+            ])
+            ->first();
+    }
+
+    public static function forCustomer(int $customerId): Builder
+    {
+        return Dispute::whereHas('booking', fn ($q) => $q->withoutGlobalScope(ShopScope::class)->where('customer_id', $customerId))
+            ->with(['booking' => fn ($q) => $q->withoutGlobalScope(ShopScope::class)->with('shop')]);
+    }
+
     /**
      * Which shop-side role this user holds on the booking, or null if none.
      * Never 'customer': $userId is a users.id, while bookings.customer_id
