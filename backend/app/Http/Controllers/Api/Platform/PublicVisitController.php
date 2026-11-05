@@ -9,8 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Public site visits — /platform/visits. Days are local days (log-viewer's
- * display timezone, Asia/Colombo); created_at is stored in UTC.
+ * Public site visits — /platform/visits.
  */
 class PublicVisitController extends Controller
 {
@@ -18,14 +17,14 @@ class PublicVisitController extends Controller
     public function summary(): JsonResponse
     {
         $today = $this->localDay();
-        $count = fn (CarbonImmutable $from) => PublicVisit::where('created_at', '>=', $from->utc())->count();
+        $count = fn (CarbonImmutable $from) => PublicVisit::where('created_at', '>=', $from)->count();
 
         return response()->json(['data' => [
             'today'           => $count($today),
-            'unique_today'    => PublicVisit::where('created_at', '>=', $today->utc())->distinct('ip')->count('ip'),
+            'unique_today'    => PublicVisit::where('created_at', '>=', $today)->distinct('ip')->count('ip'),
             'last_7_days'     => $count($today->subDays(6)),
             'last_30_days'    => $count($today->subDays(29)),
-            'top_pages'       => PublicVisit::where('created_at', '>=', $today->subDays(29)->utc())
+            'top_pages'       => PublicVisit::where('created_at', '>=', $today->subDays(29))
                 ->selectRaw('path, count(*) as visits')
                 ->groupBy('path')->orderByDesc('visits')->limit(5)->get(),
         ]]);
@@ -40,8 +39,8 @@ class PublicVisitController extends Controller
                 ->orWhere('ip', 'like', "%{$search}%")
                 ->orWhere('country', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%")))
-            ->when($request->get('date_from'), fn ($q, $from) => $q->where('created_at', '>=', $this->localDay($from)->utc()))
-            ->when($request->get('date_to'), fn ($q, $to) => $q->where('created_at', '<', $this->localDay($to)->addDay()->utc()));
+            ->when($request->get('date_from'), fn ($q, $from) => $q->where('created_at', '>=', $this->localDay($from)))
+            ->when($request->get('date_to'), fn ($q, $to) => $q->where('created_at', '<', $this->localDay($to)->addDay()));
 
         $sortable = ['created_at', 'path', 'country'];
         $sort = in_array($request->get('sort_field'), $sortable, true) ? $request->get('sort_field') : 'created_at';
@@ -54,11 +53,9 @@ class PublicVisitController extends Controller
         ]);
     }
 
-    /** Start of a local day — today, or the given Y-m-d. */
+    /** Start of a day — today, or the given Y-m-d. */
     private function localDay(?string $date = null): CarbonImmutable
     {
-        $tz = config('log-viewer.timezone') ?: config('app.timezone');
-
-        return ($date ? CarbonImmutable::parse($date, $tz) : CarbonImmutable::now($tz))->startOfDay();
+        return ($date ? CarbonImmutable::parse($date) : CarbonImmutable::now())->startOfDay();
     }
 }

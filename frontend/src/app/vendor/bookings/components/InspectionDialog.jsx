@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { TextInput, NumberInput, TextareaInput, CheckboxInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
-import { Banknote, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Banknote, Loader2, Plus, ScrollText, ShieldCheck, Trash2 } from "lucide-react";
+import { SignaturePad } from "./SignaturePad";
 
 const FUEL_LEVELS = [
   { value: "empty", label: "Empty" },
@@ -34,13 +35,16 @@ const emptyDamage = { area: "", description: "", severity: "minor", estimated_co
  * cashDue (handover): cash the shop must take before the keys go out — staff confirm it.
  * depositHeld (return): a cash deposit the shop holds — staff record what they keep, if anything.
  */
-export function InspectionDialog({ open, onOpenChange, title, allowDamages = false, onSubmit, loading, cashDue = null, depositHeld = null }) {
+export function InspectionDialog({ open, onOpenChange, title, allowDamages = false, onSubmit, loading, cashDue = null, depositHeld = null, terms = null }) {
   const { format } = useCurrencyFormat();
   const [form, setForm] = useState({
     odometer_reading: "", fuel_level: "", notes: "", customer_present: true,
     cash_received: false, deposit_deduction: "", deposit_deduction_reason: "",
   });
   const [damages, setDamages] = useState([]);
+  // Handover with shop terms: the customer reads them, agrees and signs on screen.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [signature, setSignature] = useState(null);
   const [errors, setErrors] = useState({});
   const deduction = Number(form.deposit_deduction || 0);
 
@@ -61,6 +65,10 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
       customer_present: form.customer_present,
     };
     if (cashDue) payload.cash_received = form.cash_received;
+    if (terms) {
+      payload.terms_accepted = termsAccepted;
+      payload.customer_signature = signature || undefined;
+    }
     if (depositHeld) {
       payload.deposit_deduction = form.deposit_deduction || 0;
       payload.deposit_deduction_reason = form.deposit_deduction_reason || undefined;
@@ -73,7 +81,7 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-h-[92vh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>Record the vehicle&apos;s condition.</DialogDescription>
@@ -92,6 +100,18 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
               <p className="flex items-center gap-2 text-sm font-medium"><Banknote className="h-4 w-4" /> Collect {format(cashDue)} in cash</p>
               <CheckboxInput label={`I have received ${format(cashDue)} from the customer`} checked={form.cash_received} onChange={f("cash_received")} />
               {errors.cash_received?.[0] && <p className="text-xs text-destructive">{errors.cash_received[0]}</p>}
+            </div>
+          )}
+
+          {terms && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="flex items-center gap-2 text-sm font-medium"><ScrollText className="h-4 w-4" /> Terms & conditions — the customer reads and signs</p>
+              {/* Shop terms HTML — cleaned to plain formatting tags on the server. */}
+              <div className="rich-text max-h-48 overflow-y-auto rounded-md bg-muted/40 p-3 text-xs leading-relaxed" dangerouslySetInnerHTML={{ __html: terms }} />
+              <CheckboxInput label="The customer has read and agrees to these terms" checked={termsAccepted} onChange={(v) => setTermsAccepted(!!v)} />
+              {errors.terms_accepted?.[0] && <p className="text-xs text-destructive">{errors.terms_accepted[0]}</p>}
+              <SignaturePad onChange={setSignature} />
+              {errors.customer_signature?.[0] && <p className="text-xs text-destructive">{errors.customer_signature[0]}</p>}
             </div>
           )}
 
@@ -129,7 +149,7 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
 
           <div className="flex justify-end gap-2 border-t pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading || (cashDue > 0 && !form.cash_received)}>
+            <Button type="submit" disabled={loading || (cashDue > 0 && !form.cash_received) || (!!terms && (!termsAccepted || !signature))}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save
             </Button>

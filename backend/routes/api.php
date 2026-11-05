@@ -179,6 +179,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('bookings/{booking:booking_reference}/reschedule/preview', [VendorBookingController::class, 'previewReschedule']);
             Route::post('bookings/{booking:booking_reference}/reschedule', [VendorBookingController::class, 'reschedule']);
             Route::get('bookings/{booking:booking_reference}/voucher', [VendorBookingController::class, 'voucher']);
+            Route::get('bookings/{booking:booking_reference}/agreement', [VendorBookingController::class, 'agreement']);
             Route::post('bookings/{booking:booking_reference}/transfers/{payment}/verify', [VendorBookingController::class, 'verifyTransfer']);
             Route::post('bookings/{booking:booking_reference}/transfers/{payment}/reject', [VendorBookingController::class, 'rejectTransfer']);
             Route::get('bookings/{booking:booking_reference}/transfers/{payment}/proof', [VendorBookingController::class, 'transferProof']);
@@ -190,6 +191,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('shop-profile', [VendorShopProfileController::class, 'show']);
             Route::put('shop-profile', [VendorShopProfileController::class, 'update']);
             Route::post('shop-profile/branding', [VendorShopProfileController::class, 'updateBranding']);
+            Route::get('terms', [VendorShopProfileController::class, 'terms']);
+            Route::put('terms', [VendorShopProfileController::class, 'updateTerms']);
 
             Route::get('earnings', [VendorEarningsController::class, 'index']);
             Route::get('earnings/bookings', [VendorEarningsController::class, 'bookings']);

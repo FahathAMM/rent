@@ -179,7 +179,7 @@ class RescheduleBookingTest extends TestCase
             ->assertJsonCount(2, 'data.date_changes')
             ->assertJsonPath('data.date_changes.0.reason', 'Moved again');
         $this->assertStringContainsString(
-            $original->pickup_at->copy()->setTimezone(config('app.display_timezone'))->format('d M Y'),
+            $original->pickup_at->format('d M Y'),
             $response->json('data.date_changes.1.from'),
             'the oldest change holds the dates first booked',
         );

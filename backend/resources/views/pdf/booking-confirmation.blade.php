@@ -1,10 +1,9 @@
 @php
-    $tz = config('app.display_timezone');
     // The marketplace's own name (platform settings), not Laravel's APP_NAME.
     $brand = \App\Models\PlatformDetail::current()?->name ?: config('app.name');
     $cur = $pricing?->currency ?? 'LKR';
     $money = fn ($v) => $cur . ' ' . number_format((float) $v, 2);
-    $when = fn ($d) => $d ? $d->copy()->setTimezone($tz)->format('D, d M Y · h:i A') : '—';
+    $when = fn ($d) => $d ? $d->format('D, d M Y · h:i A') : '—';
     $methodLabel = [
         'cash' => 'Cash to the shop at pickup',
         'bank_transfer' => 'Bank transfer to the shop (any balance at pickup)',
@@ -17,6 +16,8 @@
     $return = $booking->returnLocation;
     // Money received only - the booking charge and price adjustments are statement lines, not payments.
     $received = $booking->payments->where('status', \App\Models\Payment::STATUS_SUCCEEDED)->whereNotNull('method')->sortBy('paid_at');
+    // The deposit part the shop kept at return (with the reason), if any.
+    $damageKept = $booking->payments->where('status', \App\Models\Payment::STATUS_SUCCEEDED)->where('type', \App\Models\Payment::TYPE_DAMAGE);
     // Latest shop date change, if any. "originally" shows the first change's old dates, i.e. what was first booked.
     $dateChanges = $booking->dateChanges;
     $dateChange = $dateChanges->first();
@@ -30,6 +31,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<title>{{ $booking->booking_reference }}</title>
 <style>
     @page { margin: 28px 32px; }
     body { font-family: 'DejaVu Sans', 'Helvetica', sans-serif; font-size: 10.5px; color: #1f2937; }
@@ -82,7 +84,7 @@
         </td>
         <td style="width: 42%;">
             <div class="doc-title">Booking Voucher</div>
-            <div class="doc-meta">Issued {{ now()->setTimezone($tz)->format('d M Y, h:i A') }}</div>
+            <div class="doc-meta">Issued {{ now()->format('d M Y, h:i A') }}</div>
         </td>
     </tr>
 </table>
@@ -105,7 +107,7 @@
 @if ($dateChange)
 {{-- The shop moved the dates: say so up front, so the voucher can't be mistaken for an older copy. --}}
 <div class="date-change">
-    <strong>Dates changed by the shop</strong> on {{ $dateChange->created_at->copy()->setTimezone($tz)->format('d M Y, h:i A') }}
+    <strong>Dates changed by the shop</strong> on {{ $dateChange->created_at->format('d M Y, h:i A') }}
     — originally {{ $dateChange->from_value }}.
     @if ($dateChange->reason) Reason: {{ $dateChange->reason }}@endif
     @if ($dateChangeCount > 1) ({{ $dateChangeCount }} changes in total; the dates below are the latest.)@endif
@@ -179,13 +181,17 @@
             </table>
             <table class="lines" style="margin-top: 6px;">
                 @forelse ($received as $p)
+                    @php($paidBack = (float) $p->debit > 0)
                     <tr>
-                        <td>{{ $p->paid_at?->copy()->setTimezone($tz)->format('d M Y') }} · {{ $p->method === 'bank' ? 'Bank transfer' : 'Cash' }}{{ $p->transfer_reference ? ' (' . $p->transfer_reference . ')' : '' }}</td>
-                        <td class="amt">{{ $money($p->amount) }}</td>
+                        <td>{{ $p->paid_at?->format('d M Y') }} · {{ $p->method === 'bank' ? 'Bank transfer' : 'Cash' }}{{ $paidBack ? ($p->type === 'security_deposit' ? ' — deposit handed back' : ' — paid back') : '' }}{{ $p->transfer_reference ? ' (' . $p->transfer_reference . ')' : '' }}</td>
+                        <td class="amt">{{ $paidBack ? '−' : '' }}{{ $money($p->amount) }}</td>
                     </tr>
                 @empty
                     <tr><td class="muted" colspan="2">No payment received yet.</td></tr>
                 @endforelse
+                @foreach ($damageKept as $d)
+                    <tr><td>Kept from deposit{{ $d->note ? ' — ' . $d->note : '' }}</td><td class="amt">{{ $money($d->debit) }}</td></tr>
+                @endforeach
                 <tr class="strong"><td>Paid</td><td class="amt ok">{{ $money($paid) }}</td></tr>
                 <tr class="total"><td>{{ $balance > 0 ? 'Balance due' : 'Fully paid' }}</td><td class="amt {{ $balance > 0 ? 'due' : 'ok' }}">{{ $money($balance) }}</td></tr>
             </table>
@@ -225,7 +231,7 @@
 </table>
 
 <div class="footer-note">
-    {{ $brand }} · Booking {{ $booking->booking_reference }} · Booked on {{ $booking->created_at?->copy()->setTimezone($tz)->format('d M Y') }}.
+    {{ $brand }} · Booking {{ $booking->booking_reference }} · Booked on {{ $booking->created_at?->format('d M Y') }}.
     The shop can confirm this booking by its reference.
 </div>
 

@@ -36,8 +36,8 @@ class VisitLogController extends Controller
         // Pipe-separated plain text — easy to read and tail.
         $line = collect($fields)->map(fn ($value, $key) => "{$key}: " . ($value ?? '-'))->implode(' | ');
 
-        // File per local day (log-viewer's display timezone, Asia/Colombo) — the app itself runs in UTC.
-        $date = now(config('log-viewer.timezone'))->toDateString();
+        // One file per day.
+        $date = now()->toDateString();
 
         Log::build([
             'driver' => 'single',

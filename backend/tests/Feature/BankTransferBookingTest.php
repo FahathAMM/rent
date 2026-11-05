@@ -297,7 +297,7 @@ class BankTransferBookingTest extends TestCase
         $this->assertStringStartsWith('%PDF', $inline->getContent());
 
         $download = $this->withHeaders($auth)->get('/api/bookings/BKG-BANK-001/voucher?download=1')->assertOk();
-        $this->assertStringContainsString('attachment; filename=booking-BKG-BANK-001.pdf', $download->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('attachment; filename=BKG-BANK-001.pdf', $download->headers->get('Content-Disposition'));
     }
 
     public function test_the_shop_can_print_the_same_voucher_but_another_shop_cannot(): void
@@ -309,7 +309,7 @@ class BankTransferBookingTest extends TestCase
             ->get('/api/vendor/bookings/BKG-BANK-001/voucher?download=1')
             ->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
-        $this->assertStringContainsString('attachment; filename=booking-BKG-BANK-001.pdf', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('attachment; filename=BKG-BANK-001.pdf', $response->headers->get('Content-Disposition'));
 
         $otherOwner = User::factory()->create();
         $otherShop = RentalShop::factory()->create(['owner_user_id' => $otherOwner->id]);

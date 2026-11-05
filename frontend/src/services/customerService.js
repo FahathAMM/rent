@@ -28,6 +28,8 @@ export const customerService = {
     getAll: (params) => customerApi.get("/bookings", { params }),
     getOne: (reference) => customerApi.get(`/bookings/${reference}`),
     summary: () => customerApi.get("/bookings/summary"),
+    /** The rental agreement PDF — the shop's terms, signed at handover. */
+    agreement: (reference, download = false) => customerApi.get(`/bookings/${reference}/agreement`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
     /** The booking voucher PDF to show the shop at pickup — fetched as a blob since it needs the customer's token. */
     voucher: (reference, download = false) => customerApi.get(`/bookings/${reference}/voucher`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
     create: (data) => customerApi.post("/bookings", data),

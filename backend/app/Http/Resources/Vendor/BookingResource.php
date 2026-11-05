@@ -68,6 +68,8 @@ class BookingResource extends JsonResource
             'payments' => $this->whenLoaded('payments', fn () => Payment::statementOrder($this->payments)->map->summary()->values()),
             'amount_paid' => $this->whenLoaded('payments', fn () => $this->amountPaid()),
             'balance_due' => $this->whenLoaded('payments', fn () => $this->balanceDue()),
+            // Shop terms signed by the customer at handover (RentalAgreementService).
+            'agreement' => app(\App\Services\RentalAgreementService::class)->status($this->resource),
             'inspections' => $this->whenLoaded('inspections'),
             'damages' => $this->whenLoaded('damages'),
             'status_histories' => $this->whenLoaded('statusHistories', fn () => $this->statusHistories->map(fn ($h) => [

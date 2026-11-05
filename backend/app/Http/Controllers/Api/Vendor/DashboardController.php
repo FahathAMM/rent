@@ -38,6 +38,10 @@ class DashboardController extends Controller
             'vehicle_utilisation' => $this->utilisation(),
             'listing_performance' => $this->listingPerformance(),
             'reviews' => $this->reviewSummary($shopId),
+            'today' => $this->today(),
+            'attention' => $this->attentionCounts(),
+            'income_trend' => $this->incomeTrend(),
+            'recent_bookings' => $this->recentBookings(),
         ]);
     }
 
@@ -88,28 +92,45 @@ class DashboardController extends Controller
         ];
     }
 
+    /** Time-sensitive work that can otherwise get buried in the full booking list. */
+    private function attentionCounts(): array
+    {
+        return [
+            'pending_transfers' => Payment::where('method', Payment::METHOD_BANK)
+                ->where('status', Payment::STATUS_PENDING)
+                ->whereHas('booking', fn ($q) => $q->where('status', Booking::STATUS_CONFIRMED))
+                ->count(),
+            'overdue_returns' => Booking::where('status', Booking::STATUS_ACTIVE)
+                ->where('return_at', '<', now())
+                ->count(),
+        ];
+    }
+
     /**
      * Money from bookings that are going ahead or done - customers pay the
      * shop directly (cash / bank transfer). Same rules as the Earnings page
-     * (Vendor\EarningsController): rental income is the subtotal, and what
-     * has been received excludes security-deposit payments (that money goes
-     * back) and is capped per booking at its rental income.
+     * (Vendor\EarningsController): income is the subtotal plus any deposit kept
+     * for damage; received excludes security-deposit payments (that money goes
+     * back) but includes the kept damage, capped per booking at its income.
      */
     private function revenue(): array
     {
         $bookings = Booking::with(['pricing:id,booking_id,subtotal', 'payments' => fn ($q) => $q
-                ->money()
                 ->where('status', Payment::STATUS_SUCCEEDED)
-                ->where('type', '!=', 'security_deposit')])
+                ->where(fn ($w) => $w
+                    ->where(fn ($m) => $m->whereNotNull('method')->where('type', '!=', Payment::TYPE_SECURITY_DEPOSIT))
+                    ->orWhere('type', Payment::TYPE_DAMAGE))])
             ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED])
             ->get(['id']);
 
         $income = 0.0;
         $received = 0.0;
         foreach ($bookings as $booking) {
-            $rental = (float) ($booking->pricing?->subtotal ?? 0);
-            $income += $rental;
-            $received += min($rental, (float) $booking->payments->sum(fn ($p) => (float) $p->credit - (float) $p->debit));
+            $damageKept = (float) $booking->payments->where('type', Payment::TYPE_DAMAGE)->sum('debit');
+            $bookingIncome = (float) ($booking->pricing?->subtotal ?? 0) + $damageKept;
+            $paid = (float) $booking->payments->whereNotNull('method')->sum(fn ($p) => (float) $p->credit - (float) $p->debit);
+            $income += $bookingIncome;
+            $received += min($bookingIncome, $paid + $damageKept);
         }
 
         return [
@@ -170,5 +191,77 @@ class DashboardController extends Controller
             'count' => (int) $row->count,
             'avg_rating' => round((float) $row->avg_rating, 2),
         ];
+    }
+
+    /** Pickups and returns due today - the vendor's to-do list for the day. */
+    private function today(): array
+    {
+        $row = fn (Booking $b, $at) => [
+            'reference' => $b->booking_reference,
+            'customer' => $b->customer?->name,
+            'vehicle' => $b->vehicle?->title,
+            'at' => $at,
+        ];
+
+        $pickups = Booking::with(['customer:id,name', 'vehicle:id,title'])
+            ->where('status', Booking::STATUS_CONFIRMED)
+            ->whereDate('pickup_at', today())
+            ->orderBy('pickup_at')
+            ->get()
+            ->map(fn ($b) => $row($b, $b->pickup_at));
+
+        $returns = Booking::with(['customer:id,name', 'vehicle:id,title'])
+            ->where('status', Booking::STATUS_ACTIVE)
+            ->whereDate('return_at', '<=', today())
+            ->orderBy('return_at')
+            ->get()
+            ->map(fn ($b) => $row($b, $b->return_at) + ['overdue' => $b->return_at->lt(now())]);
+
+        return ['pickups' => $pickups->all(), 'returns' => $returns->all()];
+    }
+
+    /** Rental income (subtotal) per month for the last 6 months, by pickup month. */
+    private function incomeTrend(): array
+    {
+        $start = now()->startOfMonth()->subMonths(5);
+
+        $totals = Booking::with('pricing:id,booking_id,subtotal')
+            ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED])
+            ->where('pickup_at', '>=', $start)
+            ->get(['id', 'pickup_at'])
+            ->groupBy(fn ($b) => $b->pickup_at->format('Y-m'))
+            ->map(fn ($group) => [
+                'income' => round((float) $group->sum(fn ($b) => $b->pricing?->subtotal ?? 0), 2),
+                'bookings' => $group->count(),
+            ]);
+
+        return collect(range(0, 5))->map(function ($i) use ($start, $totals) {
+            $month = $start->copy()->addMonths($i);
+            $key = $month->format('Y-m');
+
+            return [
+                'month' => $month->format('M'),
+                'income' => $totals[$key]['income'] ?? 0,
+                'bookings' => $totals[$key]['bookings'] ?? 0,
+            ];
+        })->all();
+    }
+
+    private function recentBookings(): array
+    {
+        return Booking::with(['customer:id,name', 'vehicle:id,title', 'pricing:id,booking_id,total_payable'])
+            ->latest()
+            ->limit(6)
+            ->get()
+            ->map(fn ($b) => [
+                'reference' => $b->booking_reference,
+                'customer' => $b->customer?->name,
+                'vehicle' => $b->vehicle?->title,
+                'pickup_at' => $b->pickup_at,
+                'return_at' => $b->return_at,
+                'status' => $b->status,
+                'total' => (float) ($b->pricing?->total_payable ?? 0),
+            ])
+            ->all();
     }
 }

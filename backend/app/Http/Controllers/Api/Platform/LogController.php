@@ -179,7 +179,7 @@ class LogController extends Controller
                 }
 
                 $current = [
-                    'datetime'    => $this->toDisplayTimezone($m[1]),
+                    'datetime'    => str_replace('T', ' ', $m[1]),
                     'environment' => $m[2],
                     'level'       => strtoupper($m[3]),
                     'message'     => rtrim($m[4]),
@@ -196,17 +196,5 @@ class LogController extends Controller
         }
 
         return $entries;
-    }
-
-    /**
-     * Log lines are written in the app's storage timezone (config('app.timezone'),
-     * UTC) — convert to the same display timezone the log-viewer package uses
-     * (config('log-viewer.timezone')) so both log views agree.
-     */
-    private function toDisplayTimezone(string $rawDatetime): string
-    {
-        return Carbon::createFromFormat('Y-m-d H:i:s', str_replace('T', ' ', $rawDatetime), config('app.timezone'))
-            ->setTimezone(config('log-viewer.timezone') ?: config('app.timezone'))
-            ->format('Y-m-d H:i:s');
     }
 }

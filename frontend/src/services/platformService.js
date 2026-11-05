@@ -14,6 +14,8 @@ export const platformService = {
   bookings: {
     getOne: (reference) => platformApi.get(`/platform/bookings/${reference}`),
     cancel: (reference, reason) => platformApi.post(`/platform/bookings/${reference}/cancel`, { reason }),
+    /** Platform Owner only — soft delete, not while confirmed / active or disputed. */
+    delete: (reference, reason) => platformApi.delete(`/platform/bookings/${reference}`, { data: { reason } }),
   },
 
   customers: {
@@ -128,6 +130,14 @@ export const platformService = {
     create: (data) => platformApi.post("/platform/categories", data),
     update: (id, data) => platformApi.put(`/platform/categories/${id}`, data),
     delete: (id) => platformApi.delete(`/platform/categories/${id}`),
+  },
+
+  /** Customer and vendor navigation menus. */
+  menus: {
+    getAll: (params) => platformApi.get("/platform/menus", { params }),
+    create: (data) => platformApi.post("/platform/menus", data),
+    update: (id, data) => platformApi.put(`/platform/menus/${id}`, data),
+    delete: (id) => platformApi.delete(`/platform/menus/${id}`),
   },
 
   /** Platform-managed Sri Lanka District/City reference data — see routes/platform.php. */

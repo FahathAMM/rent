@@ -35,6 +35,7 @@ Route::middleware('customer.auth')->group(function () {
     Route::post('bookings/{booking:booking_reference}/cancel', [BookingController::class, 'cancel']);
     Route::post('bookings/{booking:booking_reference}/transfers', [BookingController::class, 'submitTransfer']);
     Route::get('bookings/{booking:booking_reference}/voucher', [BookingController::class, 'voucher']);
+    Route::get('bookings/{booking:booking_reference}/agreement', [BookingController::class, 'agreement']);
     Route::get('bookings/{booking:booking_reference}/transfers/{payment}/proof', [BookingController::class, 'transferProof']);
 
     // Customer's own reviews — Review has no BelongsToShop/ShopScope at

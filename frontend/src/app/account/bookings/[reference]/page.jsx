@@ -14,11 +14,11 @@ import { BankTransferCard } from "@/components/account/BankTransferCard";
 import { CustomerPaymentsList } from "@/components/account/CustomerPaymentsList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PdfMenu } from "@/components/shared/PdfMenu";
 import {
-  ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle, FileText, Download,
-  Car, CalendarRange, CalendarClock, Receipt, XCircle, Ban, Banknote, Landmark, ScrollText, Clock, Wallet,
+  ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle, FileText, Car, CalendarRange, CalendarClock, Receipt, XCircle, Ban, Banknote, Landmark, ScrollText, Clock, Wallet,
 } from "lucide-react";
-import { downloadBlob, formatDateTime, openBlob } from "@/lib/utils";
+import { downloadBlob, formatDateTime } from "@/lib/utils";
 import { isMoneyLine } from "@/lib/statement";
 import { toast } from "sonner";
 
@@ -39,7 +39,7 @@ export default function BookingDetailPage() {
   const { format } = useCurrencyFormat();
   const [cancelling, setCancelling] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [voucherBusy, setVoucherBusy] = useState(null); // "view" | "download" while the PDF is being fetched
+  const [pdfBusy, setPdfBusy] = useState(null); // "voucher" | "agreement" while the PDF is being fetched
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["my-booking", reference],
@@ -103,15 +103,22 @@ export default function BookingDetailPage() {
   // The voucher the customer shows the shop at pickup — once the shop has confirmed.
   const hasVoucher = ["confirmed", "active", "completed"].includes(booking.status);
 
-  const openVoucher = (download) => {
-    // Open the tab inside the click so popup blockers allow it, then fill it once the PDF arrives.
-    const tab = download ? null : window.open("", "_blank");
-    setVoucherBusy(download ? "download" : "view");
-    customerService.bookings.voucher(reference, download)
-      .then((res) => (download ? downloadBlob(res.data, `booking-${reference}.pdf`) : openBlob(res.data, tab)))
-      .catch(() => { tab?.close(); toast.error("Could not load the booking voucher"); })
-      .finally(() => setVoucherBusy(null));
+  // Voucher or agreement PDF: view in a new tab, or download as "<booking no>.pdf".
+  const openPdf = (kind, download) => {
+    // View opens /documents/... in a new tab, which loads the PDF itself.
+    if (!download) {
+      window.open(`/documents/customer/${reference}/${kind}`, "_blank");
+      return;
+    }
+    setPdfBusy(kind);
+    customerService.bookings[kind](reference, true)
+      .then((res) => downloadBlob(res.data, `${reference}.pdf`))
+      .catch(() => { toast.error(kind === "voucher" ? "Could not load the booking voucher" : "Could not load the rental agreement"); })
+      .finally(() => setPdfBusy(null));
   };
+
+  // The shop's terms you signed at handover (the agreement exists once the booking is confirmed).
+  const agreement = booking.agreement ?? {};
 
   return (
     <div className="space-y-4">
@@ -132,12 +139,17 @@ export default function BookingDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           {hasVoucher && (
             <>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openVoucher(false)} disabled={!!voucherBusy}>
-                {voucherBusy === "view" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} View voucher
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openVoucher(true)} disabled={!!voucherBusy}>
-                {voucherBusy === "download" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download PDF
-              </Button>
+              <PdfMenu label="Voucher" icon={FileText} loading={pdfBusy === "voucher"} onView={() => openPdf("voucher", false)} onDownload={() => openPdf("voucher", true)} />
+              {(agreement.signed || agreement.has_terms) && (
+                <PdfMenu
+                  label={agreement.signed ? "Signed agreement" : "Shop terms"}
+                  icon={ScrollText}
+                  title={agreement.signed ? "You signed this at pickup" : "You'll sign this at pickup"}
+                  loading={pdfBusy === "agreement"}
+                  onView={() => openPdf("agreement", false)}
+                  onDownload={() => openPdf("agreement", true)}
+                />
+              )}
             </>
           )}
           <StatusBadge status={booking.status} />

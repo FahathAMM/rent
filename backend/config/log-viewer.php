@@ -82,7 +82,7 @@ return [
     |
     */
 
-    'timezone' => env('LOG_VIEWER_TIMEZONE', env('APP_DISPLAY_TIMEZONE', 'Asia/Colombo')),
+    'timezone' => null,
 
     /*
     |--------------------------------------------------------------------------

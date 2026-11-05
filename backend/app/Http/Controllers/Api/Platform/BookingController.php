@@ -6,11 +6,15 @@ use App\Actions\TransitionBooking;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\ReasonRequest;
 use App\Models\Booking;
+use App\Models\Dispute;
 use App\Models\SystemAdmin;
+use App\Models\VehicleAvailability;
 use App\Services\AuditService;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Cross-shop booking oversight. No ShopScope bypass is needed here —
@@ -61,6 +65,39 @@ class BookingController extends Controller
         AuditService::edit('Booking', $booking->id, $booking->booking_reference, null, ['status' => 'cancelled_by_admin']);
 
         return $this->response('Booking cancelled', $booking);
+    }
+
+    /**
+     * Platform Owner only, with a reason. Soft delete: the booking disappears
+     * from every list (platform, shop, customer) but its payments, history and
+     * disputes stay in the database, while its days on the vehicle calendar
+     * are freed. Not while it's live — a confirmed or
+     * active booking holds the vehicle, so cancel it first — and not while a
+     * dispute on it is still open.
+     */
+    public function destroy(ReasonRequest $request, string $reference): JsonResponse
+    {
+        $booking = Booking::where('booking_reference', $reference)->first();
+        abort_unless($booking, 404);
+
+        if (in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE], true)) {
+            throw ValidationException::withMessages(['booking' => ['This booking is still live (confirmed or active) — cancel it first, then delete it.']]);
+        }
+        $openDisputes = $booking->disputes()->whereNotIn('status', [Dispute::STATUS_RESOLVED, Dispute::STATUS_CLOSED])->count();
+        if ($openDisputes) {
+            throw ValidationException::withMessages(['booking' => ["This booking has {$openDisputes} open dispute(s) — resolve them first."]]);
+        }
+
+        DB::transaction(function () use ($booking) {
+            // Free the booking's days on the vehicle calendar (vehicle_availability) — otherwise they stay "booked".
+            VehicleAvailability::where('booking_id', $booking->id)->delete();
+            $booking->delete();
+        });
+        AuditService::delete('Booking', $booking->id, $booking->booking_reference, [
+            'status' => $booking->status, 'reason' => $request->validated('reason'), 'decided_by_admin_id' => $this->admin()->id,
+        ]);
+
+        return $this->response('Booking deleted');
     }
 
     private function admin(): SystemAdmin

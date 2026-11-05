@@ -251,14 +251,14 @@ class ShopSubscriptionTest extends TestCase
 
     private function endOfDay(int $daysFromToday): Carbon
     {
-        return now(config('app.display_timezone'))->addDays($daysFromToday)->endOfDay()->utc();
+        return now()->addDays($daysFromToday)->endOfDay();
     }
 
     private function grantUntil(int $planId, int $daysFromToday)
     {
         return $this->as(SystemAdmin::factory()->create())->postJson("/api/platform/shops/{$this->shop->id}/subscription", [
             'plan_id' => $planId,
-            'ends_at' => now(config('app.display_timezone'))->addDays($daysFromToday)->toDateString(),
+            'ends_at' => now()->addDays($daysFromToday)->toDateString(),
             'note' => 'Test',
         ]);
     }
@@ -311,7 +311,7 @@ class ShopSubscriptionTest extends TestCase
 
         $this->as(SystemAdmin::factory()->create())->postJson("/api/platform/shops/{$this->shop->id}/subscription", [
             'plan_id' => $this->plan('pro')->id,
-            'ends_at' => now(config('app.display_timezone'))->addDays(14)->toDateString(),
+            'ends_at' => now()->addDays(14)->toDateString(),
             'trial' => true,
         ])->assertOk()->assertJsonPath('message', 'Free trial started')->assertJsonPath('data.current.state', 'trial');
 

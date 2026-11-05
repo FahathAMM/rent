@@ -102,7 +102,7 @@ class BankTransferService
                 'currency' => $booking->pricing->currency,
                 'status' => Payment::STATUS_SUCCEEDED,
                 'transfer_reference' => $reference,
-                'paid_at' => $paidAt ? Carbon::parse($paidAt) : now(),
+                'paid_at' => $paidAt ? Carbon::parse($paidAt)->tz(config('app.timezone')) : now(),
                 'verified_by' => $actorId,
                 'verified_at' => now(),
                 'idempotency_key' => (string) Str::uuid(),

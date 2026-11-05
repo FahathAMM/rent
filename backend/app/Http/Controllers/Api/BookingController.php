@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\RentalAgreementService;
 use App\Actions\TransitionBooking;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
@@ -142,7 +143,20 @@ class BookingController extends Controller
             'pricing' => $booking->pricing,
         ])->setPaper('a4');
 
-        $filename = "booking-{$booking->booking_reference}.pdf";
+        $filename = "{$booking->booking_reference}.pdf";
+
+        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+    }
+
+    /** The rental agreement for the customer's own booking: the shop's terms and their handover signature. */
+    public function agreement(Request $request, string $reference): Response
+    {
+        $booking = CustomerBookingQuery::find(auth('customer')->id(), $reference);
+        abort_unless($booking, 404);
+        abort_unless(in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true), 422, 'The agreement is available once the shop confirms your booking.');
+
+        $pdf = app(RentalAgreementService::class)->pdf($booking);
+        $filename = "{$booking->booking_reference}.pdf";
 
         return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
     }
