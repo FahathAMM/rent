@@ -32,8 +32,8 @@ class BookingService
         $pricing = $vehicle->pricing;
         abort_if(!$pricing, 422, 'This vehicle has no pricing configured yet.');
 
-        $pickupAt = Carbon::parse($data['pickup_at']);
-        $returnAt = Carbon::parse($data['return_at']);
+        $pickupAt = Carbon::parse($data['pickup_at'], config('app.timezone'));
+        $returnAt = Carbon::parse($data['return_at'], config('app.timezone'));
 
         $this->assertRequestIsValid($vehicle, $pricing, $pickupAt, $returnAt);
 
