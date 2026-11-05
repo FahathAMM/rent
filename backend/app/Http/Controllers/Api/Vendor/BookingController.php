@@ -140,8 +140,8 @@ class BookingController extends Controller
 
         $preview = $this->transitions->previewReschedule(
             $booking,
-            Carbon::parse($request->validated('pickup_at'))->tz(config('app.timezone')),
-            Carbon::parse($request->validated('return_at'))->tz(config('app.timezone')),
+            Carbon::parse($request->validated('pickup_at'), config('app.timezone')),
+            Carbon::parse($request->validated('return_at'), config('app.timezone')),
         );
 
         return $this->response('Reschedule preview', [
@@ -164,8 +164,8 @@ class BookingController extends Controller
         $booking = $this->transitions->reschedule(
             $booking,
             AuthUser::id(),
-            Carbon::parse($request->validated('pickup_at'))->tz(config('app.timezone')),
-            Carbon::parse($request->validated('return_at'))->tz(config('app.timezone')),
+            Carbon::parse($request->validated('pickup_at'), config('app.timezone')),
+            Carbon::parse($request->validated('return_at'), config('app.timezone')),
             $request->validated('reason'),
         );
 
