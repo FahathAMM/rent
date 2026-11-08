@@ -86,6 +86,13 @@ return [
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
+    /*
+    | Languages the public site can be shown in (see App\Http\Middleware\SetLocale).
+    | The fallback locale's text lives in the normal columns; every other
+    | locale's text lives in a model's `translations` JSON column.
+    */
+    'supported_locales' => ['en', 'ta'],
+
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
     /*

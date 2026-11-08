@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { publicService } from "@/services/publicService";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +11,8 @@ import { SaleVehicleCard } from "./SaleVehicleCard";
 
 /** The "For sale" section of a shop's public page, in the same style as its rental section. */
 export function ShopSaleSection({ slug }) {
+  const t = useTranslations("browse");
+  const ts = useTranslations("sale");
   const [sort, setSort] = useState("newest");
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
@@ -29,15 +32,15 @@ export function ShopSaleSection({ slug }) {
           <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500/15 via-pink-500/15 to-violet-500/15 text-primary">
             <BadgeDollarSign className="h-4 w-4" />
           </span>
-          For sale{total != null ? ` (${total})` : ""}
+          {total != null ? ts("forSaleCount", { count: total }) : ts("forSale")}
         </h2>
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-44 bg-card"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest">Newest</SelectItem>
-            <SelectItem value="price_asc">Price: Low to High</SelectItem>
-            <SelectItem value="price_desc">Price: High to Low</SelectItem>
-            <SelectItem value="mileage_asc">Lowest mileage</SelectItem>
+            <SelectItem value="newest">{t("sortNewest")}</SelectItem>
+            <SelectItem value="price_asc">{t("sortPriceAsc")}</SelectItem>
+            <SelectItem value="price_desc">{t("sortPriceDesc")}</SelectItem>
+            <SelectItem value="mileage_asc">{t("sortMileageAsc")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -60,7 +63,7 @@ export function ShopSaleSection({ slug }) {
             <div className="mt-6 flex justify-center">
               <Button variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage} className="gap-1.5">
                 {isFetchingNextPage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
-                Show more vehicles
+                {ts("showMoreVehicles")}
               </Button>
             </div>
           )}

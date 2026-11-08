@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -10,6 +11,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class PlatformDetail extends Model
 {
+    use HasTranslations;
+
+    /** Columns with other-language text in `translations` (see HasTranslations). */
+    protected array $translatable = ['tagline', 'login_eyebrow', 'login_heading', 'login_description'];
+
     protected $fillable = [
         'name', 'logo', 'login_logo', 'tagline',
         'login_eyebrow', 'login_heading', 'login_description',

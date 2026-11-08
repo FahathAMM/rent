@@ -1,3 +1,7 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.js');
+
 /**
  * The Laravel API this app proxies to. Server-side only (no NEXT_PUBLIC_
  * prefix) since it's read here in next.config.mjs and in the rewrites()
@@ -48,4 +52,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

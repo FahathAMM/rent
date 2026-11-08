@@ -22,13 +22,13 @@ class CustomerAuthService
 
         if (!$customer || !Hash::check($credentials['password'], $customer->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => [__('The provided credentials are incorrect.')],
             ]);
         }
 
         if (!$customer->isActive()) {
             throw ValidationException::withMessages([
-                'email' => ['Your account is ' . $customer->status . '.'],
+                'email' => [__('Your account is :status.', ['status' => __($customer->status)])],
             ]);
         }
 
@@ -85,7 +85,7 @@ class CustomerAuthService
     {
         if (!Hash::check($currentPassword, $customer->password)) {
             throw ValidationException::withMessages([
-                'current_password' => ['The current password is incorrect.'],
+                'current_password' => [__('The current password is incorrect.')],
             ]);
         }
 

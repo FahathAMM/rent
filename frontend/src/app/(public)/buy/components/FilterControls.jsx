@@ -1,34 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useEnumLabel } from "@/i18n/useEnumLabel";
 import { LayoutGrid, List as ListIcon, MapPin, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 
-/* The Buy page's filter sidebar, layout toggle and pagination. */
+/* The Rent and Buy pages' filter sidebar, layout toggle and pagination. */
 
-export const TRANSMISSION_OPTIONS = [
-  { value: "", label: "Any" },
-  { value: "automatic", label: "Automatic" },
-  { value: "manual", label: "Manual" },
-];
-
-export const FUEL_OPTIONS = [
-  { value: "", label: "Any" },
-  { value: "petrol", label: "Petrol" },
-  { value: "diesel", label: "Diesel" },
-  { value: "hybrid", label: "Hybrid" },
-  { value: "electric", label: "Electric" },
-];
-
-export const SEATS_OPTIONS = [
-  { value: "", label: "Any" },
-  { value: "2", label: "2+" },
-  { value: "4", label: "4+" },
-  { value: "7", label: "7+" },
-  { value: "12", label: "12+" },
-];
+// "" is "Any". Labels come from the `enums` messages (see OptionPills).
+export const TRANSMISSION_OPTIONS = ["", "automatic", "manual"];
+export const FUEL_OPTIONS = ["", "petrol", "diesel", "hybrid", "electric"];
+export const CONDITION_OPTIONS = ["", "brand_new", "reconditioned", "used"];
+export const SEATS_OPTIONS = ["", "2", "4", "7", "12"];
 
 export function Pill({ active, children, ...props }) {
   return (
@@ -44,6 +30,24 @@ export function Pill({ active, children, ...props }) {
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * A row of pills for a fixed option list. `group` names the `enums` messages
+ * the labels come from; without it the value is shown as "N+" (seats).
+ */
+export function OptionPills({ options, group, value, onChange }) {
+  const t = useTranslations("browse");
+  const enumLabel = useEnumLabel();
+  const label = (o) => (o === "" ? t("any") : group ? enumLabel(group, o) : `${o}+`);
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <Pill key={o} active={(value ?? "") === o} onClick={() => onChange(o)}>{label(o)}</Pill>
+      ))}
+    </div>
   );
 }
 
@@ -64,6 +68,7 @@ function pageItems(current, last) {
 }
 
 export function Pagination({ meta, onPage }) {
+  const t = useTranslations("browse");
   if (!meta || meta.last_page <= 1) return null;
   const { current_page: current, last_page: last, per_page: perPage, total } = meta;
   const from = (current - 1) * perPage + 1;
@@ -71,8 +76,8 @@ export function Pagination({ meta, onPage }) {
 
   return (
     <div className="mt-8 flex flex-col items-center gap-3">
-      <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-1.5">
-        <Button variant="outline" size="sm" className="bg-card" disabled={current <= 1} onClick={() => onPage(current - 1)}>Previous</Button>
+      <nav aria-label={t("pagination")} className="flex flex-wrap items-center justify-center gap-1.5">
+        <Button variant="outline" size="sm" className="bg-card" disabled={current <= 1} onClick={() => onPage(current - 1)}>{t("previous")}</Button>
         {pageItems(current, last).map((p, i) =>
           p === "…" ? (
             <span key={`gap-${i}`} className="px-1.5 text-sm text-muted-foreground">…</span>
@@ -93,9 +98,9 @@ export function Pagination({ meta, onPage }) {
             </button>
           )
         )}
-        <Button variant="outline" size="sm" className="bg-card" disabled={current >= last} onClick={() => onPage(current + 1)}>Next</Button>
+        <Button variant="outline" size="sm" className="bg-card" disabled={current >= last} onClick={() => onPage(current + 1)}>{t("next")}</Button>
       </nav>
-      <p className="text-xs text-muted-foreground">Showing {from}–{to} of {total} vehicles</p>
+      <p className="text-xs text-muted-foreground">{t("showing", { from, to, total })}</p>
     </div>
   );
 }
@@ -108,6 +113,7 @@ const PILL_LIMIT = 10;
  * when it's past the limit.
  */
 export function SearchablePills({ items, selected, onSelect, allLabel, searchPlaceholder, renderLabel = (i) => i.label }) {
+  const t = useTranslations("browse");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
 
@@ -129,15 +135,15 @@ export function SearchablePills({ items, selected, onSelect, allLabel, searchPla
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        {!searching && <Pill active={!selected} onClick={() => onSelect("")}>{allLabel}</Pill>}
+        {!searching && <Pill active={!selected} onClick={() => onSelect("")}>{allLabel ?? t("all")}</Pill>}
         {visible.map((i) => (
           <Pill key={i.value} active={selected === i.value} onClick={() => onSelect(i.value)}>{renderLabel(i)}</Pill>
         ))}
-        {searching && matches.length === 0 && <p className="py-1 text-xs text-muted-foreground">No matches for “{query.trim()}”</p>}
+        {searching && matches.length === 0 && <p className="py-1 text-xs text-muted-foreground">{t("noMatches", { query: query.trim() })}</p>}
       </div>
       {!searching && hidden > 0 && (
         <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs font-medium text-primary hover:underline">
-          {expanded ? "Show less" : `Show more (${hidden})`}
+          {expanded ? t("showLess") : t("showMore", { count: hidden })}
         </button>
       )}
     </div>
@@ -146,6 +152,7 @@ export function SearchablePills({ items, selected, onSelect, allLabel, searchPla
 
 /** District, then that district's cities. `vehicleCounts` is keyed "District|City". */
 export function LocationFilter({ params, setParam, setDistrict, districts, vehicleCounts }) {
+  const t = useTranslations("browse");
   const selectedDistrict = params.get("district") ?? "";
   // Every city of the chosen district (from the full Sri Lanka list), not just ones with listings.
   const districtCities = districts?.find((d) => d.name === selectedDistrict)?.cities ?? [];
@@ -156,22 +163,22 @@ export function LocationFilter({ params, setParam, setDistrict, districts, vehic
   const withCount = (label, n) => <>{label}{n > 0 && <span className="opacity-70"> ({n})</span>}</>;
 
   return (
-    <FilterSection icon={MapPin} title="Location">
+    <FilterSection icon={MapPin} title={t("location")}>
       <div className="space-y-3">
         <div>
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">District</p>
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("district")}</p>
           <SearchablePills
             items={(districts ?? []).map((d) => ({ value: d.name, label: d.name }))}
             selected={selectedDistrict}
             onSelect={setDistrict}
-            allLabel="All districts"
-            searchPlaceholder="Search districts..."
+            allLabel={t("allDistricts")}
+            searchPlaceholder={t("searchDistricts")}
             renderLabel={(i) => withCount(i.label, districtCount(i.value))}
           />
         </div>
         {selectedDistrict && (
           <div>
-            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">City</p>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("city")}</p>
             {/* keyed by district so the search/expanded state resets when the district changes */}
             <SearchablePills
               key={selectedDistrict}
@@ -181,8 +188,8 @@ export function LocationFilter({ params, setParam, setDistrict, districts, vehic
                 .sort((a, b) => countFor(b.label) - countFor(a.label) || a.label.localeCompare(b.label))}
               selected={params.get("city") ?? ""}
               onSelect={(v) => setParam("city", v)}
-              allLabel="All cities"
-              searchPlaceholder={`Search cities in ${selectedDistrict}...`}
+              allLabel={t("allCities")}
+              searchPlaceholder={t("searchCitiesIn", { district: selectedDistrict })}
               renderLabel={(i) => withCount(i.label, countFor(i.label))}
             />
           </div>
@@ -192,11 +199,48 @@ export function LocationFilter({ params, setParam, setDistrict, districts, vehic
   );
 }
 
+/** "Filters" heading with the "Clear all" button, at the top of the sidebar. */
+export function FiltersHeading({ onClear }) {
+  const t = useTranslations("browse");
+  return (
+    <div className="flex items-center justify-between">
+      <p className="flex items-center gap-1.5 text-sm font-bold"><SlidersHorizontal className="h-4 w-4" /> {t("filters")}</p>
+      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={onClear}>{t("clearAll")}</Button>
+    </div>
+  );
+}
+
+/** Min–max number inputs with an Apply button. */
+export function RangeInputs({ min, max, onMin, onMax, onApply }) {
+  const t = useTranslations("browse");
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <Input type="number" min="0" placeholder={t("min")} value={min} onChange={(e) => onMin(e.target.value)} className="h-9" />
+        <span className="text-muted-foreground">–</span>
+        <Input type="number" min="0" placeholder={t("max")} value={max} onChange={(e) => onMax(e.target.value)} className="h-9" />
+      </div>
+      <Button size="sm" variant="outline" className="w-full" onClick={onApply}>{t("apply")}</Button>
+    </>
+  );
+}
+
+/** "12 vehicles found" above the results, or "Searching..." while loading. */
+export function ResultsCount({ loading, count }) {
+  const t = useTranslations("browse");
+  return (
+    <p className="text-sm text-muted-foreground">
+      {loading ? t("searching") : <>{t("vehicleCount", { count })}<span className="hidden sm:inline">{t("found")}</span></>}
+    </p>
+  );
+}
+
 /** Grid or list. Same height as the sort box beside it. */
 export function ViewToggle({ view, setView }) {
+  const t = useTranslations("browse");
   return (
-    <div className="flex h-9 items-center gap-0.5 rounded-lg border bg-card p-0.5" role="group" aria-label="Layout">
-      {[["grid", LayoutGrid, "Grid view"], ["list", ListIcon, "List view"]].map(([v, Icon, label]) => (
+    <div className="flex h-9 items-center gap-0.5 rounded-lg border bg-card p-0.5" role="group" aria-label={t("layout")}>
+      {[["grid", LayoutGrid, t("gridView")], ["list", ListIcon, t("listView")]].map(([v, Icon, label]) => (
         <button
           key={v}
           type="button"
@@ -218,6 +262,7 @@ export function ViewToggle({ view, setView }) {
 
 /** Phones: a floating Filters button that opens the filters in a side panel. */
 export function MobileFilters({ open, setOpen, activeCount, total, children }) {
+  const t = useTranslations("browse");
   return (
     <>
       {!open && (
@@ -226,7 +271,7 @@ export function MobileFilters({ open, setOpen, activeCount, total, children }) {
             onClick={() => setOpen(true)}
             className="pointer-events-auto h-12 gap-2 rounded-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 px-6 text-sm font-semibold shadow-xl shadow-pink-500/25 hover:opacity-90"
           >
-            <SlidersHorizontal className="h-4 w-4" /> Filters
+            <SlidersHorizontal className="h-4 w-4" /> {t("filters")}
             {activeCount > 0 && (
               <span className="flex size-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-pink-600">{activeCount}</span>
             )}
@@ -239,15 +284,15 @@ export function MobileFilters({ open, setOpen, activeCount, total, children }) {
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} aria-hidden="true" />
           <div className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-background shadow-xl">
             <div className="flex items-center justify-between border-b px-5 py-4">
-              <p className="font-semibold">Filters</p>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Close filters">
+              <p className="font-semibold">{t("filters")}</p>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1.5 hover:bg-muted" aria-label={t("closeFilters")}>
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">{children}</div>
             <div className="border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <Button className="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90" onClick={() => setOpen(false)}>
-                Show {total ?? ""} results
+                {total != null ? t("showResultsCount", { total }) : t("showResults")}
               </Button>
             </div>
           </div>

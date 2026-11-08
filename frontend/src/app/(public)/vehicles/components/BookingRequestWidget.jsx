@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { customerService } from "@/services/customerService";
 import { useCustomerAuthStore } from "@/store/customerAuthStore";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
@@ -49,6 +50,7 @@ export function BookingRequestWidget({ vehicle }) {
   const router = useRouter();
   const { isAuthenticated } = useCustomerAuthStore();
   const { format } = useCurrencyFormat();
+  const t = useTranslations("booking");
   const [range, setRange] = useState({ from: "", to: "" });
   const [withDriver, setWithDriver] = useState(false);
   const [deliveryRequested, setDeliveryRequested] = useState(false);
@@ -73,7 +75,7 @@ export function BookingRequestWidget({ vehicle }) {
     if (isAuthenticated) {
       writeDraft(vehicle.id, null);
       containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      toast.info("Welcome back — your booking details are filled in. Review them and send your request.");
+      toast.info(t("welcomeBack"));
     }
   }, [vehicle.id, isAuthenticated]);
 
@@ -81,14 +83,14 @@ export function BookingRequestWidget({ vehicle }) {
     mutationFn: customerService.bookings.create,
     onSuccess: (res) => {
       writeDraft(vehicle.id, null);
-      toast.success("Booking request sent — the owner will respond soon");
+      toast.success(t("requestSent"));
       router.push(`/account/bookings/${res.data.data.booking_reference}`);
     },
     onError: (err) => {
       const apiErrors = err.response?.data?.errors ?? {};
       setErrors(apiErrors);
       if (!Object.keys(apiErrors).length) {
-        toast.error(err.response?.data?.message ?? "Could not submit request");
+        toast.error(err.response?.data?.message ?? t("submitError"));
       }
     },
   });
@@ -124,7 +126,7 @@ export function BookingRequestWidget({ vehicle }) {
     }
 
     if (!range.from || !range.to) {
-      setErrors({ return_at: ["Pick your pickup and return dates."] });
+      setErrors({ return_at: [t("pickDates")] });
       return;
     }
 
@@ -143,25 +145,25 @@ export function BookingRequestWidget({ vehicle }) {
     <div ref={containerRef} className="space-y-3 scroll-mt-24">
       <ValidationError errors={errors} />
 
-      <BookingDateRange vehicle={vehicle} label="Pickup & return dates" value={range} onChange={setRange} placeholder="Choose your dates" />
+      <BookingDateRange vehicle={vehicle} label={t("datesLabel")} value={range} onChange={setRange} placeholder={t("datesPlaceholder")} />
       <p className="text-xs text-muted-foreground">
-        Pickup {pickupTime} · Return {returnTime} (Sri Lanka time)
+        {t("times", { pickup: pickupTime, return: returnTime })}
       </p>
 
       {pricing?.driver_rate_per_day > 0 && (
-        <CheckboxInput label={`Add a driver (+${format(pricing.driver_rate_per_day)}/day)`} checked={withDriver} onChange={setWithDriver} />
+        <CheckboxInput label={t("addDriver", { price: format(pricing.driver_rate_per_day) })} checked={withDriver} onChange={setWithDriver} />
       )}
       {pricing?.delivery_available && (
-        <CheckboxInput label={`Delivery to my location (+${format(pricing.delivery_flat_fee ?? 0)})`} checked={deliveryRequested} onChange={setDeliveryRequested} />
+        <CheckboxInput label={t("addDelivery", { price: format(pricing.delivery_flat_fee ?? 0) })} checked={deliveryRequested} onChange={setDeliveryRequested} />
       )}
 
       {canTransfer && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium">How will you pay the shop?</p>
+          <p className="text-sm font-medium">{t("howPay")}</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { value: "cash", icon: Banknote, title: "Cash at pickup", sub: "Pay everything when you collect" },
-              { value: "bank_transfer", icon: Landmark, title: "Bank transfer", sub: advancePct ? (advance ? `From ${format(advance)} (${advancePct}% advance)` : `From a ${advancePct}% advance`) : "Transfer the full amount" },
+              { value: "cash", icon: Banknote, title: t("cash"), sub: t("cashSub") },
+              { value: "bank_transfer", icon: Landmark, title: t("bank"), sub: advancePct ? (advance ? t("bankFromAdvance", { amount: format(advance), pct: advancePct }) : t("bankFromPct", { pct: advancePct })) : t("bankFull") },
             ].map((o) => (
               <button
                 key={o.value}
@@ -182,32 +184,36 @@ export function BookingRequestWidget({ vehicle }) {
         </div>
       )}
 
-      <TextareaInput label="Note to owner (optional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. arriving by flight, need it for a wedding..." />
+      <TextareaInput label={t("noteLabel")} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("notePlaceholder")} />
 
       {estimate && (
         <div className="space-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Rental ({rentalDays} day{rentalDays > 1 ? "s" : ""})</span><span>{format(estimate.base)}</span></div>
-          {estimate.driver > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span>{format(estimate.driver)}</span></div>}
-          {estimate.delivery > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>{format(estimate.delivery)}</span></div>}
-          {estimate.tax > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax ({Number(pricing.tax_rate)}%)</span><span>{format(estimate.tax)}</span></div>}
+          <div className="flex justify-between"><span className="text-muted-foreground">{t("rental", { count: rentalDays })}</span><span>{format(estimate.base)}</span></div>
+          {estimate.driver > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("driver")}</span><span>{format(estimate.driver)}</span></div>}
+          {estimate.delivery > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("delivery")}</span><span>{format(estimate.delivery)}</span></div>}
+          {estimate.tax > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("tax", { rate: Number(pricing.tax_rate) })}</span><span>{format(estimate.tax)}</span></div>}
           {estimate.deposit > 0 && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Security deposit (refundable)</span>
+              <span className="text-muted-foreground">{t("deposit")}</span>
               <span>{format(estimate.deposit)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t pt-1 font-semibold"><span>{canTransfer && paymentMethod === "bank_transfer" ? "Total (by bank transfer)" : "Pay at pickup (cash)"}</span><span>{format(estimate.total)}</span></div>
+          <div className="flex justify-between border-t pt-1 font-semibold"><span>{canTransfer && paymentMethod === "bank_transfer" ? t("totalBank") : t("totalCash")}</span><span>{format(estimate.total)}</span></div>
         </div>
       )}
 
       <Button className="w-full" size="lg" onClick={handleSubmit} disabled={create.isPending}>
         {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {isAuthenticated ? "Request to book" : "Log in to book"}
+        {isAuthenticated ? t("request") : t("loginToBook")}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
         {canTransfer && paymentMethod === "bank_transfer"
-            ? <>Once the owner confirms, you&apos;ll see their bank details — transfer {advancePct ? `any amount from the ${advancePct}% advance${advance ? ` (${format(advance)})` : ""} up to the full total` : "the full amount"} and upload the receipt. Any balance is paid at pickup.</>
-            : <>Once the owner confirms, you pay the shop in cash at pickup.</>}
+            ? t("footBank", {
+                amount: advancePct
+                  ? (advance ? t("footBankAdvanceAmount", { pct: advancePct, amount: format(advance) }) : t("footBankAdvance", { pct: advancePct }))
+                  : t("footBankFull"),
+              })
+            : t("footCash")}
       </p>
     </div>
   );

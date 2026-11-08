@@ -41,7 +41,7 @@ class SaleEnquiryController extends Controller
         $customer = $request->user('customer');
         $enquiry = $this->service->open($customer, $sales->findBySlugOrFail($data['vehicle_slug']), $data['body']);
 
-        return $this->response('Your enquiry has been sent to the shop', ['reference' => $enquiry->reference], 201);
+        return $this->response(__('Your enquiry has been sent to the shop'), ['reference' => $enquiry->reference], 201);
     }
 
     public function show(Request $request, string $reference): JsonResponse
@@ -58,7 +58,7 @@ class SaleEnquiryController extends Controller
         $body = $request->validate(['body' => ['required', 'string', 'max:5000']])['body'];
         $this->service->customerReply($enquiry, $request->user('customer'), $body);
 
-        return $this->response('Message sent', new SaleEnquiryResource($this->withMessages($enquiry)));
+        return $this->response(__('Message sent'), new SaleEnquiryResource($this->withMessages($enquiry)));
     }
 
     public function close(Request $request, string $reference): JsonResponse
@@ -66,7 +66,7 @@ class SaleEnquiryController extends Controller
         $enquiry = $this->find($request, $reference);
         $this->service->close($enquiry, 'Closed by the buyer');
 
-        return $this->response('Enquiry closed', new SaleEnquiryResource($this->withMessages($enquiry)));
+        return $this->response(__('Enquiry closed'), new SaleEnquiryResource($this->withMessages($enquiry)));
     }
 
     /** The buyer's copy of the sale agreement — only on the enquiry that became the sale. */

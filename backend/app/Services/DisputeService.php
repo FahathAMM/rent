@@ -44,7 +44,7 @@ class DisputeService
             [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED],
             true
         )) {
-            throw ValidationException::withMessages(['booking' => ['A dispute can only be raised on a confirmed, active, or completed booking.']]);
+            throw ValidationException::withMessages(['booking' => [__('A dispute can only be raised on a confirmed, active, or completed booking.')]]);
         }
 
         return DB::transaction(function () use ($booking, $raisedBySide, $data, $userId, $customerId) {

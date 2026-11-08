@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Models\HeroSlide;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Create + update. The image is required only when creating; on update it's an optional replacement. */
@@ -22,6 +23,7 @@ class SaveHeroSlideRequest extends FormRequest
             'link_label' => ['nullable', 'string', 'max:40'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
+            ...HeroSlide::translationRules(['title' => 'max:120', 'subtitle' => 'max:255', 'link_label' => 'max:40']),
         ];
     }
 

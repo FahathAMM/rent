@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Concerns\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -16,6 +17,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class HelpItem extends Model
 {
+    use HasTranslations;
+
+    /** Columns with other-language text in `translations` (see HasTranslations). */
+    protected array $translatable = ['section', 'title', 'body'];
+
     public const TYPES = ['faq', 'safety_tip', 'warning_sign', 'emergency_contact', 'terms', 'privacy'];
 
     /** Types whose body comes from the rich text editor. */

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
+import { useFormatter, useTranslations } from "next-intl";
 import { CalendarIcon, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { publicService } from "@/services/publicService";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,8 @@ const todayStr = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
-const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+// A known Monday (UTC), for naming the weekdays in the current language.
+const MONDAY = "2024-01-01";
 
 /** The days of one month, padded to whole Monday-first weeks (null = padding). */
 function monthCells(key) {
@@ -50,7 +51,12 @@ function monthCells(key) {
  * may land on the first taken day — that booking only starts at 10:00.
  * Value/onChange: { from, to } as "YYYY-MM-DD" (or "").
  */
-export function BookingDateRange({ vehicle, label, value, onChange, error, placeholder = "Choose your dates" }) {
+export function BookingDateRange({ vehicle, label, value, onChange, error, placeholder }) {
+  const t = useTranslations("calendar");
+  const fmt = useFormatter();
+  // Dates are UTC midnights, so format them in UTC to keep the calendar day.
+  const fmtDate = (s, opts) => fmt.dateTime(toDate(s), { timeZone: "UTC", ...opts });
+  const weekdays = Array.from({ length: 7 }, (_, i) => fmtDate(addDays(MONDAY, i), { weekday: "short" }));
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(null);
   const from = value?.from || "";
@@ -115,16 +121,16 @@ export function BookingDateRange({ vehicle, label, value, onChange, error, place
 
   const rangeEnd = to || (pickingReturn && hover && canEnd(from, hover) ? hover : "");
   const display = from
-    ? `${format(parseISO(from), "dd MMM yyyy")} – ${to ? format(parseISO(to), "dd MMM yyyy") : "…"}`
-    : placeholder;
+    ? `${fmtDate(from, { dateStyle: "medium" })} – ${to ? fmtDate(to, { dateStyle: "medium" }) : "…"}`
+    : placeholder ?? t("placeholder");
   const canGoBack = month > monthKey(todayStr());
   const canGoForward = addMonths(month, 1) <= monthKey(rules.until);
 
   const renderMonth = (key, className) => (
     <div key={key} className={cn("w-[252px]", className)}>
-      <p className="mb-2 text-center text-sm font-semibold">{format(parseISO(`${key}-01`), "MMMM yyyy")}</p>
+      <p className="mb-2 text-center text-sm font-semibold">{fmtDate(`${key}-01`, { month: "long", year: "numeric" })}</p>
       <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
-        {WEEKDAYS.map((w) => <span key={w} className="py-1">{w}</span>)}
+        {weekdays.map((w, i) => <span key={i} className="py-1">{w}</span>)}
       </div>
       <div className="grid grid-cols-7 gap-y-1">
         {monthCells(key).map((d, i) => {
@@ -141,7 +147,7 @@ export function BookingDateRange({ vehicle, label, value, onChange, error, place
               disabled={!enabled}
               onClick={() => pick(d)}
               onMouseEnter={() => setHover(d)}
-              title={taken ? "Not available" : undefined}
+              title={taken ? t("notAvailable") : undefined}
               aria-pressed={isFrom || isTo}
               className={cn(
                 "relative mx-auto flex h-9 w-9 items-center justify-center rounded-md text-sm tabular-nums transition-colors",
@@ -180,10 +186,10 @@ export function BookingDateRange({ vehicle, label, value, onChange, error, place
           ) : (
             <>
               <div className="relative flex gap-6">
-                <button type="button" onClick={() => setMonth(addMonths(month, -1))} disabled={!canGoBack} className="absolute left-0 top-0 rounded-md p-1 hover:bg-accent disabled:opacity-30" aria-label="Previous month">
+                <button type="button" onClick={() => setMonth(addMonths(month, -1))} disabled={!canGoBack} className="absolute left-0 top-0 rounded-md p-1 hover:bg-accent disabled:opacity-30" aria-label={t("prevMonth")}>
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => setMonth(addMonths(month, 1))} disabled={!canGoForward} className="absolute right-0 top-0 rounded-md p-1 hover:bg-accent disabled:opacity-30" aria-label="Next month">
+                <button type="button" onClick={() => setMonth(addMonths(month, 1))} disabled={!canGoForward} className="absolute right-0 top-0 rounded-md p-1 hover:bg-accent disabled:opacity-30" aria-label={t("nextMonth")}>
                   <ChevronRight className="h-4 w-4" />
                 </button>
                 {renderMonth(month)}
@@ -191,13 +197,13 @@ export function BookingDateRange({ vehicle, label, value, onChange, error, place
               </div>
               <div className="mt-3 flex items-center justify-between gap-3 border-t pt-2 text-xs text-muted-foreground">
                 <p>
-                  {pickingReturn ? "Now pick your return date" : "Pick your pickup date"} · 10:00
-                  {rules.minDays > 1 && ` · min ${rules.minDays} days`}
-                  {rules.maxDays && ` · max ${rules.maxDays} days`}
-                  <span className="ml-2 line-through">12</span> = not available
+                  {pickingReturn ? t("pickReturn") : t("pickPickup")} · 10:00
+                  {rules.minDays > 1 && t("minDays", { count: rules.minDays })}
+                  {rules.maxDays && t("maxDays", { count: rules.maxDays })}
+                  <span className="ml-2 line-through">12</span> {t("legend")}
                 </p>
                 {from && (
-                  <button type="button" onClick={() => onChange({ from: "", to: "" })} className="font-medium text-primary hover:underline">Clear</button>
+                  <button type="button" onClick={() => onChange({ from: "", to: "" })} className="font-medium text-primary hover:underline">{t("clear")}</button>
                 )}
               </div>
             </>

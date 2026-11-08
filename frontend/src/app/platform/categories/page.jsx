@@ -13,13 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, ValidationError } from "@/components/forms/FormField";
+import { TranslationFields, translationsForm } from "@/components/forms/TranslationFields";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Home, Loader2 } from "lucide-react";
 import { ICON_SETS, NamedIcon, VEHICLE_TYPE_ICONS, isIconName, normalizeIconName, resolveCategoryIcon, useIconComponent } from "@/lib/vehicleTypeIcons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const emptyForm = { name: "", slug: "", icon: "", sort_order: 0, is_active: true };
+const TRANSLATED = ["name"];
+const emptyForm = { name: "", slug: "", icon: "", sort_order: 0, is_active: true, translations: translationsForm(null, TRANSLATED) };
 
 /** The icon the home page shows for this category: the one it names, else a guess from its name. */
 function TypeIcon({ category }) {
@@ -118,7 +120,7 @@ export default function PlatformCategoriesPage() {
   const openCreate = () => { setEditing(null); setForm(emptyForm); setErrors({}); setOpen(true); };
   const openEdit = (c) => {
     setEditing(c);
-    setForm({ name: c.name, slug: c.slug, icon: normalizeIconName(c.icon), sort_order: c.sort_order ?? 0, is_active: !!c.is_active });
+    setForm({ name: c.name, slug: c.slug, icon: normalizeIconName(c.icon), sort_order: c.sort_order ?? 0, is_active: !!c.is_active, translations: translationsForm(c.translations, TRANSLATED) });
     setErrors({});
     setOpen(true);
   };
@@ -133,6 +135,7 @@ export default function PlatformCategoriesPage() {
       icon: form.icon || null,
       sort_order: Number(form.sort_order),
       is_active: form.is_active,
+      translations: form.translations,
     };
 
     save.mutate(payload);
@@ -184,6 +187,13 @@ export default function PlatformCategoriesPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <ValidationError errors={errors} />
             <TextInput label="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name?.[0]} />
+            <TranslationFields
+              value={form.translations}
+              onChange={(translations) => setForm({ ...form, translations })}
+              fields={[{ key: "name", label: "Name" }]}
+              english={{ name: form.name }}
+              errors={errors}
+            />
             <TextInput label="Slug" required value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} error={errors.slug?.[0]} />
             <IconPicker value={form.icon} onChange={(icon) => setForm({ ...form, icon })} error={errors.icon?.[0]} />
             <TextInput label="Sort order" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} error={errors.sort_order?.[0]} />

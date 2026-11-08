@@ -54,7 +54,7 @@ class DisputeController extends Controller
 
         AuditService::create('Dispute', $dispute->id, "Dispute for {$booking->booking_reference}");
 
-        return $this->response('Dispute submitted', $dispute, 201);
+        return $this->response(__('Dispute submitted'), $dispute, 201);
     }
 
     public function addMessage(AddDisputeMessageRequest $request, string $reference): JsonResponse
@@ -73,6 +73,6 @@ class DisputeController extends Controller
             posterSide: 'customer',
         );
 
-        return $this->response('Message posted', $message, 201);
+        return $this->response(__('Message posted'), $message, 201);
     }
 }

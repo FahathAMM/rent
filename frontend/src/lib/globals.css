@@ -72,6 +72,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Tamil script needs a little more vertical room than Latin text. */
+  html[lang="ta"] body {
+    line-height: 1.65;
+  }
 }
 
 @layer utilities {

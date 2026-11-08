@@ -15,7 +15,19 @@ class SaveHelpItemRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if ($this->isRich()) {
-            $this->merge(['body' => app(RentalAgreementService::class)->sanitize($this->input('body'))]);
+            $sanitizer = app(RentalAgreementService::class);
+            $this->merge(['body' => $sanitizer->sanitize($this->input('body'))]);
+
+            // Translated bodies are shown as HTML too.
+            $translations = $this->input('translations');
+            if (is_array($translations)) {
+                foreach ($translations as $locale => $fields) {
+                    if (is_array($fields) && is_string($fields['body'] ?? null)) {
+                        $translations[$locale]['body'] = $sanitizer->sanitize($fields['body']);
+                    }
+                }
+                $this->merge(['translations' => $translations]);
+            }
         }
     }
 
@@ -27,6 +39,7 @@ class SaveHelpItemRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'body' => ['nullable', 'required_if:type,faq,emergency_contact,terms,privacy', 'string', 'max:' . ($this->isRich() ? 20000 : 5000)],
             'is_active' => ['nullable', 'boolean'],
+            ...HelpItem::translationRules(['section' => 'max:120', 'title' => 'max:255', 'body' => 'max:' . ($this->isRich() ? 20000 : 5000)]),
         ];
     }
 

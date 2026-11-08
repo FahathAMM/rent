@@ -135,7 +135,7 @@ class SaleEnquiryService
     private function assertOpen(SaleEnquiry $enquiry): void
     {
         if (!$enquiry->isOpen()) {
-            throw ValidationException::withMessages(['enquiry' => ['This enquiry is closed.']]);
+            throw ValidationException::withMessages(['enquiry' => [__('This enquiry is closed.')]]);
         }
     }
 }

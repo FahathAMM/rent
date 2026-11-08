@@ -18,10 +18,13 @@ class PlatformDetailResource extends JsonResource
             // asset(Storage::url()) deliberately — this one is browser-only.
             'logo'       => $this->logo ? '/storage/' . $this->logo : null,
             'login_logo' => $this->login_logo ? '/storage/' . $this->login_logo : null,
-            'tagline'    => $this->tagline,
-            'login_eyebrow'     => $this->login_eyebrow,
-            'login_heading'     => $this->login_heading,
-            'login_description' => $this->login_description,
+            // In the visitor's language on the public site; the admin panel never
+            // sends X-Locale, so it always gets (and edits) the English text.
+            'tagline'    => $this->translate('tagline'),
+            'login_eyebrow'     => $this->translate('login_eyebrow'),
+            'login_heading'     => $this->translate('login_heading'),
+            'login_description' => $this->translate('login_description'),
+            'translations'      => $this->translations ?? (object) [],
             'support_email'    => $this->support_email,
             'support_phone'    => $this->support_phone,
             'support_whatsapp' => $this->support_whatsapp,

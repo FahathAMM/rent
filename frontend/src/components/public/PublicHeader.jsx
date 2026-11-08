@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { platformDetailService } from "@/services/platformDetailService";
 import { useCustomerAuth } from "@/hooks/useCustomerAuth";
 import { useAuthStore } from "@/store/authStore";
 import { useShopStore } from "@/store/shopStore";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { MobileMenu } from "@/components/public/MobileMenu";
+import { LanguageSwitcher } from "@/components/public/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -20,11 +22,11 @@ import { Store, LayoutDashboard, LogOut, LogIn } from "lucide-react";
 
 // No "Home" item — the brand logo/name links to the home page.
 const NAV_ITEMS = [
-  { href: "/rent", label: "Rent" },
-  { href: "/buy", label: "Buy" },
-  { href: "/locations", label: "Location" },
-  { href: "/shops", label: "Shops" },
-  { href: "/how-it-works", label: "How It Works" },
+  { href: "/rent", key: "rent" },
+  { href: "/buy", key: "buy" },
+  { href: "/locations", key: "location" },
+  { href: "/shops", key: "shops" },
+  { href: "/how-it-works", key: "howItWorks" },
 ];
 
 function isActive(pathname, href) {
@@ -34,6 +36,9 @@ function isActive(pathname, href) {
 /** The one top bar shared by every (public) page — logo, primary nav, and the customer sign-in link. */
 export function PublicHeader() {
   const pathname = usePathname();
+  const t = useTranslations("header");
+  const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const { isAuthenticated, customer, logout } = useCustomerAuth();
   // Vendor sign-in is a separate account (the pos-auth store), so a vendor
   // browsing the public site gets a link back to their panel instead of
@@ -49,7 +54,7 @@ export function PublicHeader() {
   // visitor and "Become a Vendor" goes through the vendor login.
   const vendorSignedIn = vendorAuthenticated && shop?.is_verified === true && !shop?.is_suspended;
   const vendorHref = "/vendor/dashboard";
-  const vendorLabel = shop?.shop_name ?? vendorUser?.name ?? "Vendor panel";
+  const vendorLabel = shop?.shop_name ?? vendorUser?.name ?? t("vendorPanel");
   const showBecomeVendor = !vendorSignedIn;
   const becomeVendorHref = "/vendor/login";
 
@@ -87,26 +92,28 @@ export function PublicHeader() {
                 isActive(pathname, item.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {item.label}
+              {tNav(item.key)}
             </Link>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+
           {showBecomeVendor && (
             <Button
               variant="outline"
               asChild
               className="hidden h-10 gap-1.5 border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 text-foreground hover:border-orange-500/40 hover:from-orange-500/15 hover:via-pink-500/15 hover:to-violet-500/15 sm:flex"
             >
-              <Link href={becomeVendorHref}><Store className="h-4 w-4 text-primary" /> Become a Vendor</Link>
+              <Link href={becomeVendorHref}><Store className="h-4 w-4 text-primary" /> {t("becomeVendor")}</Link>
             </Button>
           )}
 
           {vendorSignedIn && (
             <Link
               href={vendorHref}
-              title="Go to your vendor panel"
+              title={t("goToVendorPanel")}
               className="hidden h-10 shrink-0 items-center gap-2 rounded-full border border-orange-500/25 bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-violet-500/10 pl-1 pr-3 shadow-sm transition-colors hover:border-orange-500/50 sm:flex"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
@@ -114,7 +121,7 @@ export function PublicHeader() {
               </span>
               <span className="flex flex-col leading-tight">
                 <span className="max-w-[10rem] truncate text-sm font-medium">{vendorLabel}</span>
-                <span className="text-[11px] text-muted-foreground">Vendor panel</span>
+                <span className="text-[11px] text-muted-foreground">{t("vendorPanel")}</span>
               </span>
             </Link>
           )}
@@ -129,39 +136,39 @@ export function PublicHeader() {
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-xs font-semibold text-white">
                     {getInitials(customer?.name) || "U"}
                   </span>
-                  <span className="max-w-[9rem] truncate text-sm font-medium">{customer?.name ?? "My Account"}</span>
+                  <span className="max-w-[9rem] truncate text-sm font-medium">{customer?.name ?? t("myAccount")}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="truncate text-sm font-semibold">{customer?.name ?? "My Account"}</span>
+                  <span className="truncate text-sm font-semibold">{customer?.name ?? t("myAccount")}</span>
                   <span className="truncate text-xs font-normal text-muted-foreground">{customer?.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/account/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> My Account</Link>
+                  <Link href="/account/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> {t("myAccount")}</Link>
                 </DropdownMenuItem>
                 {showBecomeVendor && (
                   <DropdownMenuItem asChild className="sm:hidden">
-                    <Link href={becomeVendorHref}><Store className="mr-2 h-4 w-4" /> Become a Vendor</Link>
+                    <Link href={becomeVendorHref}><Store className="mr-2 h-4 w-4" /> {t("becomeVendor")}</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" /> Log out
+                  <LogOut className="mr-2 h-4 w-4" /> {t("logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Button asChild className="hidden h-10 gap-1.5 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90 sm:flex">
-              <Link href="/login"><LogIn className="h-4 w-4" /> Sign in</Link>
+              <Link href="/login"><LogIn className="h-4 w-4" /> {t("signIn")}</Link>
             </Button>
           )}
 
           <MobileMenu
             brandName={brandName}
             logoUrl={logoUrl}
-            tagline={brand?.tagline || "Rent any vehicle, anywhere in Sri Lanka."}
+            tagline={brand?.tagline || tCommon("defaultTagline")}
             customer={customer}
             isAuthenticated={isAuthenticated}
             onLogout={logout}

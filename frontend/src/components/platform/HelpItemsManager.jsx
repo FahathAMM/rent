@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
+import { TranslationFields, translationsForm } from "@/components/forms/TranslationFields";
 import { cn } from "@/lib/utils";
 import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +38,9 @@ function MoveButtons({ index, count, disabled, onMove, label }) {
  */
 export function HelpItemsManager({ type, heading, description, itemName, titleLabel, bodyLabel, shortBody = false, rich = false, sectionLabel }) {
   const qc = useQueryClient();
-  const emptyForm = { section: "", title: "", body: "", is_active: true };
+  // Fields with Tamil (etc.) text, matching what this type shows.
+  const translated = [sectionLabel && "section", "title", bodyLabel && "body"].filter(Boolean);
+  const emptyForm = { section: "", title: "", body: "", is_active: true, translations: translationsForm(null, translated) };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -93,7 +96,7 @@ export function HelpItemsManager({ type, heading, description, itemName, titleLa
 
   const openForm = (item) => {
     setEditing(item);
-    setForm(item ? { section: item.section ?? "", title: item.title, body: item.body ?? "", is_active: item.is_active } : emptyForm);
+    setForm(item ? { section: item.section ?? "", title: item.title, body: item.body ?? "", is_active: item.is_active, translations: translationsForm(item.translations, translated) } : emptyForm);
     setErrors({});
     setOpen(true);
   };
@@ -182,6 +185,19 @@ export function HelpItemsManager({ type, heading, description, itemName, titleLa
             ) : (
               <TextareaInput label={bodyLabel} required rows={5} maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} error={errors.body?.[0]} />
             ))}
+            <TranslationFields
+              value={form.translations}
+              onChange={(translations) => setForm((f) => ({ ...f, translations }))}
+              fields={[
+                sectionLabel && { key: "section", label: sectionLabel },
+                { key: "title", label: titleLabel },
+                bodyLabel && (rich
+                  ? { key: "body", label: bodyLabel, render: (value, onChange) => <RichTextEditor value={value} onChange={onChange} minHeight="min-h-[180px]" /> }
+                  : { key: "body", label: bodyLabel, multiline: !shortBody, rows: 4 }),
+              ].filter(Boolean)}
+              english={{ section: form.section, title: form.title, body: rich ? "" : form.body }}
+              errors={errors}
+            />
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} />
               Show on the website

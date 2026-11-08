@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
 import { SectionHeader } from "@/components/public/SectionHeader";
 import { NamedIcon, resolveCategoryIcon } from "@/lib/vehicleTypeIcons";
@@ -19,6 +20,7 @@ const TONES = {
 const FALLBACK_TONES = ["blue", "emerald", "violet", "orange", "rose", "sky"];
 
 function CategoryTile({ category, index }) {
+  const t = useTranslations("home.categories");
   const count = category.vehicles_count;
   const { name: iconName, tone: toneKey } = resolveCategoryIcon(category);
   const tone = TONES[toneKey ?? FALLBACK_TONES[index % FALLBACK_TONES.length]];
@@ -35,7 +37,7 @@ function CategoryTile({ category, index }) {
         <span className="line-clamp-2 break-words text-[13px] font-semibold leading-tight text-foreground sm:text-sm">{category.name}</span>
         {count != null && (
           <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-            {count ? `${count} ${count === 1 ? "vehicle" : "vehicles"}` : "Coming soon"}
+            {count ? t("vehicleCount", { count }) : t("comingSoon")}
           </span>
         )}
       </span>
@@ -46,13 +48,14 @@ function CategoryTile({ category, index }) {
 
 /** "Browse by vehicle type": the types with the most vehicles for rent. Ties keep the platform's sort order. */
 export function CategoriesSection({ categories }) {
+  const t = useTranslations("home.categories");
   const tiles = [...categories]
     .sort((a, b) => (b.vehicles_count ?? 0) - (a.vehicles_count ?? 0))
     .slice(0, MAX_TILES);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-      <SectionHeader eyebrow="Find your ride" title="Browse by vehicle type" highlight="vehicle type" subtitle="From city cars to vans for the whole family." href="/rent" linkLabel="Browse all" />
+      <SectionHeader eyebrow={t("eyebrow")} title={t("title")} highlight={t("highlight")} subtitle={t("subtitle")} href="/rent" linkLabel={t("browseAll")} />
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
         {tiles.map((category, i) => <CategoryTile key={category.id} category={category} index={i} />)}
       </div>

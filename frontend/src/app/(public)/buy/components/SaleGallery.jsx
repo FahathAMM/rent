@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { VEHICLE_PLACEHOLDER_IMAGE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, X, Expand, ImageIcon } from "lucide-react";
 
 /* ── Gallery + fullscreen viewer ──────────────────────────────────────── */
 
 function Lightbox({ images, index, setIndex, onClose, title }) {
+  const t = useTranslations("gallery");
   const count = images.length;
   const go = useCallback((dir) => setIndex((i) => (i + dir + count) % count), [count, setIndex]);
 
@@ -26,18 +28,18 @@ function Lightbox({ images, index, setIndex, onClose, title }) {
   }, [go, onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" role="dialog" aria-modal="true" aria-label={`${title} photos`}>
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black/95" role="dialog" aria-modal="true" aria-label={t("photosOf", { title })}>
       <div className="flex items-center justify-between px-4 py-3 text-white">
         <p className="text-sm text-white/80">{index + 1} / {count}</p>
-        <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-white/10" aria-label="Close"><X className="h-5 w-5" /></button>
+        <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-white/10" aria-label={t("close")}><X className="h-5 w-5" /></button>
       </div>
       <div className="relative flex flex-1 items-center justify-center px-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={images[index].url} alt={images[index].alt_text || title} className="max-h-[78vh] max-w-full rounded-lg object-contain" />
         {count > 1 && (
           <>
-            <button type="button" onClick={() => go(-1)} className="absolute left-3 rounded-full bg-white/10 p-3 text-white hover:bg-white/20" aria-label="Previous photo"><ChevronLeft className="h-6 w-6" /></button>
-            <button type="button" onClick={() => go(1)} className="absolute right-3 rounded-full bg-white/10 p-3 text-white hover:bg-white/20" aria-label="Next photo"><ChevronRight className="h-6 w-6" /></button>
+            <button type="button" onClick={() => go(-1)} className="absolute left-3 rounded-full bg-white/10 p-3 text-white hover:bg-white/20" aria-label={t("previous")}><ChevronLeft className="h-6 w-6" /></button>
+            <button type="button" onClick={() => go(1)} className="absolute right-3 rounded-full bg-white/10 p-3 text-white hover:bg-white/20" aria-label={t("next")}><ChevronRight className="h-6 w-6" /></button>
           </>
         )}
       </div>
@@ -56,6 +58,7 @@ function Lightbox({ images, index, setIndex, onClose, title }) {
 }
 
 export function Gallery({ images, title, badge }) {
+  const t = useTranslations("gallery");
   const list = (images ?? []).filter((i) => i.url);
   const ordered = [...list.filter((i) => i.is_primary), ...list.filter((i) => !i.is_primary)];
   const [active, setActive] = useState(0);
@@ -67,7 +70,7 @@ export function Gallery({ images, title, badge }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="group relative aspect-[16/10] min-w-0 flex-1 overflow-hidden rounded-3xl border bg-muted shadow-sm sm:order-2">
-        <button type="button" onClick={() => count && setViewer(true)} className="block h-full w-full" aria-label="View photos full screen" disabled={!count}>
+        <button type="button" onClick={() => count && setViewer(true)} className="block h-full w-full" aria-label={t("fullScreen")} disabled={!count}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={current} alt={title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]" />
         </button>
@@ -77,17 +80,17 @@ export function Gallery({ images, title, badge }) {
 
         {count > 1 && (
           <>
-            <button type="button" onClick={() => go(-1)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md opacity-0 transition-opacity hover:bg-white group-hover:opacity-100" aria-label="Previous photo"><ChevronLeft className="h-5 w-5" /></button>
-            <button type="button" onClick={() => go(1)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md opacity-0 transition-opacity hover:bg-white group-hover:opacity-100" aria-label="Next photo"><ChevronRight className="h-5 w-5" /></button>
+            <button type="button" onClick={() => go(-1)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md opacity-0 transition-opacity hover:bg-white group-hover:opacity-100" aria-label={t("previous")}><ChevronLeft className="h-5 w-5" /></button>
+            <button type="button" onClick={() => go(1)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md opacity-0 transition-opacity hover:bg-white group-hover:opacity-100" aria-label={t("next")}><ChevronRight className="h-5 w-5" /></button>
           </>
         )}
         {count > 0 && (
           <button type="button" onClick={() => setViewer(true)} className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm hover:bg-black/75">
-            <Expand className="h-3.5 w-3.5" /> {count > 1 ? `${active + 1} / ${count} photos` : "View photo"}
+            <Expand className="h-3.5 w-3.5" /> {count > 1 ? t("photoCount", { current: active + 1, count }) : t("viewPhoto")}
           </button>
         )}
         {count === 0 && (
-          <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs text-white"><ImageIcon className="h-3.5 w-3.5" /> No photos yet</span>
+          <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-xs text-white"><ImageIcon className="h-3.5 w-3.5" /> {t("noPhotos")}</span>
         )}
       </div>
 

@@ -30,22 +30,22 @@ class BankTransferService
     public function submit(Booking $booking, Customer $customer, float $amount, ?string $reference, UploadedFile $file): Payment
     {
         if ($booking->payment_method !== Booking::METHOD_BANK_TRANSFER || $booking->status !== Booking::STATUS_CONFIRMED) {
-            throw ValidationException::withMessages(['status' => ['Transfers can only be added to a confirmed bank-transfer booking.']]);
+            throw ValidationException::withMessages(['status' => [__('Transfers can only be added to a confirmed bank-transfer booking.')]]);
         }
         if ($booking->payments()->where('status', Payment::STATUS_PENDING)->exists()) {
-            throw ValidationException::withMessages(['amount' => ['Your last transfer is still waiting for the shop to check it.']]);
+            throw ValidationException::withMessages(['amount' => [__('Your last transfer is still waiting for the shop to check it.')]]);
         }
 
         $amount = round($amount, 2);
         $balance = $booking->balanceDue();
         $minimum = $this->minimumTransfer($booking);
         if ($amount > $balance) {
-            throw ValidationException::withMessages(['amount' => ['The amount is more than the balance due (' . number_format($balance, 2) . ').']]);
+            throw ValidationException::withMessages(['amount' => [__('The amount is more than the balance due (:amount).', ['amount' => number_format($balance, 2)])]]);
         }
         if ($amount < $minimum) {
             throw ValidationException::withMessages(['amount' => [$minimum >= $balance
-                ? 'This shop takes the full amount by transfer — please transfer ' . number_format($balance, 2) . '.'
-                : 'The first transfer must be at least the advance of ' . number_format($minimum, 2) . '.']]);
+                ? __('This shop takes the full amount by transfer — please transfer :amount.', ['amount' => number_format($balance, 2)])
+                : __('The first transfer must be at least the advance of :amount.', ['amount' => number_format($minimum, 2)])]]);
         }
 
         return DB::transaction(function () use ($booking, $customer, $amount, $reference, $file) {
@@ -91,7 +91,7 @@ class BankTransferService
         $amount = round($amount, 2);
         $balance = $booking->balanceDue();
         if ($amount > $balance) {
-            throw ValidationException::withMessages(['amount' => ['The amount is more than the balance due (' . number_format($balance, 2) . ').']]);
+            throw ValidationException::withMessages(['amount' => [__('The amount is more than the balance due (:amount).', ['amount' => number_format($balance, 2)])]]);
         }
 
         return DB::transaction(function () use ($booking, $actorId, $method, $amount, $paidAt, $reference, $file) {

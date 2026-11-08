@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Models\VehicleCategory;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCategoryRequest extends FormRequest
@@ -22,6 +23,7 @@ class UpdateCategoryRequest extends FormRequest
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'default_min_rental_days' => ['nullable', 'integer', 'min:1'],
+            ...VehicleCategory::translationRules(['name' => 'max:255', 'description' => 'max:1000']),
         ];
     }
 }

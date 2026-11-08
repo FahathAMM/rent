@@ -154,11 +154,14 @@ class PublicShopRepo extends BaseRepository
         $categories = $vehicles->base()
             ->whereIn('vehicles.shop_id', $shopIds)
             ->join('vehicle_categories', 'vehicle_categories.id', '=', 'vehicles.category_id')
-            ->select('vehicles.shop_id', 'vehicle_categories.name')
+            ->select('vehicles.shop_id', 'vehicle_categories.name', 'vehicle_categories.translations')
             ->distinct()
             ->get()
             ->groupBy('shop_id')
-            ->map(fn (Collection $rows) => $rows->pluck('name')->sort()->values()->all());
+            // In the visitor's language, matching the public category list.
+            ->map(fn (Collection $rows) => $rows
+                ->map(fn ($row) => \App\Models\VehicleCategory::translateRaw($row->translations, 'name', $row->name))
+                ->unique()->sort()->values()->all());
 
         return collect($shopIds)->mapWithKeys(fn (int $id) => [$id => [
             'vehicles_count' => (int) ($counts[$id] ?? 0),

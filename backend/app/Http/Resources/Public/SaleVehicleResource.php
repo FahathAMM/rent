@@ -49,7 +49,7 @@ class SaleVehicleResource extends JsonResource
             ] : null),
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
-                'name' => $this->category->name,
+                'name' => $this->category->translate('name'),
                 'slug' => $this->category->slug,
             ]),
             'shop' => $this->whenLoaded('shop', fn () => [

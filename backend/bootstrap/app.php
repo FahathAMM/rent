@@ -67,18 +67,21 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->statefulApi();
+
+        // Public/customer requests carry X-Locale (en/ta); see SetLocale.
+        $middleware->api(prepend: [\App\Http\Middleware\SetLocale::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (UnauthorizedException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Unauthorized. Insufficient permissions.'], 403);
+                return response()->json(['message' => __('Unauthorized. Insufficient permissions.')], 403);
             }
         });
 
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Validation failed',
+                    'message' => __('Validation failed'),
                     'errors' => $e->errors(),
                 ], 422);
             }
@@ -86,13 +89,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
+                return response()->json(['message' => __('Unauthenticated.')], 401);
             }
         });
 
         $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Resource not found.'], 404);
+                return response()->json(['message' => __('Resource not found.')], 404);
             }
         });
     })->create();

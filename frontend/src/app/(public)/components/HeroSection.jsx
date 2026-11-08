@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,9 +13,9 @@ import { HeroSlideshow } from "@/components/public/HeroSlideshow";
 import { ArrowRight, BadgeDollarSign, Building2, CarFront, Clock, Search, ShieldCheck, Wallet } from "lucide-react";
 
 const TRUST_POINTS = [
-  { icon: ShieldCheck, label: "Verified shops" },
-  { icon: Wallet, label: "No hidden fees" },
-  { icon: Clock, label: "Fast replies from shops" },
+  { icon: ShieldCheck, key: "verified" },
+  { icon: Wallet, key: "noHiddenFees" },
+  { icon: Clock, key: "fastReplies" },
 ];
 
 function HeroStat({ icon: Icon, value, label }) {
@@ -30,13 +31,14 @@ function HeroStat({ icon: Icon, value, label }) {
 }
 
 const SEARCH_MODES = [
-  { id: "rent", label: "Rent", icon: CarFront },
-  { id: "buy", label: "Buy", icon: BadgeDollarSign },
+  { id: "rent", icon: CarFront },
+  { id: "buy", icon: BadgeDollarSign },
 ];
 
 /** The home page hero: slideshow, headline, search card, shortcuts and stats. */
 export function HeroSection({ featured, saleTotal, heroSlides, categories, cities, shopsTotal }) {
   const router = useRouter();
+  const t = useTranslations("home.hero");
   const [mode, setMode] = useState("rent");
   const [q, setQ] = useState("");
   const [district, setDistrict] = useState("");
@@ -57,9 +59,9 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
   };
 
   const stats = [
-    { icon: CarFront, value: featured?.meta?.total ?? "—", label: "For rent" },
-    { icon: BadgeDollarSign, value: saleTotal ?? "—", label: "For sale" },
-    { icon: Building2, value: shopsTotal ?? "—", label: "Shops" },
+    { icon: CarFront, value: featured?.meta?.total ?? "—", label: t("stats.forRent") },
+    { icon: BadgeDollarSign, value: saleTotal ?? "—", label: t("stats.forSale") },
+    { icon: Building2, value: shopsTotal ?? "—", label: t("stats.shops") },
   ];
 
   return (
@@ -82,9 +84,9 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
             {heroSlide.link_url && (
               <Button asChild size="lg" className="mt-4 rounded-full bg-white px-6 text-foreground shadow-lg hover:bg-white/90">
                 {heroSlide.link_url.startsWith("/") ? (
-                  <Link href={heroSlide.link_url}>{heroSlide.link_label || "Learn more"} <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link href={heroSlide.link_url}>{heroSlide.link_label || t("learnMore")} <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 ) : (
-                  <a href={heroSlide.link_url} target="_blank" rel="noopener noreferrer">{heroSlide.link_label || "Learn more"} <ArrowRight className="ml-2 h-4 w-4" /></a>
+                  <a href={heroSlide.link_url} target="_blank" rel="noopener noreferrer">{heroSlide.link_label || t("learnMore")} <ArrowRight className="ml-2 h-4 w-4" /></a>
                 )}
               </Button>
             )}
@@ -92,13 +94,14 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
         ) : (
           <>
             <h1 className="line-clamp-2 text-3xl font-semibold leading-tight tracking-[-0.02em] text-balance drop-shadow-sm sm:text-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-              Rent or buy a vehicle,{" "}
-              <span className="bg-gradient-to-r from-orange-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">
-                anywhere in Sri Lanka
-              </span>
+              {t.rich("headline", {
+                accent: (chunks) => (
+                  <span className="bg-gradient-to-r from-orange-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">{chunks}</span>
+                ),
+              })}
             </h1>
             <p className="mx-auto mt-3 line-clamp-2 max-w-xl text-base text-white/80 text-pretty">
-              Compare vehicles from registered shops, then book or enquire in minutes and deal with the shop directly.
+              {t("subheadline")}
             </p>
           </>
         )}
@@ -110,15 +113,15 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
           className="mx-auto mt-4 flex max-w-4xl flex-col gap-2 rounded-2xl border border-white/20 bg-card/95 p-2 text-left text-foreground shadow-2xl backdrop-blur-md sm:flex-row sm:items-stretch"
         >
           <div className="min-w-0 rounded-xl px-1 sm:w-44 sm:shrink-0 sm:border-r sm:border-border/60">
-            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Looking to</span>
+            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("lookingTo")}</span>
             <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger className="h-8 border-0 bg-transparent font-medium shadow-none focus:ring-0" aria-label="Rent or buy">
+              <SelectTrigger className="h-8 border-0 bg-transparent font-medium shadow-none focus:ring-0" aria-label={t("rentOrBuy")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SEARCH_MODES.map(({ id, label, icon: Icon }) => (
+                {SEARCH_MODES.map(({ id, icon: Icon }) => (
                   <SelectItem key={id} value={id}>
-                    <span className="flex items-center gap-2"><Icon className="h-4 w-4 text-muted-foreground" /> {label}</span>
+                    <span className="flex items-center gap-2"><Icon className="h-4 w-4 text-muted-foreground" /> {t(id)}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -127,48 +130,48 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
           <label className="flex min-w-0 items-center gap-2.5 rounded-xl px-3 sm:flex-[1.4] sm:border-r sm:border-border/60">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
-              <span className="block pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">What</span>
+              <span className="block pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("what")}</span>
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Make, model or keyword"
+                placeholder={t("keywordPlaceholder")}
                 className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
               />
             </div>
           </label>
           <div className="min-w-0 rounded-xl px-1 sm:flex-1 sm:border-r sm:border-border/60">
-            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Where</span>
+            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("where")}</span>
             <Select value={district || "all"} onValueChange={(v) => setDistrict(v === "all" ? "" : v)}>
               <SelectTrigger className="h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Any district" />
+                <SelectValue placeholder={t("anyDistrict")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Any district</SelectItem>
+                <SelectItem value="all">{t("anyDistrict")}</SelectItem>
                 {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="min-w-0 rounded-xl px-1 sm:flex-1">
-            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Type</span>
+            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("type")}</span>
             <Select value={category || "all"} onValueChange={(v) => setCategory(v === "all" ? "" : v)}>
               <SelectTrigger className="h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder="Any vehicle" />
+                <SelectValue placeholder={t("anyVehicle")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Any vehicle</SelectItem>
+                <SelectItem value="all">{t("anyVehicle")}</SelectItem>
                 {categories?.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <Button type="submit" size="lg" className="min-h-12 shrink-0 rounded-xl sm:h-auto bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 px-5 hover:opacity-90 lg:px-7">
-            <Search className="mr-2 h-4 w-4" /> Search
+            <Search className="mr-2 h-4 w-4" /> {t("search")}
           </Button>
         </form>
 
         {/* Popular category shortcuts */}
         {categories?.length > 0 && (
           <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="text-white/70">Popular:</span>
+            <span className="text-white/70">{t("popular")}</span>
             {categories.slice(0, 5).map((c) => (
               <Link
                 key={c.id}
@@ -186,9 +189,9 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
         </div>
 
         <div className="mx-auto mt-4 hidden flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/80 sm:flex">
-          {TRUST_POINTS.map(({ icon: Icon, label }) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <Icon className="h-4 w-4 text-orange-300" /> {label}
+          {TRUST_POINTS.map(({ icon: Icon, key }) => (
+            <span key={key} className="flex items-center gap-1.5">
+              <Icon className="h-4 w-4 text-orange-300" /> {t(`trust.${key}`)}
             </span>
           ))}
         </div>

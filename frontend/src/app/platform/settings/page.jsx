@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { Fieldset } from "@/components/forms/Fieldset";
+import { TranslationFields, appendTranslations, translationsForm } from "@/components/forms/TranslationFields";
 import { getInitials, formatDateTime, formatBytes } from "@/lib/utils";
 import {
   Home, Building2, Save, Loader2, Database, Download, Trash2, Mail,
@@ -43,10 +44,16 @@ const AUTOMATION_INTERVAL_OPTIONS = [
 
 const EMPTY_AUTOMATION_FORM = { name: "", interval: "", fixed_time: "", is_active: true };
 
+// Branding text the public site can show in other languages.
+const TRANSLATED_DETAIL = ["tagline", "login_eyebrow", "login_heading", "login_description"];
+
 const EMPTY_DETAIL = {
   name: "", tagline: "", logo: null, login_logo: null,
   login_eyebrow: "", login_heading: "", login_description: "",
+  translations: translationsForm(null, TRANSLATED_DETAIL),
 };
+
+const detailForm = (data) => ({ ...EMPTY_DETAIL, ...data, translations: translationsForm(data?.translations, TRANSLATED_DETAIL) });
 
 /** A vertical, icon-led nav item — deliberately not the pill-tab look used elsewhere in the app. */
 function SettingsTabTrigger({ value, icon: Icon, children }) {
@@ -133,7 +140,7 @@ function BrandingCard() {
     platformService.details
       .get()
       .then((res) => {
-        setDetail({ ...EMPTY_DETAIL, ...res.data.data });
+        setDetail(detailForm(res.data.data));
         setLogoPreview(res.data.data.logo ?? null);
         setLoginLogoPreview(res.data.data.login_logo ?? null);
       })
@@ -166,11 +173,12 @@ function BrandingCard() {
       fd.append("login_eyebrow", detail.login_eyebrow ?? "");
       fd.append("login_heading", detail.login_heading ?? "");
       fd.append("login_description", detail.login_description ?? "");
+      appendTranslations(fd, detail.translations);
       if (logoFile) fd.append("logo", logoFile);
       if (loginLogoFile) fd.append("login_logo", loginLogoFile);
 
       const res = await platformService.details.update(fd);
-      setDetail({ ...EMPTY_DETAIL, ...res.data.data });
+      setDetail(detailForm(res.data.data));
       setLogoFile(null);
       setLoginLogoFile(null);
       toast.success("Platform branding updated");
@@ -263,6 +271,21 @@ function BrandingCard() {
               <Label htmlFor="login-description">Subtext</Label>
               <Textarea id="login-description" rows={2} placeholder="One Flow. One Business. — CRM, quotations, invoicing, expenses and accounting in one place. Sign in to pick up right where you left off." value={detail.login_description ?? ""} onChange={(e) => setDetail((d) => ({ ...d, login_description: e.target.value }))} />
               {errors.login_description && <p className="text-xs text-destructive mt-1">{errors.login_description[0]}</p>}
+            </div>
+
+            <div className="col-span-2">
+              <TranslationFields
+                value={detail.translations}
+                onChange={(translations) => setDetail((d) => ({ ...d, translations }))}
+                fields={[
+                  { key: "tagline", label: "Tagline" },
+                  { key: "login_eyebrow", label: "Login eyebrow" },
+                  { key: "login_heading", label: "Login heading" },
+                  { key: "login_description", label: "Login subtext", multiline: true, rows: 2 },
+                ]}
+                english={{ tagline: detail.tagline, login_eyebrow: detail.login_eyebrow, login_heading: detail.login_heading, login_description: detail.login_description }}
+                errors={errors}
+              />
             </div>
           </Fieldset>
 

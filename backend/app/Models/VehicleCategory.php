@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VehicleCategory extends Model
 {
+    use HasTranslations;
+
+    /** Columns with other-language text in `translations` (see HasTranslations). */
+    protected array $translatable = ['name', 'description'];
+
     protected $fillable = [
         'parent_id', 'name', 'slug', 'icon', 'description',
         'sort_order', 'is_active', 'default_min_rental_days',

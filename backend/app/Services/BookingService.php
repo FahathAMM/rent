@@ -49,7 +49,7 @@ class BookingService
         return DB::transaction(function () use ($customer, $vehicle, $pickupAt, $returnAt, $quote, $withDriver, $deliveryRequested, $responseHours, $data, $paymentMethod) {
             // The row SaleListingService locks to move a car to sale: whichever runs second sees the other.
             $listingType = DB::table('vehicles')->where('id', $vehicle->id)->lockForUpdate()->value('listing_type');
-            abort_unless($listingType === Vehicle::LISTING_RENT, 422, 'This vehicle is not currently available for booking.');
+            abort_unless($listingType === Vehicle::LISTING_RENT, 422, __('This vehicle is not currently available for booking.'));
 
             $booking = Booking::create([
                 'booking_reference' => NumberGenerator::next($vehicle->shop_id, 'booking'),
@@ -95,7 +95,7 @@ class BookingService
             return Booking::METHOD_CASH;
         }
         if (!$vehicle->shop->primaryBankDetail()->exists()) {
-            throw ValidationException::withMessages(['payment_method' => ['This shop does not accept bank transfers.']]);
+            throw ValidationException::withMessages(['payment_method' => [__('This shop does not accept bank transfers.')]]);
         }
 
         return Booking::METHOD_BANK_TRANSFER;
@@ -103,23 +103,23 @@ class BookingService
 
     private function assertRequestIsValid(Vehicle $vehicle, VehiclePricing $pricing, Carbon $pickupAt, Carbon $returnAt): void
     {
-        abort_unless($vehicle->isPubliclyVisible(), 422, 'This vehicle is not currently available for booking.');
-        abort_unless($vehicle->shop->status === 'active' && $vehicle->shop->is_published, 422, 'This shop is not currently accepting bookings.');
+        abort_unless($vehicle->isPubliclyVisible(), 422, __('This vehicle is not currently available for booking.'));
+        abort_unless($vehicle->shop->status === 'active' && $vehicle->shop->is_published, 422, __('This shop is not currently accepting bookings.'));
 
         if ($returnAt->lessThanOrEqualTo($pickupAt)) {
-            throw ValidationException::withMessages(['return_at' => ['Return date must be after pickup date.']]);
+            throw ValidationException::withMessages(['return_at' => [__('Return date must be after pickup date.')]]);
         }
 
         if ($pickupAt->lessThan(now()->addHours($pricing->advance_notice_hours))) {
-            throw ValidationException::withMessages(['pickup_at' => ["Pickup must be at least {$pricing->advance_notice_hours} hours from now."]]);
+            throw ValidationException::withMessages(['pickup_at' => [__('Pickup must be at least :hours hours from now.', ['hours' => $pricing->advance_notice_hours])]]);
         }
 
         $days = max(1, (int) ceil($pickupAt->diffInHours($returnAt) / 24));
         if ($days < $pricing->min_rental_days) {
-            throw ValidationException::withMessages(['return_at' => ["Minimum rental is {$pricing->min_rental_days} day(s)."]]);
+            throw ValidationException::withMessages(['return_at' => [__('Minimum rental is :days day(s).', ['days' => $pricing->min_rental_days])]]);
         }
         if ($pricing->max_rental_days && $days > $pricing->max_rental_days) {
-            throw ValidationException::withMessages(['return_at' => ["Maximum rental is {$pricing->max_rental_days} day(s)."]]);
+            throw ValidationException::withMessages(['return_at' => [__('Maximum rental is :days day(s).', ['days' => $pricing->max_rental_days])]]);
         }
 
         $overlap = Booking::where('vehicle_id', $vehicle->id)
@@ -128,7 +128,7 @@ class BookingService
             ->where('return_at', '>', $pickupAt)
             ->exists();
         if ($overlap) {
-            throw ValidationException::withMessages(['pickup_at' => ['Vehicle is already booked for part of those dates.']]);
+            throw ValidationException::withMessages(['pickup_at' => [__('Vehicle is already booked for part of those dates.')]]);
         }
 
         $blocked = VehicleAvailability::where('vehicle_id', $vehicle->id)
@@ -136,7 +136,7 @@ class BookingService
             ->whereBetween('date', [$pickupAt->toDateString(), $returnAt->copy()->subDay()->toDateString()])
             ->exists();
         if ($blocked) {
-            throw ValidationException::withMessages(['pickup_at' => ['Some of those dates are unavailable.']]);
+            throw ValidationException::withMessages(['pickup_at' => [__('Some of those dates are unavailable.')]]);
         }
     }
 }

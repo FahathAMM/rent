@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { Button } from "@/components/ui/button";
 import { ShopCover } from "@/components/marketplace/ShopCover";
@@ -13,16 +14,16 @@ import {
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /** Open/closed right now from RentalShop.operating_hours ({ mon: { open, close, closed } ... }), or null when unknown. */
-function openStatus(hours) {
+function openStatus(hours, t) {
   if (!hours) return null;
   const now = new Date();
   const today = hours[DAY_KEYS[now.getDay()]];
   if (!today) return null;
-  if (today.closed || !today.open || !today.close) return { open: false, label: "Closed today" };
+  if (today.closed || !today.open || !today.close) return { open: false, label: t("closedToday") };
   const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  if (hhmm < today.open) return { open: false, label: `Opens ${today.open}` };
-  if (hhmm >= today.close) return { open: false, label: "Closed now" };
-  return { open: true, label: `Open until ${today.close}` };
+  if (hhmm < today.open) return { open: false, label: t("opensAt", { time: today.open }) };
+  if (hhmm >= today.close) return { open: false, label: t("closedNow") };
+  return { open: true, label: t("openUntil", { time: today.close }) };
 }
 
 function whatsappHref(number) {
@@ -53,21 +54,22 @@ function Stat({ icon: Icon, value, label }) {
 }
 
 function ContactActions({ shop }) {
+  const t = useTranslations("shop");
   const wa = whatsappHref(shop.whatsapp);
   return (
     <div className="flex items-center gap-2">
       {shop.phone && (
-        <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title={`Call ${shop.phone}`}>
-          <a href={`tel:${shop.phone}`} aria-label={`Call ${shop.name}`}><Phone className="h-4 w-4" /></a>
+        <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0" title={t("callNumber", { phone: shop.phone })}>
+          <a href={`tel:${shop.phone}`} aria-label={t("callShop", { shop: shop.name })}><Phone className="h-4 w-4" /></a>
         </Button>
       )}
       {wa && (
-        <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0 text-emerald-600 hover:text-emerald-700" title="Chat on WhatsApp">
-          <a href={wa} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${shop.name}`}><MessageCircle className="h-4 w-4" /></a>
+        <Button asChild variant="outline" size="icon" className="h-9 w-9 shrink-0 text-emerald-600 hover:text-emerald-700" title={t("chatWhatsapp")}>
+          <a href={wa} target="_blank" rel="noopener noreferrer" aria-label={t("whatsappShop", { shop: shop.name })}><MessageCircle className="h-4 w-4" /></a>
         </Button>
       )}
       <Button asChild size="sm" className="h-9 flex-1 gap-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-        <Link href={`/shops/${shop.slug}`}>View shop <ArrowRight className="h-3.5 w-3.5" /></Link>
+        <Link href={`/shops/${shop.slug}`}>{t("viewShop")} <ArrowRight className="h-3.5 w-3.5" /></Link>
       </Button>
     </div>
   );
@@ -75,12 +77,14 @@ function ContactActions({ shop }) {
 
 /** Only for a shop with cars for sale; its vehicle count covers rentals. */
 function SaleCount({ shop }) {
+  const t = useTranslations("shop");
   if (!shop.sale_vehicles_count) return null;
 
-  return <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><BadgeDollarSign className="h-3.5 w-3.5" />{shop.sale_vehicles_count} for sale</span>;
+  return <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><BadgeDollarSign className="h-3.5 w-3.5" />{t("forSaleCount", { count: shop.sale_vehicles_count })}</span>;
 }
 
 function CategoryChips({ categories, max = 3 }) {
+  const t = useTranslations("shop");
   if (!categories?.length) return null;
   const extra = categories.length - max;
   return (
@@ -88,7 +92,7 @@ function CategoryChips({ categories, max = 3 }) {
       {categories.slice(0, max).map((c) => (
         <span key={c} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{c}</span>
       ))}
-      {extra > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">+{extra} more</span>}
+      {extra > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{t("moreCount", { count: extra })}</span>}
     </div>
   );
 }
@@ -103,15 +107,16 @@ function Cover({ shop, className }) {
 }
 
 function StatusBadges({ shop }) {
-  const status = openStatus(shop.operating_hours);
+  const t = useTranslations("shop");
+  const status = openStatus(shop.operating_hours, t);
   return (
     <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
       {shop.is_sponsored && (
-        <span className="rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">Sponsored</span>
+        <span className="rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">{t("sponsored")}</span>
       )}
       {shop.is_verified && (
         <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-          <ShieldCheck className="h-3 w-3" /> Verified
+          <ShieldCheck className="h-3 w-3" /> {t("verified")}
         </span>
       )}
       {status && (
@@ -128,30 +133,34 @@ function StatusBadges({ shop }) {
 }
 
 function RatingLine({ shop }) {
+  const t = useTranslations("shop");
   const rating = Number(shop.rating_avg);
-  if (!(rating > 0)) return <span className="text-xs text-muted-foreground">New on the marketplace</span>;
+  if (!(rating > 0)) return <span className="text-xs text-muted-foreground">{t("newOnMarketplace")}</span>;
   return (
     <span className="flex items-center gap-1 text-xs">
       <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
       <span className="font-semibold">{rating.toFixed(1)}</span>
-      <span className="text-muted-foreground">({shop.rating_count ?? 0} reviews)</span>
+      <span className="text-muted-foreground">({t("reviewCount", { count: shop.rating_count ?? 0 })})</span>
     </span>
   );
 }
 
 function FromPrice({ shop }) {
+  const t = useTranslations("shop");
+  const tc = useTranslations("vehicleCard");
   const { format } = useCurrencyFormat();
   if (shop.starting_daily_rate == null) return null;
   return (
     <p className="flex items-baseline gap-1 whitespace-nowrap leading-tight">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">From</span>
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("from")}</span>
       <span className="text-sm font-bold">{format ? format(shop.starting_daily_rate) : `LKR ${shop.starting_daily_rate}`}</span>
-      <span className="text-[10px] text-muted-foreground">/day</span>
+      <span className="text-[10px] text-muted-foreground">{tc("perDay")}</span>
     </p>
   );
 }
 
 export function ShopCard({ shop }) {
+  const t = useTranslations("shop");
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-xl">
       <Link href={`/shops/${shop.slug}`} className="relative block" aria-label={shop.name}>
@@ -181,9 +190,9 @@ export function ShopCard({ shop }) {
         <CategoryChips categories={shop.categories} />
 
         <div className="grid grid-cols-3 gap-2">
-          <Stat icon={CarFront} value={shop.vehicles_count ?? 0} label="For rent" />
-          <Stat icon={BadgeDollarSign} value={shop.sale_vehicles_count ?? 0} label="For sale" />
-          <Stat icon={CalendarCheck} value={shop.completed_bookings_count ?? 0} label="Trips" />
+          <Stat icon={CarFront} value={shop.vehicles_count ?? 0} label={t("forRent")} />
+          <Stat icon={BadgeDollarSign} value={shop.sale_vehicles_count ?? 0} label={t("forSale")} />
+          <Stat icon={CalendarCheck} value={shop.completed_bookings_count ?? 0} label={t("trips")} />
         </div>
 
         <div className="mt-auto pt-1">
@@ -195,6 +204,7 @@ export function ShopCard({ shop }) {
 }
 
 export function ShopRow({ shop }) {
+  const t = useTranslations("shop");
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:shadow-xl sm:flex-row">
       <Link href={`/shops/${shop.slug}`} className="relative block sm:w-64 sm:shrink-0" aria-label={shop.name}>
@@ -211,9 +221,9 @@ export function ShopRow({ shop }) {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <RatingLine shop={shop} />
               {shop.city && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{shop.city}</span>}
-              <span className="flex items-center gap-1 text-xs text-muted-foreground"><CarFront className="h-3.5 w-3.5" />{shop.vehicles_count ?? 0} for rent</span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground"><CarFront className="h-3.5 w-3.5" />{t("forRentCount", { count: shop.vehicles_count ?? 0 })}</span>
               <SaleCount shop={shop} />
-              <span className="flex items-center gap-1 text-xs text-muted-foreground"><CalendarCheck className="h-3.5 w-3.5" />{shop.completed_bookings_count ?? 0} trips</span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground"><CalendarCheck className="h-3.5 w-3.5" />{t("tripCount", { count: shop.completed_bookings_count ?? 0 })}</span>
             </div>
             <CategoryChips categories={shop.categories} max={5} />
           </div>
