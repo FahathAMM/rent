@@ -27,20 +27,17 @@ class AuditService
     }
 
     /**
-     * Attributes the action to whichever guard actually authenticated this
-     * request. AuthUser::id() only ever resolves a marketplace User (the
-     * default guard) - a platform-admin request (e.g. owner/shop
-     * verification decisions) authenticates on the separate `platform`
-     * guard instead, so without this a call site using this class from a
-     * Platform\* controller would silently log user_id = null and no
-     * actor at all. Call sites never need to pass an actor explicitly.
+     * Attributes actions to the marketplace user, customer, or platform
+     * admin guard that authenticated the request.
      */
     private static function log(string $action, string $form, ?int $recordId, string $record, ?array $old = null, ?array $new = null): AuditLog
     {
         $admin = auth('platform')->check() ? auth('platform')->user() : null;
+        $customer = auth('customer')->user();
 
         return AuditLog::create([
-            'user_id'         => $admin ? null : AuthUser::id(),
+            'user_id'         => ($admin || $customer) ? null : AuthUser::id(),
+            'customer_id'     => $customer?->id,
             'system_admin_id' => $admin?->id,
             'action'          => $action,
             'form'            => $form,

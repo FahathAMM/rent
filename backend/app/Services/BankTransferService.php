@@ -78,11 +78,13 @@ class BankTransferService
      * A payment the shop itself received - cash before pickup, a transfer the
      * customer never uploaded, etc. The shop is the one confirming receipt,
      * so it is recorded as succeeded straight away (no review step); the
-     * receipt is optional. Never more than the balance due.
+     * receipt is optional. Never more than the balance due. Also allowed on
+     * a completed booking: an extended rental can still owe a balance after
+     * the vehicle is back.
      */
     public function recordByShop(Booking $booking, int $actorId, string $method, float $amount, ?string $paidAt, ?string $reference, ?UploadedFile $file): Payment
     {
-        if (!$booking->isPaidToShop() || !in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE], true)) {
+        if (!$booking->isPaidToShop() || !in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true)) {
             throw ValidationException::withMessages(['status' => ['Payments can only be recorded on an open cash or bank-transfer booking.']]);
         }
 
@@ -102,7 +104,7 @@ class BankTransferService
                 'currency' => $booking->pricing->currency,
                 'status' => Payment::STATUS_SUCCEEDED,
                 'transfer_reference' => $reference,
-                'paid_at' => $paidAt ? Carbon::parse($paidAt)->tz(config('app.timezone')) : now(),
+                'paid_at' => $paidAt ? Carbon::parse($paidAt, config('app.timezone'))->tz(config('app.timezone')) : now(),
                 'verified_by' => $actorId,
                 'verified_at' => now(),
                 'idempotency_key' => (string) Str::uuid(),
