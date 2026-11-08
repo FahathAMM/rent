@@ -19,12 +19,16 @@ use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController
 use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
 use App\Http\Controllers\Api\Vendor\EarningsController as VendorEarningsController;
 use App\Http\Controllers\Api\Vendor\InquiryController as VendorInquiryController;
+use App\Http\Controllers\Api\Vendor\ReportController as VendorReportController;
 use App\Http\Controllers\Api\Vendor\ReviewController as VendorReviewController;
+use App\Http\Controllers\Api\Vendor\SaleEnquiryController as VendorSaleEnquiryController;
+use App\Http\Controllers\Api\Vendor\SaleListingController as VendorSaleListingController;
 use App\Http\Controllers\Api\Vendor\ShopProfileController as VendorShopProfileController;
 use App\Http\Controllers\Api\Vendor\StaffController as VendorStaffController;
 use App\Http\Controllers\Api\Vendor\ShopRoleController as VendorShopRoleController;
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
+use App\Http\Controllers\Api\Vendor\VehicleSaleController as VendorVehicleSaleController;
 use App\Http\Controllers\Api\VehicleAvailabilityController;
 use App\Http\Controllers\Api\VisitLogController;
 use Illuminate\Support\Facades\Route;
@@ -194,6 +198,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('terms', [VendorShopProfileController::class, 'terms']);
             Route::put('terms', [VendorShopProfileController::class, 'updateTerms']);
 
+            // Permission per report, checked in the controller. A plan feature (Pro / Business).
+            Route::middleware('plan.feature:reports')->group(function () {
+                Route::get('reports/{report}', [VendorReportController::class, 'show']);
+                Route::get('reports/{report}/export', [VendorReportController::class, 'export']);
+            });
+
             Route::get('earnings', [VendorEarningsController::class, 'index']);
             Route::get('earnings/bookings', [VendorEarningsController::class, 'bookings']);
 
@@ -216,6 +226,32 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('roles', [VendorShopRoleController::class, 'store']);
                 Route::put('roles/{role}', [VendorShopRoleController::class, 'update']);
                 Route::delete('roles/{role}', [VendorShopRoleController::class, 'destroy']);
+            });
+
+            // Vehicle sales — see app-doc/marketplace/13-vehicle-sales.md. Photos reuse vehicles/{vehicle}/images.
+            Route::middleware('plan.feature:sales')->prefix('sales')->group(function () {
+                Route::get('listings', [VendorSaleListingController::class, 'index']);
+                Route::post('listings', [VendorSaleListingController::class, 'store']);
+                Route::get('listings/{vehicle}', [VendorSaleListingController::class, 'show']);
+                Route::put('listings/{vehicle}', [VendorSaleListingController::class, 'update']);
+                Route::delete('listings/{vehicle}', [VendorSaleListingController::class, 'destroy']);
+                Route::post('listings/{vehicle}/publish', [VendorSaleListingController::class, 'publish']);
+                Route::post('listings/{vehicle}/withdraw', [VendorSaleListingController::class, 'withdraw']);
+                Route::post('listings/{vehicle}/move-to-rent', [VendorSaleListingController::class, 'switchToRent']);
+                Route::post('listings/{vehicle}/sell', [VendorVehicleSaleController::class, 'store']);
+                Route::post('vehicles/{vehicle}/move-to-sale', [VendorSaleListingController::class, 'switchToSale']);
+
+                Route::get('enquiries', [VendorSaleEnquiryController::class, 'index']);
+                Route::get('enquiries/{enquiry:reference}', [VendorSaleEnquiryController::class, 'show']);
+                Route::post('enquiries/{enquiry:reference}/messages', [VendorSaleEnquiryController::class, 'reply']);
+                Route::post('enquiries/{enquiry:reference}/close', [VendorSaleEnquiryController::class, 'close']);
+
+                Route::get('sold', [VendorVehicleSaleController::class, 'index']);
+                Route::get('sold/{sale:reference}', [VendorVehicleSaleController::class, 'show']);
+                Route::get('sold/{sale:reference}/agreement', [VendorVehicleSaleController::class, 'agreement']);
+
+                Route::get('terms', [VendorVehicleSaleController::class, 'terms']);
+                Route::put('terms', [VendorVehicleSaleController::class, 'updateTerms']);
             });
 
             // Paid visibility — featured vehicles and category / city sponsorship (owner only, see the controller).

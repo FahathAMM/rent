@@ -46,11 +46,11 @@ function NoShopView() {
       <div>
         <h2 className="text-xl font-semibold">No shop yet</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          You don&apos;t own or staff any rental shop yet. Register a rental shop to get started.
+          You don&apos;t own or staff any shop yet. Register a shop to get started.
         </p>
       </div>
       <Button asChild size="sm">
-        <Link href="/vendor/shops/new">Register a rental shop</Link>
+        <Link href="/vendor/shops/new">Register a shop</Link>
       </Button>
     </div>
   );
@@ -89,12 +89,44 @@ const OPEN_WHILE_LOCKED = ["/vendor/settings/subscription", "/vendor/profile"];
 
 // Personal account pages every authenticated vendor can reach regardless of
 // their menu/permission access — they aren't module nav items.
-const ALWAYS_ACCESSIBLE_ROUTES = ["/vendor/profile", "/vendor/audit-logs"];
+const ALWAYS_ACCESSIBLE_ROUTES = ["/vendor/profile"];
+
+// Pages outside the menu that only the shop owner can open.
+const OWNER_ONLY_ROUTES = ["/vendor/audit-logs"];
+
+// Pages nested under another menu item's route. Access to the parent doesn't
+// cover these, so each one states the permission it needs.
+const NESTED_ROUTE_PERMISSIONS = [
+  [/^\/vendor\/vehicles\/categories(\/|$)/, "vendor-vehicles-categories-view"],
+  [/^\/vendor\/vehicles\/new(\/|$)/, "vendor-vehicles-list-create"],
+  [/^\/vendor\/vehicles\/[^/]+\/edit(\/|$)/, "vendor-vehicles-list-edit"],
+  [/^\/vendor\/sales\/listings\/new(\/|$)/, "vendor-sales-listings-create"],
+  [/^\/vendor\/sales\/listings\/[^/]+\/edit(\/|$)/, "vendor-sales-listings-edit"],
+];
+
+// Menu pages that need a plan feature (SubscriptionPlan::FEATURES); the menu marks them when the plan lacks it.
+const PLAN_FEATURE_ROUTES = {
+  "/vendor/calendar": "calendar",
+  "/vendor/expenses": "expenses",
+  "/vendor/expense-categories": "expenses",
+  "/vendor/staff": "staff",
+  "/vendor/roles": "staff",
+  "/vendor/sales/listings": "sales",
+  "/vendor/sales/enquiries": "sales",
+  "/vendor/sales/sold": "sales",
+  "/vendor/sales/terms": "sales",
+  ...Object.fromEntries(["profit-loss", "vehicles", "sales", "bookings", "outstanding", "payments", "deposits", "expenses"].map((r) => [`/vendor/reports/${r}`, "reports"])),
+};
 
 // A freshly vendor-registered account has no shop and no nav yet — these
 // onboarding routes must still require auth, but skip the shop-count gate
 // and the module-tile chrome entirely (there's nothing to show tiles for).
 const ONBOARDING_ROUTES = ["/vendor/shops/new"];
+
+/** True when pathname is this route or a page beneath it — never a sibling that merely shares a prefix. */
+function matchesRoute(pathname, route) {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
 
 /** Flatten a nested menu tree into a flat array of route_name strings. */
 function flattenRoutes(menus) {
@@ -114,7 +146,7 @@ function getTitleFromNav(menus, pathname) {
   let best = null;
   const walk = (items) => {
     items?.forEach((item) => {
-      if (item.route_name && pathname.startsWith(item.route_name)) {
+      if (item.route_name && matchesRoute(pathname, item.route_name)) {
         if (!best || item.route_name.length > best.route_name.length) best = item;
       }
       if (item.children?.length) walk(item.children);
@@ -125,7 +157,7 @@ function getTitleFromNav(menus, pathname) {
 }
 
 export default function VendorLayout({ children }) {
-  const { isAuthenticated, _hasHydrated, updateUser } = useAuthStore();
+  const { isAuthenticated, _hasHydrated, updateUser, can } = useAuthStore();
   const { logout } = useAuth();
   const { shop, setShop } = useShopStore();
   const router = useRouter();
@@ -173,9 +205,17 @@ export default function VendorLayout({ children }) {
   // showing the last module.
   useEffect(() => {
     if (!navigation) return;
-    const matched = navigation.find(
-      (item) => !item.route_name && item.children?.some((c) => c.route_name && pathname.startsWith(c.route_name))
-    );
+    // Longest route wins: /vendor/vehicles/categories belongs to Vehicle, not to Rental's /vendor/vehicles.
+    let matched = null;
+    let matchedLength = 0;
+    navigation.filter((item) => !item.route_name).forEach((item) => {
+      item.children?.forEach((c) => {
+        if (c.route_name && matchesRoute(pathname, c.route_name) && c.route_name.length > matchedLength) {
+          matched = item;
+          matchedLength = c.route_name.length;
+        }
+      });
+    });
     if (matched) {
       setActiveModuleId(matched.id);
       return;
@@ -204,6 +244,10 @@ export default function VendorLayout({ children }) {
   // Only ask once the workspace is open to the shop (verified, not suspended); the endpoint itself is never locked.
   const { data: subscription } = useSubscription({ enabled: !!shop && !shop.is_suspended && shop.is_verified !== false && !isAuthRoute && !isOnboardingRoute });
   const locked = !!subscription?.locked && !OPEN_WHILE_LOCKED.some((route) => pathname.startsWith(route));
+  const planLockedRoutes = useMemo(() => {
+    if (!subscription?.features) return [];
+    return Object.keys(PLAN_FEATURE_ROUTES).filter((route) => !subscription.features.includes(PLAN_FEATURE_ROUTES[route]));
+  }, [subscription]);
 
   if (isAuthRoute) return children;
 
@@ -219,10 +263,10 @@ export default function VendorLayout({ children }) {
 
   if (awaitingVerification) return loading;
 
-  const hasPageAccess = !accessibleRoutes.length
-    ? true
-    : ALWAYS_ACCESSIBLE_ROUTES.some((route) => pathname.startsWith(route))
-      || accessibleRoutes.some((route) => pathname.startsWith(route));
+  const nestedPermission = NESTED_ROUTE_PERMISSIONS.find(([pattern]) => pattern.test(pathname))?.[1];
+  const hasPageAccess = ALWAYS_ACCESSIBLE_ROUTES.some((route) => matchesRoute(pathname, route))
+    || (isOwner && OWNER_ONLY_ROUTES.some((route) => matchesRoute(pathname, route)))
+    || (accessibleRoutes.some((route) => matchesRoute(pathname, route)) && (!nestedPermission || can(nestedPermission)));
 
   const title = getTitleFromNav(navigation, pathname);
   const activeModule = navigation?.find((item) => item.id === activeModuleId) ?? null;
@@ -232,6 +276,7 @@ export default function VendorLayout({ children }) {
       <Sidebar
         activeModule={activeModule}
         navigation={navigation}
+        planLockedRoutes={planLockedRoutes}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         topSlot={
@@ -245,7 +290,7 @@ export default function VendorLayout({ children }) {
         <Header
           navigation={navigation}
           activeModuleId={activeModuleId}
-          title={title}
+          planLockedRoutes={planLockedRoutes}
           onMenuClick={() => setSidebarOpen(true)}
         />
         <PlanBanner />

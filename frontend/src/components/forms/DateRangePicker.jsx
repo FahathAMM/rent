@@ -48,7 +48,7 @@ export function DateRangePicker({ label, value, onChange, error, placeholder = "
             variant="outline"
             disabled={disabled}
             className={cn(
-              "h-8 w-full justify-start text-left font-normal",
+              "h-8 w-full justify-start text-left text-xs font-normal",
               !selected.from && "text-muted-foreground",
               error && "border-destructive"
             )}
@@ -58,7 +58,7 @@ export function DateRangePicker({ label, value, onChange, error, placeholder = "
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="range" selected={selected} onSelect={handleSelect} numberOfMonths={2} autoFocus />
+          <Calendar mode="range" selected={selected} onSelect={handleSelect} defaultMonth={selected.from} numberOfMonths={2} autoFocus />
         </PopoverContent>
       </Popover>
     </FormField>

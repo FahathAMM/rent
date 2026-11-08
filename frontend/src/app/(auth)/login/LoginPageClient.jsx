@@ -50,14 +50,14 @@ export default function LoginPageClient({ initialBrand, initialView = "login" })
   });
   const brand = data ?? {};
   const brandName = brand.name || "LankaLane";
-  const tagline = brand.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
+  const tagline = brand.tagline || "Rent or buy a vehicle, anywhere in Sri Lanka.";
   const logoUrl = brand.login_logo || brand.logo || null;
   const eyebrow = brand.login_eyebrow || "Cars, vans and more from trusted local owners";
-  const headingText = (brand.login_heading || "Rent any vehicle, anywhere.").replace(/\.$/, "");
+  const headingText = (brand.login_heading || "Rent or buy a vehicle, anywhere.").replace(/\.$/, "");
   const headingWords = headingText.split(" ");
   const headingHighlight = headingWords.pop();
   const headingPrefix = headingWords.join(" ");
-  const description = brand.login_description || `${tagline} Browse vehicles from verified owners and shops, book in minutes, and pick up right where you left off.`;
+  const description = brand.login_description || `${tagline} Find vehicles from verified shops, and keep your bookings and enquiries in one place.`;
 
   if (signedIn) {
     return (

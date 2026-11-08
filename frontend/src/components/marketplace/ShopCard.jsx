@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ShopCover } from "@/components/marketplace/ShopCover";
 import { cn } from "@/lib/utils";
 import {
-  ShieldCheck, Star, MapPin, CarFront, Phone, MessageCircle, CalendarCheck, Zap, ArrowRight,Building2
+  ShieldCheck, Star, MapPin, CarFront, Phone, MessageCircle, CalendarCheck, ArrowRight,Building2, BadgeDollarSign
 } from "lucide-react";
 
 /** Shop directory tiles (grid card + list row) — Http\Resources\Public\ShopResource's shape, incl. the listing's fleet stats. Used by /shops and the home page. */
@@ -67,10 +67,17 @@ function ContactActions({ shop }) {
         </Button>
       )}
       <Button asChild size="sm" className="h-9 flex-1 gap-1 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-        <Link href={`/shops/${shop.slug}`}>View fleet <ArrowRight className="h-3.5 w-3.5" /></Link>
+        <Link href={`/shops/${shop.slug}`}>View shop <ArrowRight className="h-3.5 w-3.5" /></Link>
       </Button>
     </div>
   );
+}
+
+/** Only for a shop with cars for sale; its vehicle count covers rentals. */
+function SaleCount({ shop }) {
+  if (!shop.sale_vehicles_count) return null;
+
+  return <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><BadgeDollarSign className="h-3.5 w-3.5" />{shop.sale_vehicles_count} for sale</span>;
 }
 
 function CategoryChips({ categories, max = 3 }) {
@@ -174,9 +181,9 @@ export function ShopCard({ shop }) {
         <CategoryChips categories={shop.categories} />
 
         <div className="grid grid-cols-3 gap-2">
-          <Stat icon={CarFront} value={shop.vehicles_count ?? 0} label="Vehicles" />
+          <Stat icon={CarFront} value={shop.vehicles_count ?? 0} label="For rent" />
+          <Stat icon={BadgeDollarSign} value={shop.sale_vehicles_count ?? 0} label="For sale" />
           <Stat icon={CalendarCheck} value={shop.completed_bookings_count ?? 0} label="Trips" />
-          <Stat icon={Zap} value={shop.response_rate != null ? `${Math.round(shop.response_rate)}%` : "—"} label="Response" />
         </div>
 
         <div className="mt-auto pt-1">
@@ -204,7 +211,8 @@ export function ShopRow({ shop }) {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <RatingLine shop={shop} />
               {shop.city && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{shop.city}</span>}
-              <span className="flex items-center gap-1 text-xs text-muted-foreground"><CarFront className="h-3.5 w-3.5" />{shop.vehicles_count ?? 0} vehicles</span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground"><CarFront className="h-3.5 w-3.5" />{shop.vehicles_count ?? 0} for rent</span>
+              <SaleCount shop={shop} />
               <span className="flex items-center gap-1 text-xs text-muted-foreground"><CalendarCheck className="h-3.5 w-3.5" />{shop.completed_bookings_count ?? 0} trips</span>
             </div>
             <CategoryChips categories={shop.categories} max={5} />
@@ -212,7 +220,7 @@ export function ShopRow({ shop }) {
         </div>
 
         {/* phones: price, then the action buttons on their own full-width line (one line overflowed);
-            sm+: stacked on the right. "View fleet" (flex-1) fills the phone row. */}
+            sm+: stacked on the right. "View shop" (flex-1) fills the phone row. */}
         <div className="flex shrink-0 flex-col items-stretch gap-2 border-t pt-3 sm:items-end sm:border-0 sm:pt-0">
           <FromPrice shop={shop} />
           <ContactActions shop={shop} />

@@ -19,6 +19,7 @@ class VehicleResource extends JsonResource
         return [
             'id' => $this->id,
             'shop_id' => $this->shop_id,
+            'listing_type' => $this->listing_type,
             'category_id' => $this->category_id,
             'brand_id' => $this->brand_id,
             'model_id' => $this->model_id,
@@ -48,6 +49,7 @@ class VehicleResource extends JsonResource
             'published_at' => $this->published_at?->toISOString(),
             'is_featured' => $this->is_featured,
             'pricing' => $this->whenLoaded('pricing'),
+            'sale' => $this->whenLoaded('saleDetail'),
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
                 'id' => $img->id,
                 'url' => $img->attachment ? Storage::disk($img->attachment->disk)->url($img->attachment->file_path) : null,

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class VehicleCategory extends Model
 {
     protected $fillable = [
-        'parent_id', 'name', 'slug', 'icon', 'description', 'image',
+        'parent_id', 'name', 'slug', 'icon', 'description',
         'sort_order', 'is_active', 'default_min_rental_days',
     ];
 

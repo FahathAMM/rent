@@ -6,6 +6,8 @@ import { usePlatformAuthStore } from "@/store/platformAuthStore";
 import { PlatformSidebar } from "@/components/platform/PlatformSidebar";
 import { Menu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/shared/NotificationBell";
+import { platformService } from "@/services/platformService";
 
 /**
  * Wraps every /platform/* route. Deliberately its own layout — never the
@@ -43,11 +45,12 @@ export default function PlatformLayout({ children }) {
     <div className="flex min-h-screen bg-slate-50">
       <PlatformSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
-          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
+          <Button variant="ghost" size="icon" aria-label="Open menu" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="text-sm font-semibold">Platform Admin</span>
+          <span className="flex-1 text-sm font-semibold">Platform Admin</span>
+          <NotificationBell service={platformService.notifications} queryKey="platform-notifications" className="h-9 w-9 rounded-lg shadow-none" />
         </header>
         <main className="flex-1 overflow-auto p-1">{children}</main>
       </div>

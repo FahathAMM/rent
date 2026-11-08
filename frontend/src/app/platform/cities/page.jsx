@@ -29,7 +29,10 @@ export default function PlatformCitiesPage() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-cities"] }); setRefreshKey((k) => k + 1);
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["platform-cities"] });
+    setRefreshKey((k) => k + 1);
+  };
 
   const save = useMutation({
     mutationFn: (payload) => platformService.cities.create(payload),

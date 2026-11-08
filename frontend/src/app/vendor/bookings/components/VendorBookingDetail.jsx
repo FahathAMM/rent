@@ -201,11 +201,11 @@ export function VendorBookingDetail({ booking: b, actions, canEdit, onChanged })
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ icon: Icon, label: l, value, sub }) => (
           <Card key={l} className="rounded-2xl shadow-sm">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
+            <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10"><Icon className="h-5 w-5" /></div>
               <div className="min-w-0">
-                <p className="truncate text-lg font-semibold leading-tight">{value}</p>
-                <p className="truncate text-xs capitalize text-muted-foreground">{l}{sub ? ` · ${sub}` : ""}</p>
+                <p className="break-words text-base font-semibold leading-tight sm:text-lg">{value}</p>
+                <p className="text-xs capitalize leading-snug text-muted-foreground">{l}{sub ? ` · ${sub}` : ""}</p>
               </div>
             </CardContent>
           </Card>
@@ -418,9 +418,9 @@ function TripPoint({ label: l, at, actual, place, align }) {
   return (
     <div className={cn("min-w-0", align === "right" && "text-right")}>
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{l}</p>
-      <p className="truncate text-sm font-semibold">{formatDateTime(at)}</p>
-      {place && <p className="truncate text-xs text-muted-foreground">{place}</p>}
-      {actual && <p className="truncate text-[11px] text-emerald-600">Actual {formatDateTime(actual)}</p>}
+      <p className="text-sm font-semibold leading-snug">{formatDateTime(at)}</p>
+      {place && <p className="break-words text-xs text-muted-foreground">{place}</p>}
+      {actual && <p className="text-[11px] leading-snug text-emerald-600">Actual {formatDateTime(actual)}</p>}
     </div>
   );
 }

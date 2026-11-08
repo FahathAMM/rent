@@ -112,11 +112,14 @@ class ShopSubscriptionTest extends TestCase
         $this->as($this->owner)->getJson('/api/expenses')->assertForbidden()->assertJsonPath('code', 'plan_feature')->assertJsonPath('feature', 'expenses');
         $this->as($this->owner)->getJson('/api/vehicles-availability')->assertForbidden()->assertJsonPath('code', 'plan_feature');
         $this->as($this->owner)->getJson('/api/vendor/staff')->assertForbidden()->assertJsonPath('code', 'plan_feature');
+        $this->as($this->owner)->getJson('/api/vendor/reports/bookings')->assertForbidden()->assertJsonPath('feature', 'reports');
+        $this->as($this->owner)->getJson('/api/vendor/reports/bookings/export?format=csv')->assertForbidden()->assertJsonPath('feature', 'reports');
 
         $this->subscriptions->grant($this->shop->id, $this->plan('pro'), 30, ShopSubscription::KIND_GRANTED, null, null);
 
         $this->as($this->owner)->getJson('/api/expenses')->assertOk();
         $this->as($this->owner)->getJson('/api/vendor/staff')->assertOk();
+        $this->as($this->owner)->getJson('/api/vendor/reports/bookings')->assertOk();
     }
 
     public function test_basic_limits_block_adding_and_publishing_but_keep_existing_listings(): void

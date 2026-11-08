@@ -17,7 +17,9 @@ return new class extends Migration
             $table->id();
             $table->string('dispute_reference')->unique();
             $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
-            $table->foreignId('raised_by_user_id')->constrained('users')->restrictOnDelete();
+            // A dispute is raised either by shop staff (users) or by a customer (customers).
+            $table->foreignId('raised_by_user_id')->nullable()->constrained('users')->restrictOnDelete();
+            $table->foreignId('raised_by_customer_id')->nullable()->constrained('customers')->restrictOnDelete();
             $table->enum('raised_by_side', ['customer', 'owner', 'staff']);
             $table->enum('against_side', ['customer', 'owner', 'platform']);
 

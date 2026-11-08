@@ -31,6 +31,7 @@ return new class extends Migration
             $table->timestamp('suspended_at')->nullable();
             $table->timestamp('last_login_at')->nullable();
             $table->string('registration_source')->nullable();
+            $table->timestamp('terms_accepted_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

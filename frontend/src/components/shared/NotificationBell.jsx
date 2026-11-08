@@ -21,25 +21,28 @@ function timeAgo(dateStr) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** Shared by both the account and vendor headers — a notification belongs to the User model itself, same data either side. */
-export function NotificationBell() {
+/**
+ * Vendor header by default (a notification belongs to the User model itself). The platform
+ * console passes its own `service` and `queryKey`, plus `className` / `align` / `side` to fit its sidebar.
+ */
+export function NotificationBell({ service = notificationService, queryKey = "notifications", className, align = "end", side }) {
   const qc = useQueryClient();
   const router = useRouter();
 
   const { data } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => notificationService.getAll({ perPage: 8 }).then((r) => r.data),
+    queryKey: [queryKey],
+    queryFn: () => service.getAll({ perPage: 8 }).then((r) => r.data),
     refetchInterval: 60000,
   });
 
   const markRead = useMutation({
-    mutationFn: (id) => notificationService.markRead(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+    mutationFn: (id) => service.markRead(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [queryKey] }),
   });
 
   const markAllRead = useMutation({
-    mutationFn: () => notificationService.markAllRead(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+    mutationFn: () => service.markAllRead(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [queryKey] }),
   });
 
   const notifications = data?.record?.data ?? [];
@@ -53,7 +56,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative shrink-0 rounded-xl border bg-card shadow-sm hover:bg-accent">
+        <Button variant="ghost" size="icon" aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"} className={cn("relative h-[50px] w-[50px] shrink-0 rounded-xl border bg-card shadow-sm hover:bg-accent", className)}>
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
@@ -62,7 +65,7 @@ export function NotificationBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end" sideOffset={8}>
+      <DropdownMenuContent className="w-80 max-w-[calc(100vw-2rem)]" align={align} side={side} sideOffset={8}>
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
           {unreadCount > 0 && (

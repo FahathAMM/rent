@@ -10,9 +10,11 @@ export const publicService = {
   shops: (params) => api.get("/public/shops", { params }),
   shop: (slug) => api.get(`/public/shops/${slug}`),
   shopVehicles: (slug, params) => api.get(`/public/shops/${slug}/vehicles`, { params }),
+  shopSaleVehicles: (slug, params) => api.get(`/public/shops/${slug}/sale-vehicles`, { params }),
   shopReviews: (slug, params) => api.get(`/public/shops/${slug}/reviews`, { params }),
   categories: () => api.get("/public/categories"),
   heroSlides: () => api.get("/public/hero-slides"),
+  helpItems: () => api.get("/public/help-items"),
   brands: () => api.get("/public/brands"),
   models: (brandId) => api.get("/public/models", { params: { brand_id: brandId } }),
   variants: (modelId) => api.get("/public/variants", { params: { model_id: modelId } }),
@@ -20,4 +22,9 @@ export const publicService = {
   locations: () => api.get("/public/locations"),
   districts: () => api.get("/public/districts"),
   sendInquiry: (data) => api.post("/public/inquiries", data),
+  /** The Buy page — vehicles for sale. See routes/public.php. */
+  saleVehicles: (params) => api.get("/public/buy", { params }),
+  saleVehicle: (slug) => api.get(`/public/buy/${slug}`),
+  /** Brands, places and (with a brand) models that have cars for sale. */
+  saleFilters: (brandId) => api.get("/public/buy/filters", { params: brandId ? { brand_id: brandId } : {} }),
 };

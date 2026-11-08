@@ -2,14 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronDownIcon, ChevronLeft, ChevronRight, LogOutIcon, Menu, SettingsIcon, UserIcon, UsersIcon } from "lucide-react";
+import { Check, ChevronDownIcon, Crown, ChevronLeft, ChevronRight, LogOutIcon, Menu, SettingsIcon, UserIcon, UsersIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/iconMap";
 import { TILE_COLORS } from "@/lib/tileColors";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/authStore";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { HeaderClock } from "./HeaderClock";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,38 +22,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// ── Previous version — stacked icon-over-label tile (w-24 h-14). Kept here
-// for easy revert; the horizontal pill below is the active default.
-// function ModuleTab({ item, isActive, colorClass }) {
-//   const Icon = getIcon(item.icon);
-//   const href = item.children?.[0]?.route_name;
-//   if (!href) return null;
-//
-//   return (
-//     <Link
-//       href={href}
-//       className={cn(
-//         "relative flex w-24 h-14 shrink-0 flex-col items-center justify-center gap-1 rounded-md text-white shadow-sm transition-transform hover:scale-[1.05]",
-//         colorClass
-//       )}
-//     >
-//       <Icon className="h-5 w-5 shrink-0" />
-//       <span className="text-[10px] font-semibold leading-tight text-center px-1 line-clamp-2">{item.name}</span>
-//       {isActive && (
-//         <>
-//           <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow ring-2 ring-background">
-//             <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} />
-//           </span>
-//           <span className="absolute bottom-1 h-1 w-8 rounded-full bg-white" />
-//         </>
-//       )}
-//     </Link>
-//   );
-// }
-
-function ModuleTab({ item, isActive, colorClass }) {
+function ModuleTab({ item, isActive, colorClass, planLocked = false }) {
   const Icon = getIcon(item.icon);
-  const href = item.children?.[0]?.route_name;
+  const href = item.route_name ?? item.children?.[0]?.route_name;
   if (!href) return null;
 
   return (
@@ -64,6 +37,7 @@ function ModuleTab({ item, isActive, colorClass }) {
     >
       <Icon className="h-4 w-4 shrink-0" />
       <span className="text-xs font-semibold">{item.name}</span>
+      {planLocked && <Crown className="h-3 w-3 shrink-0" aria-label="Not included in your plan" />}
       {isActive && (
         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow ring-2 ring-background">
           <Check className="h-2.5 w-2.5 text-emerald-600" strokeWidth={3} />
@@ -73,10 +47,13 @@ function ModuleTab({ item, isActive, colorClass }) {
   );
 }
 
-export function Header({ navigation, activeModuleId, onMenuClick }) {
-  const modules = navigation?.filter((item) => !item.route_name && item.children?.length) ?? [];
+export function Header({ navigation, activeModuleId, planLockedRoutes = [], onMenuClick }) {
+  const pathname = usePathname();
+  const tabs = navigation?.filter((item) => item.route_name || item.children?.length) ?? [];
+  const onStandalonePage = (item) => !!item.route_name && (pathname === item.route_name || pathname.startsWith(`${item.route_name}/`));
+  const standaloneActive = tabs.some(onStandalonePage);
   const { logout } = useAuth();
-  const { user } = useAuthStore();
+  const { user, can } = useAuthStore();
 
   const navRef = useRef(null);
   const scrollNav = (dir) => navRef.current?.scrollBy({ left: dir * 160, behavior: "smooth" });
@@ -109,7 +86,7 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
       el.removeEventListener("scroll", updateScrollState);
       window.removeEventListener("resize", updateScrollState);
     };
-  }, [modules.length]);
+  }, [tabs.length]);
 
   return (
     // Below `lg` (where the sidebar is a drawer, not static) the header
@@ -122,6 +99,8 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
         <Button variant="ghost" size="icon" onClick={onMenuClick} className="lg:hidden shrink-0" title="Open menu">
           <Menu className="h-5 w-5" />
         </Button>
+
+        <HeaderClock />
 
         <div className="group relative flex-1 min-w-0">
           {canScrollLeft && (
@@ -141,11 +120,21 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
             ref={navRef}
             className={cn(
               "flex w-full items-center gap-2 overflow-x-auto no-scrollbar min-w-0 rounded-xl border bg-card px-2 py-1.5 shadow-sm",
-              !navOverflows && "justify-center"
+              !navOverflows && "justify-center",
+              // Fade the edge(s) that hide more tabs: on touch the scroll arrows never show (they're hover-only).
+              canScrollLeft && canScrollRight && "[mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]",
+              !canScrollLeft && canScrollRight && "[mask-image:linear-gradient(to_right,#000_80%,transparent)]",
+              canScrollLeft && !canScrollRight && "[mask-image:linear-gradient(to_left,#000_80%,transparent)]",
             )}
           >
-            {modules.map((item, i) => (
-              <ModuleTab key={item.id} item={item} isActive={item.id === activeModuleId} colorClass={TILE_COLORS[i % TILE_COLORS.length]} />
+            {tabs.map((item, i) => (
+              <ModuleTab
+                key={item.id}
+                item={item}
+                isActive={item.route_name ? onStandalonePage(item) : item.id === activeModuleId && !standaloneActive}
+                planLocked={!!item.children?.length && item.children.every((child) => planLockedRoutes.includes(child.route_name))}
+                colorClass={TILE_COLORS[i % TILE_COLORS.length]}
+              />
             ))}
           </nav>
 
@@ -171,7 +160,7 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-auto shrink-0 gap-1.5 rounded-xl border bg-card px-2 py-1.5 shadow-sm hover:bg-accent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="h-[50px] shrink-0 gap-1.5 rounded-xl border bg-card px-2 py-0 shadow-sm hover:bg-accent focus-visible:ring-0 focus-visible:ring-offset-0"
             >
               <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
                 <UserIcon className="size-3.5" />
@@ -202,23 +191,29 @@ export function Header({ navigation, activeModuleId, onMenuClick }) {
                   Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/vendor/settings/shop">
-                  <SettingsIcon aria-hidden="true" />
-                  Shop Settings
-                </Link>
-              </DropdownMenuItem>
+              {can("vendor-settings-shop-view") && (
+                <DropdownMenuItem asChild>
+                  <Link href="/vendor/settings/shop">
+                    <SettingsIcon aria-hidden="true" />
+                    Shop Profile
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link href="/vendor/staff">
-                  <UsersIcon aria-hidden="true" />
-                  Staff
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            {can("vendor-staff-view") && (
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/vendor/staff">
+                      <UsersIcon aria-hidden="true" />
+                      Staff
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem variant="destructive" onClick={logout}>
               <LogOutIcon aria-hidden="true" />
               Log out

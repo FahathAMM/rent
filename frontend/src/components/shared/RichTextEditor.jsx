@@ -12,13 +12,13 @@ import { cn } from "@/lib/utils";
  * A small rich text editor (bold, italic, underline, headings, lists, quote, divider).
  * Only formatting the server keeps is offered — links, code and images are left out.
  */
-export function RichTextEditor({ value, onChange, disabled = false, placeholder = "" }) {
+export function RichTextEditor({ value, onChange, disabled = false, placeholder = "", minHeight = "min-h-[320px]" }) {
   const editor = useEditor({
     extensions: [StarterKit.configure({ link: false, code: false, codeBlock: false, heading: { levels: [2, 3] } })],
     content: value || "",
     editable: !disabled,
     immediatelyRender: false,
-    editorProps: { attributes: { class: "rich-text min-h-[320px] px-4 py-3 text-sm outline-none" } },
+    editorProps: { attributes: { class: cn("rich-text px-4 py-3 text-sm outline-none", minHeight) } },
     onUpdate: ({ editor: e }) => onChange?.(e.isEmpty ? "" : e.getHTML()),
   });
 

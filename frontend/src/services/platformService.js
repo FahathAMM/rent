@@ -7,6 +7,11 @@ const multipart = { headers: { "Content-Type": "multipart/form-data" } };
  * Admin login lives in platformAuthService; the public site details in platformDetailService.
  */
 export const platformService = {
+  notifications: {
+    getAll: (params) => platformApi.get("/platform/notifications", { params }),
+    markRead: (id) => platformApi.post(`/platform/notifications/${id}/read`),
+    markAllRead: () => platformApi.post("/platform/notifications/read-all"),
+  },
   dashboard: {
     getSummary: () => platformApi.get("/platform/dashboard"),
   },
@@ -157,6 +162,20 @@ export const platformService = {
     },
     reorder: (ids) => platformApi.post("/platform/hero-slides/reorder", { ids }),
     delete: (id) => platformApi.delete(`/platform/hero-slides/${id}`),
+  },
+
+  /** Help & Support: Stay safe and FAQ content. */
+  helpItems: {
+    getAll: (type) => platformApi.get("/platform/help-items", { params: { type } }),
+    create: (data) => platformApi.post("/platform/help-items", data),
+    update: (id, data) => platformApi.put(`/platform/help-items/${id}`, data),
+    reorder: (ids) => platformApi.post("/platform/help-items/reorder", { ids }),
+    delete: (id) => platformApi.delete(`/platform/help-items/${id}`),
+  },
+
+  /** Help & Support: the Contact us details. Read them through details.get(). */
+  supportContact: {
+    update: (data) => platformApi.put("/platform/support-contact", data),
   },
 
   // ── Administration ──────────────────────────────────────────────────────

@@ -51,6 +51,12 @@ export function StatusBadge({ status, className }) {
     replied: "success",
     read: "info",
     spam: "destructive",
+    available: "success",
+    reserved: "warning",
+    sold: "info",
+    withdrawn: "secondary",
+    accepted: "success",
+    declined: "secondary",
   };
 
   const labels = {
@@ -98,6 +104,12 @@ export function StatusBadge({ status, className }) {
     reviewing: "Reviewing",
     actioned: "Actioned",
     dismissed: "Dismissed",
+    available: "Available",
+    reserved: "Reserved",
+    sold: "Sold",
+    withdrawn: "Withdrawn",
+    accepted: "Sold to this buyer",
+    declined: "Declined",
     hidden: "Hidden",
     replied: "Replied",
     read: "Read",

@@ -9,20 +9,22 @@ import { Button } from "@/components/ui/button";
 import { cn, getInitials } from "@/lib/utils";
 import {
   Menu, X, Home, CarFront, MapPin, Building2, Sparkles, ChevronRight, Store, LogIn, UserPlus,
-  LayoutDashboard, CalendarRange, Heart, Star, UserRound, LogOut,
+  LayoutDashboard, CalendarRange, Heart, Star, UserRound, LogOut, BadgeDollarSign, MessageCircle,
 } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home", hint: "Start here", icon: Home },
-  { href: "/browse", label: "Browse Vehicles", hint: "Cars, vans, bikes & more", icon: CarFront },
-  { href: "/locations", label: "Browse by Location", hint: "Find rentals near you", icon: MapPin },
-  { href: "/shops", label: "Rental Companies", hint: "Verified local shops", icon: Building2 },
+  { href: "/rent", label: "Rent", hint: "Cars, vans, bikes & more", icon: CarFront },
+  { href: "/buy", label: "Buy", hint: "For sale from local shops", icon: BadgeDollarSign },
+  { href: "/locations", label: "Location", hint: "Find vehicles near you", icon: MapPin },
+  { href: "/shops", label: "Shops", hint: "Verified local shops", icon: Building2 },
   { href: "/how-it-works", label: "How It Works", hint: "Book in a few steps", icon: Sparkles },
 ];
 
 const ACCOUNT_LINKS = [
   { href: "/account/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/account/bookings", label: "My Bookings", icon: CalendarRange },
+  { href: "/account/enquiries", label: "Enquiries", icon: MessageCircle },
   { href: "/account/favorites", label: "Favorites", icon: Heart },
   { href: "/account/reviews", label: "Reviews", icon: Star },
   { href: "/account/profile", label: "Profile", icon: UserRound },
@@ -193,7 +195,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
               ) : (
                 <Link href={vendor.becomeHref ?? "/vendor/register"} className="relative block overflow-hidden rounded-2xl bg-zinc-900 p-4 text-white">
                   <div aria-hidden="true" className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 opacity-60 blur-2xl" />
-                  <p className="relative flex items-center gap-1.5 text-sm font-semibold"><Store className="h-4 w-4" /> Own a rental business?</p>
+                  <p className="relative flex items-center gap-1.5 text-sm font-semibold"><Store className="h-4 w-4" /> Own a vehicle business?</p>
                   <p className="relative mt-1 text-xs text-white/70">List your vehicles and reach customers across Sri Lanka.</p>
                   <span className="relative mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-zinc-900">
                     Become a Vendor <ChevronRight className="h-3.5 w-3.5" />

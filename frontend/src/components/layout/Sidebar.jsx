@@ -4,25 +4,44 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/iconMap";
-import { Check, ChevronDown, Store, X, Linkedin, Globe, ExternalLink } from "lucide-react";
+import { Check, ChevronDown, Crown, Store, X, Linkedin, Globe, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
 import { visitService } from "@/services/visitService";
 import { TILE_COLORS } from "@/lib/tileColors";
 
-function isRouteActive(pathname, route) {
-  return !!route && (pathname === route || pathname.startsWith(route + "/"));
+/**
+ * The menu route the URL belongs to: the longest match, so a page nested under
+ * another item's route (/vendor/vehicles/categories) lights up only its own item.
+ */
+function findActiveRoute(navigation, pathname) {
+  let best = null;
+  const walk = (items) => {
+    items?.forEach((item) => {
+      const route = item.route_name;
+      if (route && (pathname === route || pathname.startsWith(route + "/")) && route.length > (best?.length ?? 0)) {
+        best = route;
+      }
+      walk(item.children);
+    });
+  };
+  walk(navigation);
+  return best;
 }
 
-function sectionHasActiveChild(item, pathname) {
-  return item.children?.some((c) => isRouteActive(pathname, c.route_name));
+function isRouteActive(activeRoute, route) {
+  return !!route && route === activeRoute;
+}
+
+function sectionHasActiveChild(item, activeRoute) {
+  return item.children?.some((c) => isRouteActive(activeRoute, c.route_name));
 }
 
 // ── Start-menu-style tile — two per row in the sidebar grid ──────────────────
-function NavTile({ item, pathname, onNavigate, colorClass }) {
+function NavTile({ item, activeRoute, onNavigate, colorClass, planLocked = false }) {
   const Icon = getIcon(item.icon);
-  const isActive = isRouteActive(pathname, item.route_name);
+  const isActive = isRouteActive(activeRoute, item.route_name);
 
   return (
     <Link
@@ -33,6 +52,11 @@ function NavTile({ item, pathname, onNavigate, colorClass }) {
         colorClass
       )}
     >
+      {planLocked && (
+        <span className="absolute left-1.5 top-1.5" title="Not included in your plan">
+          <Crown className="h-3.5 w-3.5" aria-label="Not included in your plan" />
+        </span>
+      )}
       <Icon className="h-7 w-7 shrink-0" />
       <span className="text-xs font-semibold leading-tight px-1 line-clamp-2">{item.name}</span>
       {isActive && (
@@ -48,10 +72,10 @@ function NavTile({ item, pathname, onNavigate, colorClass }) {
 }
 
 // ── Collapsible parent (has route_name AND children) — spans both columns ────
-function CollapsibleItem({ item, pathname, depth, onNavigate }) {
+function CollapsibleItem({ item, activeRoute, depth, onNavigate }) {
   const Icon = getIcon(item.icon);
-  const isActive = isRouteActive(pathname, item.route_name);
-  const hasActiveChild = sectionHasActiveChild(item, pathname);
+  const isActive = isRouteActive(activeRoute, item.route_name);
+  const hasActiveChild = sectionHasActiveChild(item, activeRoute);
   const [expanded, setExpanded] = useState(isActive || hasActiveChild);
   const indent = 12 + depth * 16;
 
@@ -90,7 +114,7 @@ function CollapsibleItem({ item, pathname, depth, onNavigate }) {
         <div className="overflow-hidden">
           <div className="space-y-1 pt-1">
             {item.children.map((child) => (
-              <NavLink key={child.id} item={child} pathname={pathname} depth={depth + 1} onNavigate={onNavigate} />
+              <NavLink key={child.id} item={child} activeRoute={activeRoute} depth={depth + 1} onNavigate={onNavigate} />
             ))}
           </div>
         </div>
@@ -100,10 +124,10 @@ function CollapsibleItem({ item, pathname, depth, onNavigate }) {
 }
 
 // ── Plain list-style link — used for nested children only ────────────────────
-function NavLink({ item, pathname, depth, onNavigate }) {
+function NavLink({ item, activeRoute, depth, onNavigate }) {
   const Icon = getIcon(item.icon);
   const route = item.route_name;
-  const isActive = isRouteActive(pathname, route);
+  const isActive = isRouteActive(activeRoute, route);
   const indent = 12 + depth * 16;
 
   return (
@@ -138,9 +162,9 @@ function NavLink({ item, pathname, depth, onNavigate }) {
 }
 
 // ── Sidebar — Start-menu-style tile grid for the active module's pages ───────
-export function Sidebar({ activeModule, navigation, open = false, onClose, topSlot, brandHref = "/" }) {
+export function Sidebar({ activeModule, navigation, planLockedRoutes = [], open = false, onClose, topSlot, brandHref = "/" }) {
   const pathname = usePathname();
-  const standaloneItems = navigation?.filter((item) => item.route_name) ?? [];
+  const activeRoute = findActiveRoute(navigation, pathname);
 
   const { data: brand = {} } = useQuery({
     queryKey: ["platform-details"],
@@ -148,7 +172,7 @@ export function Sidebar({ activeModule, navigation, open = false, onClose, topSl
     staleTime: 60_000,
   });
   const brandName = brand.name || "LankaLane";
-  const tagline   = brand.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
+  const tagline   = brand.tagline || "Rent or buy a vehicle, anywhere in Sri Lanka.";
   const logoUrl   = brand.logo || null;
 
   return (
@@ -202,7 +226,7 @@ export function Sidebar({ activeModule, navigation, open = false, onClose, topSl
 
         {topSlot}
 
-        {/* Tile grid — Dashboard + the active module's pages, two per row */}
+        {/* Tile grid — the active module's pages, two per row. Modules themselves are tabs in the Header. */}
         <nav className="flex-1 px-3 py-3 overflow-y-auto thin-scrollbar">
           {activeModule && (
             <p className="px-1 mb-2 text-xs font-bold uppercase tracking-widest text-sidebar-foreground/40 select-none">
@@ -210,22 +234,19 @@ export function Sidebar({ activeModule, navigation, open = false, onClose, topSl
             </p>
           )}
           <div className="grid grid-cols-2 gap-2">
-            {standaloneItems.map((item, i) => (
-              <NavTile key={item.id} item={item} pathname={pathname} onNavigate={onClose} colorClass={TILE_COLORS[i % TILE_COLORS.length]} />
-            ))}
-
             {activeModule?.children?.map((item, i) =>
               item.children?.length ? (
                 <div key={item.id} className="col-span-2">
-                  <CollapsibleItem item={item} pathname={pathname} depth={0} onNavigate={onClose} />
+                  <CollapsibleItem item={item} activeRoute={activeRoute} depth={0} onNavigate={onClose} />
                 </div>
               ) : (
                 <NavTile
                   key={item.id}
                   item={item}
-                  pathname={pathname}
+                  activeRoute={activeRoute}
+                  planLocked={planLockedRoutes.includes(item.route_name)}
                   onNavigate={onClose}
-                  colorClass={TILE_COLORS[(standaloneItems.length + i) % TILE_COLORS.length]}
+                  colorClass={TILE_COLORS[i % TILE_COLORS.length]}
                 />
               )
             )}

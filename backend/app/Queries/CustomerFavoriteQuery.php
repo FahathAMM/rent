@@ -17,6 +17,8 @@ class CustomerFavoriteQuery
     public static function forUser(int $userId): Builder
     {
         return Favorite::where('user_id', $userId)
+            // A saved car that later moved to sale has no rental page to link to.
+            ->whereHas('vehicle', fn ($q) => $q->withoutGlobalScope(ShopScope::class)->forRent())
             ->with(['vehicle' => fn ($q) => $q->withoutGlobalScope(ShopScope::class)
                 ->with(['category', 'shop', 'pricing', 'images' => fn ($q2) => $q2->orderBy('sort_order')->with('attachment')])]);
     }

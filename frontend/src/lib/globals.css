@@ -240,7 +240,7 @@
   height: 0;
 }
 
-/* Home page locations map (components/public/LocationsMap.jsx) — gradient count bubbles. */
+/* Home page locations map (app/(public)/locations/components/LocationsMap.jsx) — gradient count bubbles. */
 .ll-pin {
   display: flex;
   align-items: center;

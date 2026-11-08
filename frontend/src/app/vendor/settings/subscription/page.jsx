@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CarFront, Check, Clock3, Crown, FileText, Home, Landmark, Loader2, MapPin, Minus, ReceiptText, Upload, Users } from "lucide-react";
+import { BadgeDollarSign, CalendarClock, CarFront, Check, Clock3, Crown, FileText, Home, Landmark, Loader2, MapPin, Minus, ReceiptText, Upload, Users } from "lucide-react";
 import { vendorService } from "@/services/vendorService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { PageWrapper } from "@/components/shared/PageWrapper";
@@ -142,11 +142,12 @@ export default function VendorSubscriptionPage() {
               )}
             </div>
 
-            <div className={cn("grid content-start gap-3 sm:grid-cols-3", unpaid && "hidden")}>
+            <div className={cn("grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-4", unpaid && "hidden")}>
               <UsageTile Icon={CarFront} label="Vehicles" used={current.usage.vehicles} max={current.plan.max_vehicles} />
+              <UsageTile Icon={BadgeDollarSign} label="Sale listings" used={current.usage.sale_listings} max={current.plan.max_sale_listings} />
               <UsageTile Icon={Users} label="Staff" used={current.usage.staff} max={current.plan.max_staff} />
               <UsageTile Icon={MapPin} label="Locations" used={current.usage.locations} max={current.plan.max_locations} />
-              <div className="flex flex-wrap gap-1.5 sm:col-span-3">
+              <div className="flex flex-wrap gap-1.5 sm:col-span-2 xl:col-span-4">
                 {Object.entries(features).map(([key, label]) => {
                   const on = current.features.includes(key);
                   return (
@@ -182,8 +183,8 @@ export default function VendorSubscriptionPage() {
                     {plan.description && <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>}
                   </div>
                   <CardContent className="flex flex-1 flex-col gap-4 p-5">
-                    <div className="grid grid-cols-3 gap-2">
-                      {[[CarFront, "Vehicles", plan.max_vehicles], [Users, "Staff", plan.max_staff], [MapPin, "Locations", plan.max_locations]].map(([Icon, label, n]) => (
+                    <div className="grid grid-cols-2 gap-2">
+                      {[[CarFront, "Vehicles", plan.max_vehicles], [BadgeDollarSign, "For sale", plan.max_sale_listings], [Users, "Staff", plan.max_staff], [MapPin, "Locations", plan.max_locations]].map(([Icon, label, n]) => (
                         <div key={label} className="rounded-xl border bg-muted/30 px-2 py-2.5 text-center">
                           <Icon className="mx-auto h-4 w-4 text-muted-foreground" />
                           <p className="mt-1 text-lg font-semibold leading-none tabular-nums">{n === null || n === undefined ? "∞" : n}</p>

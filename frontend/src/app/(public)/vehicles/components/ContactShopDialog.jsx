@@ -10,7 +10,9 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function ContactShopDialog({ open, onOpenChange, vehicle, user }) {
-  const [form, setForm] = useState({ name: user?.name ?? "", phone: user?.phone ?? "", email: user?.email ?? "", message: "" });
+  // The message starts filled in, so a customer can send it as is or edit it.
+  const blank = { name: user?.name ?? "", phone: user?.phone ?? "", email: user?.email ?? "", message: `Hi, is the ${vehicle.title} available for my dates?` };
+  const [form, setForm] = useState(blank);
   const [errors, setErrors] = useState({});
 
   const send = useMutation({
@@ -18,7 +20,7 @@ export function ContactShopDialog({ open, onOpenChange, vehicle, user }) {
     onSuccess: () => {
       toast.success("Your message has been sent to the rental shop");
       onOpenChange(false);
-      setForm({ name: user?.name ?? "", phone: user?.phone ?? "", email: user?.email ?? "", message: "" });
+      setForm(blank);
     },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
@@ -31,7 +33,7 @@ export function ContactShopDialog({ open, onOpenChange, vehicle, user }) {
           <TextInput label="Your name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name?.[0]} />
           <TextInput label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} error={errors.phone?.[0]} />
           <TextInput label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email?.[0]} />
-          <TextareaInput label="Message" required rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} error={errors.message?.[0]} placeholder={`Hi, is the ${vehicle.title} available for my dates?`} />
+          <TextareaInput label="Message" required rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} error={errors.message?.[0]} />
         </div>
         <DialogFooter>
           <Button onClick={() => send.mutate()} disabled={send.isPending}>

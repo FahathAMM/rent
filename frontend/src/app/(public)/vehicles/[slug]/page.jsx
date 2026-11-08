@@ -14,7 +14,7 @@ import { ContactShopDialog } from "../components/ContactShopDialog";
 import { ReportListingDialog } from "../components/ReportListingDialog";
 import { Gallery } from "../components/VehicleGallery";
 import { QuickSpec, Section, Row, Stars } from "../components/DetailBlocks";
-import { VehicleCard } from "@/app/(public)/browse/components/VehicleCard";
+import { VehicleCard } from "@/app/(public)/rent/components/VehicleCard";
 import { BrandMark } from "@/components/marketplace/BrandMark";
 import { ColourSwatch } from "@/components/marketplace/ColourSwatch";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,6 @@ export default function VehicleDetailPage() {
     queryFn: () => publicService.vehicle(slug).then((r) => r.data.data),
   });
 
-  console.log('vehicle',vehicle);
   
 
   // Server truth for the heart, so it survives a refresh.
@@ -119,7 +118,7 @@ export default function VehicleDetailPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
         <p className="text-lg font-semibold">Vehicle not found</p>
-        <Button asChild variant="outline"><Link href="/browse">Back to browse</Link></Button>
+        <Button asChild variant="outline"><Link href="/rent">Back to rentals</Link></Button>
       </div>
     );
   }
@@ -138,13 +137,13 @@ export default function VehicleDetailPage() {
       <div className="border-b bg-muted/30">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/browse" className="flex shrink-0 items-center gap-1.5 font-medium transition-colors hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Browse
+            <Link href="/rent" className="flex shrink-0 items-center gap-1.5 font-medium transition-colors hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" /> Rent
             </Link>
             {vehicle.category && (
               <>
                 <Crumb className="h-3.5 w-3.5 shrink-0 opacity-50" />
-                <Link href={`/browse?category_id=${vehicle.category.id}`} className="shrink-0 hover:text-foreground">{vehicle.category.name}</Link>
+                <Link href={`/rent?category_id=${vehicle.category.id}`} className="shrink-0 hover:text-foreground">{vehicle.category.name}</Link>
               </>
             )}
             <Crumb className="hidden h-3.5 w-3.5 shrink-0 opacity-50 sm:block" />
@@ -187,7 +186,7 @@ export default function VehicleDetailPage() {
                 {(vehicle.category || vehicle.shop?.is_verified) && (
                   <div className="mb-0.5 flex flex-wrap items-center gap-2">
                     {vehicle.category && (
-                      <Link href={`/browse?category_id=${vehicle.category.id}`} className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary hover:underline">
+                      <Link href={`/rent?category_id=${vehicle.category.id}`} className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary hover:underline">
                         <Tag className="h-3 w-3" />{vehicle.category.name}
                       </Link>
                     )}
@@ -456,7 +455,7 @@ export default function VehicleDetailPage() {
                 <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">You may also like</p>
                 <h2 className="text-2xl font-semibold tracking-tight">More {vehicle.category?.name ?? "vehicles"}</h2>
               </div>
-              <Link href={`/browse?category_id=${categoryId}`} className="group flex items-center gap-1 text-sm font-medium text-primary">
+              <Link href={`/rent?category_id=${categoryId}`} className="group flex items-center gap-1 text-sm font-medium text-primary">
                 View all <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>

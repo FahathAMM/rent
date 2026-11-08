@@ -226,11 +226,11 @@ export default function PlatformShopDetailPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {stats.map(({ icon: Icon, label, value, sub }) => (
             <Card key={label} className="rounded-2xl shadow-sm">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
+              <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10"><Icon className="h-5 w-5" /></div>
                 <div className="min-w-0">
                   <p className="text-xl font-semibold leading-tight">{value}</p>
-                  <p className="truncate text-xs text-muted-foreground">{label} · {sub}</p>
+                  <p className="text-xs leading-snug text-muted-foreground">{label} · {sub}</p>
                 </div>
               </CardContent>
             </Card>

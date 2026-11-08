@@ -40,7 +40,7 @@ class PlatformSeeder extends Seeder
     {
         PlatformDetail::firstOrCreate([], [
             'name'    => 'LankaLane',
-            'tagline' => 'Rent any vehicle, anywhere in Sri Lanka.',
+            'tagline' => 'Rent or buy a vehicle, anywhere in Sri Lanka.',
         ]);
     }
 }

@@ -11,6 +11,7 @@ const EMPTY_FORM = {
   phone: "",
   password: "",
   password_confirmation: "",
+  terms_accepted: false,
 };
 
 /**

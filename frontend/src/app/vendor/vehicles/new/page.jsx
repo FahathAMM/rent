@@ -8,7 +8,7 @@ export default function NewVehiclePage() {
   const router = useRouter();
 
   return (
-    <VehicleFormPage title="Add Vehicle" subtitle="List a new vehicle in your fleet.">
+    <VehicleFormPage title="Add Vehicle" subtitle="List a new vehicle for rent.">
       <VehicleForm
         // If pricing or a photo failed after the vehicle was created, land on its edit page to fix it.
         onSaved={(vehicle, { complete }) => router.push(complete ? "/vendor/vehicles" : `/vendor/vehicles/${vehicle.id}/edit`)}

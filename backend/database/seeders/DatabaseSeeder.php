@@ -9,9 +9,10 @@ use Illuminate\Database\Seeder;
  * real infra (menu/roles/permissions, platform admin account, default
  * platform branding, vehicle catalogue, platform settings, locations).
  * A small marketplace demo (5 shops with 4-5 vehicles each, a demo vendor
- * and customer, plus vehicle photos) is gated to non-production — see
- * DemoSeeder and DemoVehiclePhotoSeeder. The larger 50-shop demo is kept
- * in Backup\MarketplaceDemoSeeder and can be run on its own.
+ * and customer, 5 cars for sale, plus vehicle photos) is gated to
+ * non-production — see DemoSeeder, DemoSaleVehicleSeeder and
+ * DemoVehiclePhotoSeeder. The larger 50-shop demo is kept in
+ * Backup\MarketplaceDemoSeeder and can be run on its own.
  */
 class DatabaseSeeder extends Seeder
 {
@@ -29,6 +30,7 @@ class DatabaseSeeder extends Seeder
 
         if (!app()->environment('production')) {
             $this->call(DemoSeeder::class);
+            $this->call(DemoSaleVehicleSeeder::class);
             $this->call(DemoVehiclePhotoSeeder::class);
         }
     }

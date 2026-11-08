@@ -48,6 +48,7 @@ class CustomerAuthService
             'password'            => Hash::make($data['password']),
             'status'              => Customer::STATUS_ACTIVE,
             'registration_source' => 'web',
+            'terms_accepted_at'   => now(),
         ]);
 
         $token = $customer->createToken('customer-token', ['*'], now()->addDays(7))->plainTextToken;

@@ -3,13 +3,14 @@
 namespace App\Models\Administration;
 
 use App\Models\RentalShop;
+use App\Models\Customer;
 use App\Models\SystemAdmin;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Append-only audit trail. Either user_id (a marketplace account) or
- * system_admin_id (a platform admin) identifies the actor - never both.
+ * Append-only audit trail. One of user_id, customer_id or system_admin_id
+ * identifies the actor.
  * Deliberately not shop-scoped (no BelongsToShop): a platform admin
  * action (verification decision, payout, commission change) often has no
  * single shop context, and the audit trail must never be hidden by
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AuditLog extends Model
 {
     protected $fillable = [
-        'user_id', 'system_admin_id', 'shop_id', 'action', 'form', 'record_id', 'record',
+        'user_id', 'customer_id', 'system_admin_id', 'shop_id', 'action', 'form', 'record_id', 'record',
         'before', 'after', 'severity', 'context', 'ip', 'browser', 'user_agent',
     ];
 
@@ -37,6 +38,11 @@ class AuditLog extends Model
     public function systemAdmin(): BelongsTo
     {
         return $this->belongsTo(SystemAdmin::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     /** Display-only - never used for scoping (AuditLog is deliberately not shop-scoped). */

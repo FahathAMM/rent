@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Public\ReviewResource;
+use App\Http\Resources\Public\SaleVehicleResource;
 use App\Http\Resources\Public\ShopResource;
 use App\Http\Resources\Public\VehicleResource;
 use App\Models\Review;
+use App\Repositories\PublicSaleRepo;
 use App\Repositories\PublicShopRepo;
 use App\Repositories\PublicVehicleRepo;
 use Illuminate\Http\JsonResponse;
@@ -52,6 +54,26 @@ class ShopController extends Controller
 
         return response()->json([
             'data' => VehicleResource::collection($vehicles),
+            'meta' => [
+                'current_page' => $vehicles->currentPage(),
+                'last_page' => $vehicles->lastPage(),
+                'total' => $vehicles->total(),
+                'per_page' => $vehicles->perPage(),
+            ],
+        ]);
+    }
+
+    /** The shop's cars for sale. Rentals stay in vehicles() above. */
+    public function saleVehicles(string $slug, Request $request): JsonResponse
+    {
+        $shop = $this->shops->findBySlugOrFail($slug);
+
+        $vehicles = app(PublicSaleRepo::class)->searchQuery($request->only(['sort', 'category_id', 'q']))
+            ->where('vehicles.shop_id', $shop->id)
+            ->paginate(min((int) $request->get('per_page', 12), 48));
+
+        return response()->json([
+            'data' => SaleVehicleResource::collection($vehicles),
             'meta' => [
                 'current_page' => $vehicles->currentPage(),
                 'last_page' => $vehicles->lastPage(),

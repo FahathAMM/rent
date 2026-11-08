@@ -2,7 +2,7 @@ import { ClipboardList, CalendarCheck, KeyRound } from "lucide-react";
 
 const STEPS = [
   { icon: ClipboardList, title: "Search & compare", body: "Filter by city, dates, transmission or budget and compare real listings from verified rental shops." },
-  { icon: CalendarCheck, title: "Request to book", body: "Send a request with your dates — the shop confirms availability, then you pay securely to lock it in." },
+  { icon: CalendarCheck, title: "Request to book", body: "Send a request with your dates — the shop confirms availability, then you pay the shop directly by cash or bank transfer." },
   { icon: KeyRound, title: "Pick up & go", body: "Collect from the rental shop, do a quick handover check, and drive off. Return it the same way." },
 ];
 

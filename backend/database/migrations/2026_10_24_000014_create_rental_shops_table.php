@@ -37,6 +37,9 @@ return new class extends Migration
             $table->decimal('longitude', 10, 7)->nullable();
 
             $table->json('operating_hours')->nullable();
+            $table->json('policies')->nullable();
+            $table->time('booking_pickup_time')->default('10:00:00');
+            $table->time('booking_return_time')->default('10:00:00');
             $table->text('pickup_instructions')->nullable();
             $table->text('return_instructions')->nullable();
             $table->text('rental_terms')->nullable();
@@ -58,9 +61,7 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
             $table->string('suspended_reason')->nullable();
 
-            $table->decimal('commission_rate_override', 5, 2)->nullable();
-            $table->enum('payout_schedule', ['weekly', 'biweekly', 'monthly', 'manual'])->default('monthly');
-            $table->decimal('min_payout_threshold', 12, 2)->nullable();
+            $table->decimal('advance_percentage', 5, 2)->nullable()->default(5);
 
             $table->decimal('rating_avg', 3, 2)->default(0);
             $table->unsignedInteger('rating_count')->default(0);
@@ -75,10 +76,16 @@ return new class extends Migration
             $table->index(['status', 'is_published']);
             $table->index('verification_status');
         });
+
+        // users.shop_id is declared in the users migration; its key can only be added once rental_shops exists.
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('shop_id')->references('id')->on('rental_shops')->nullOnDelete();
+        });
     }
 
     public function down(): void
     {
+        Schema::table('users', fn (Blueprint $table) => $table->dropForeign(['shop_id']));
         Schema::dropIfExists('rental_shops');
     }
 };

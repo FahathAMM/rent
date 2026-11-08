@@ -12,6 +12,7 @@ use App\Models\SubscriptionPayment;
 use App\Models\SubscriptionPlan;
 use App\Models\SystemAdmin;
 use App\Models\Vehicle;
+use App\Models\VehicleSaleDetail;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -108,8 +109,11 @@ class SubscriptionService
         $ownerId = RentalShop::whereKey($shopId)->value('owner_user_id');
 
         return [
-            'vehicles' => Vehicle::where('shop_id', $shopId)->where('status', '!=', Vehicle::STATUS_ARCHIVED)->count(),
-            'published_vehicles' => Vehicle::where('shop_id', $shopId)->where('status', Vehicle::STATUS_PUBLISHED)->count(),
+            'vehicles' => Vehicle::forRent()->where('shop_id', $shopId)->where('status', '!=', Vehicle::STATUS_ARCHIVED)->count(),
+            'published_vehicles' => Vehicle::forRent()->where('shop_id', $shopId)->where('status', Vehicle::STATUS_PUBLISHED)->count(),
+            // A sold car stops counting, so selling frees the slot.
+            'sale_listings' => Vehicle::forSale()->where('shop_id', $shopId)->where('status', '!=', Vehicle::STATUS_ARCHIVED)
+                ->whereDoesntHave('saleDetail', fn ($q) => $q->where('sale_status', VehicleSaleDetail::STATUS_SOLD))->count(),
             'staff' => User::where('shop_id', $shopId)->where('id', '!=', $ownerId)->count(),
             'locations' => Location::where('shop_id', $shopId)->count(),
         ];
@@ -137,9 +141,21 @@ class SubscriptionService
 
     public function ensureCanPublish(Vehicle $vehicle): void
     {
-        $published = Vehicle::where('shop_id', $vehicle->shop_id)
+        $published = Vehicle::forRent()->where('shop_id', $vehicle->shop_id)
             ->where('status', Vehicle::STATUS_PUBLISHED)->whereKeyNot($vehicle->id)->count();
         $this->ensureCanAdd($vehicle->shop_id, 'vehicles', $published, 'published vehicles');
+    }
+
+    public function ensureCanAddSaleListing(int $shopId): void
+    {
+        $this->ensureCanAdd($shopId, 'sale_listings', $this->usage($shopId)['sale_listings'], 'sale listings');
+    }
+
+    public function ensureCanPublishSaleListing(Vehicle $vehicle): void
+    {
+        $published = Vehicle::forSale()->where('shop_id', $vehicle->shop_id)
+            ->where('status', Vehicle::STATUS_PUBLISHED)->whereKeyNot($vehicle->id)->count();
+        $this->ensureCanAdd($vehicle->shop_id, 'sale_listings', $published, 'published sale listings');
     }
 
     public function ensureCanAddStaff(int $shopId): void
@@ -180,7 +196,7 @@ class SubscriptionService
             throw ValidationException::withMessages(['plan_id' => ['A payment is already waiting for the platform to check it.']]);
         }
 
-        return DB::transaction(function () use ($shop, $by, $plan, $periods, $bankReference, $file) {
+        $payment = DB::transaction(function () use ($shop, $by, $plan, $periods, $bankReference, $file) {
             $payment = SubscriptionPayment::create([
                 'reference_no' => 'SUB-' . now()->format('ymd') . '-' . Str::upper(Str::random(5)),
                 'shop_id' => $shop->id, 'plan_id' => $plan->id, 'periods' => $periods,
@@ -206,6 +222,16 @@ class SubscriptionService
 
             return $payment;
         });
+
+        PlatformNotifier::notify(
+            'subscription_payment_submitted',
+            'Subscription payment to check',
+            "{$shop->name} paid for {$plan->name} ({$payment->reference_no}). Check the transfer receipt.",
+            '/platform/subscriptions',
+            ['shop_id' => $shop->id, 'payment_id' => $payment->id],
+        );
+
+        return $payment;
     }
 
     /** Platform admin confirms the money arrived → the plan starts (or extends). */
@@ -352,7 +378,7 @@ class SubscriptionService
         return [
             'id' => $plan->id, 'code' => $plan->code, 'name' => $plan->name, 'description' => $plan->description,
             'price' => (float) $plan->price, 'period_days' => $plan->period_days,
-            'max_vehicles' => $plan->max_vehicles, 'max_staff' => $plan->max_staff, 'max_locations' => $plan->max_locations,
+            'max_vehicles' => $plan->max_vehicles, 'max_sale_listings' => $plan->max_sale_listings, 'max_staff' => $plan->max_staff, 'max_locations' => $plan->max_locations,
             'features' => array_values($plan->features ?? []), 'is_active' => (bool) $plan->is_active, 'sort_order' => $plan->sort_order,
         ];
     }

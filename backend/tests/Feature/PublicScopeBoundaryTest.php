@@ -43,6 +43,7 @@ class PublicScopeBoundaryTest extends TestCase
             $isSanctioned = str_starts_with($relative, $queriesPath . 'Public')
                 || str_starts_with($relative, $queriesPath . 'Customer')
                 || $relative === 'app' . DIRECTORY_SEPARATOR . 'Repositories' . DIRECTORY_SEPARATOR . 'PublicVehicleRepo.php'
+                || $relative === 'app' . DIRECTORY_SEPARATOR . 'Repositories' . DIRECTORY_SEPARATOR . 'PublicSaleRepo.php'
                 || $relative === 'app' . DIRECTORY_SEPARATOR . 'Repositories' . DIRECTORY_SEPARATOR . 'PublicShopRepo.php';
 
             if (!$isSanctioned) {

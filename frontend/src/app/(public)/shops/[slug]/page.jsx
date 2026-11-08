@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { publicService } from "@/services/publicService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
-import { VehicleCard } from "@/app/(public)/browse/components/VehicleCard";
+import { ShopVehicleCard } from "../components/ShopVehicleCard";
+import { ShopSaleSection } from "@/app/(public)/buy/components/ShopSaleSection";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
@@ -37,9 +38,9 @@ const JS_DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
  * either left a gap or slid the tabs under it), highlights the section in
  * view, and keeps the active tab visible in the strip.
  */
-function ShopTabs() {
+function ShopTabs({ tabs }) {
   const [headerH, setHeaderH] = useState(64);
-  const [active, setActive] = useState(TABS[0].id);
+  const [active, setActive] = useState(tabs[0].id);
   const navRef = useRef(null);
   const clickLock = useRef(0);
 
@@ -67,19 +68,19 @@ function ShopTabs() {
     const onScroll = () => {
       if (Date.now() < clickLock.current) return;
       const line = headerH + (navRef.current?.offsetHeight ?? 48) + 24;
-      let current = TABS[0].id;
-      for (const t of TABS) {
+      let current = tabs[0].id;
+      for (const t of tabs) {
         const el = document.getElementById(t.id);
         if (el && el.getBoundingClientRect().top <= line) current = t.id;
       }
       // At the very bottom the last (short) section may never reach the line.
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = TABS[TABS.length - 1].id;
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = tabs[tabs.length - 1].id;
       setActive(current);
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [headerH]);
+  }, [headerH, tabs]);
 
   // Keep the active tab in view when the strip scrolls sideways (wider tab sets / small screens).
   // Scroll only the strip — element.scrollIntoView would also scroll the page and cancel a
@@ -105,7 +106,7 @@ function ShopTabs() {
   return (
     <nav ref={navRef} className="sticky z-20 mt-6 border-b bg-background/90 backdrop-blur-md" style={{ top: headerH }} aria-label="Shop sections">
       <div className="mx-auto flex max-w-6xl overflow-x-auto px-2 no-scrollbar sm:gap-1 sm:px-4">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <a
             key={t.id}
             data-tab={t.id}
@@ -134,11 +135,14 @@ function ShopTabs() {
 }
 
 const TABS = [
-  { id: "vehicles", label: "Vehicles" },
+  { id: "vehicles", label: "Rent" },
   { id: "about", label: "About" },
   { id: "reviews", label: "Reviews" },
   { id: "policies", label: "Policies" },
 ];
+
+// A shop with cars for sale gets a "For sale" tab right after its rentals.
+const TABS_WITH_SALES = [TABS[0], { id: "for-sale", label: "For sale" }, ...TABS.slice(1)];
 
 function todayKey() {
   return JS_DAY_KEYS[new Date().getDay()];
@@ -223,13 +227,14 @@ export default function ShopProfilePage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
         <div className="flex size-14 items-center justify-center rounded-full bg-muted"><Building2 className="h-7 w-7 text-muted-foreground" /></div>
-        <p className="text-lg font-semibold">Rental company not found</p>
-        <Button asChild variant="outline"><Link href="/shops">Back to companies</Link></Button>
+        <p className="text-lg font-semibold">Shop not found</p>
+        <Button asChild variant="outline"><Link href="/shops">Back to shops</Link></Button>
       </div>
     );
   }
 
   const rating = Number(shop.rating_avg);
+  const hasSales = shop.sale_vehicles_count > 0;
   const status = openStatus(shop.operating_hours);
   const wa = whatsappHref(shop.whatsapp);
   const maps = mapsHref(shop);
@@ -255,7 +260,7 @@ export default function ShopProfilePage() {
         <div className="absolute inset-x-0 top-0">
           <div className="mx-auto max-w-6xl px-4 py-4">
             <Link href="/shops" className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-sm text-white backdrop-blur-sm hover:bg-black/55">
-              <ArrowLeft className="h-4 w-4" /> All companies
+              <ArrowLeft className="h-4 w-4" /> All shops
             </Link>
           </div>
         </div>
@@ -329,7 +334,7 @@ export default function ShopProfilePage() {
 
           {/* Stats */}
           <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3 lg:grid-cols-4">
-            <StatBox icon={CarFront} value={shop.vehicles_count ?? 0} label="Vehicles available" />
+            <StatBox icon={CarFront} value={shop.vehicles_count ?? 0} label="Vehicles for rent" />
             <StatBox icon={CalendarCheck} value={shop.completed_bookings_count ?? 0} label="Completed rentals" />
             <StatBox icon={Zap} value={shop.response_rate != null ? `${Math.round(shop.response_rate)}%` : "—"} label="Response rate" />
             <StatBox icon={Tag} value={shop.starting_daily_rate != null ? price(shop.starting_daily_rate) : "—"} label="Starting price / day" />
@@ -338,11 +343,12 @@ export default function ShopProfilePage() {
       </div>
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <ShopTabs />
+      <ShopTabs tabs={hasSales ? TABS_WITH_SALES : TABS} />
 
       <div className="mx-auto mt-8 grid max-w-6xl gap-8 px-4 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-14">
           <VehiclesSection slug={slug} shop={shop} />
+          {hasSales && <ShopSaleSection slug={slug} />}
           <AboutSection shop={shop} />
           <ReviewsSection slug={slug} shop={shop} />
           <PoliciesSection shop={shop} />
@@ -425,7 +431,7 @@ function VehiclesSection({ slug, shop }) {
 
   return (
     <section id="vehicles" className="scroll-mt-[var(--shop-tabs-offset,9rem)]">
-      <SectionTitle icon={CarFront} title={`Vehicles${total != null ? ` (${total})` : ""}`}>
+      <SectionTitle icon={CarFront} title={`For rent${total != null ? ` (${total})` : ""}`}>
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-44 bg-card"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -470,7 +476,7 @@ function VehiclesSection({ slug, shop }) {
       ) : vehicles.length ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
-            {vehicles.map((v) => <VehicleCard key={v.id} vehicle={v} />)}
+            {vehicles.map((v) => <ShopVehicleCard key={v.id} vehicle={v} />)}
           </div>
           {hasNextPage && (
             <div className="mt-6 flex justify-center">
@@ -484,7 +490,7 @@ function VehiclesSection({ slug, shop }) {
       ) : (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-14 text-center">
           <CarFront className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No vehicles published by this company yet.</p>
+          <p className="text-sm text-muted-foreground">No vehicles for rent at this shop yet.</p>
         </div>
       )}
     </section>
@@ -499,7 +505,7 @@ function AboutSection({ shop }) {
         {shop.description ? (
           <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{shop.description}</p>
         ) : (
-          <p className="text-sm text-muted-foreground">This company hasn&apos;t added a description yet.</p>
+          <p className="text-sm text-muted-foreground">This shop hasn&apos;t added a description yet.</p>
         )}
         {shop.categories?.length > 0 && (
           <div className="mt-5 border-t pt-5">
@@ -634,7 +640,7 @@ function PoliciesSection({ shop }) {
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed py-10 text-center text-sm text-muted-foreground">
-          This company hasn&apos;t added any policies yet — contact them for details.
+          This shop hasn&apos;t added any policies yet — contact them for details.
         </p>
       )}
     </section>

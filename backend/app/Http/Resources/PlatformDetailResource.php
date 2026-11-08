@@ -22,6 +22,11 @@ class PlatformDetailResource extends JsonResource
             'login_eyebrow'     => $this->login_eyebrow,
             'login_heading'     => $this->login_heading,
             'login_description' => $this->login_description,
+            'support_email'    => $this->support_email,
+            'support_phone'    => $this->support_phone,
+            'support_whatsapp' => $this->support_whatsapp,
+            'support_address'  => $this->support_address,
+            'support_hours'    => $this->support_hours,
             // Off → bookings are paid in cash at pickup; the booking widget and pages word themselves accordingly.
         ];
     }

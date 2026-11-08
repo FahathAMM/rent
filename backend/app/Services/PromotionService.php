@@ -232,6 +232,19 @@ class PromotionService
         return $running->count();
     }
 
+    /** A sold car can't sell again, so its featuring stops and the slot frees up. No refund, as with an admin's End. */
+    public function endForSoldVehicle(Vehicle $vehicle): void
+    {
+        $now = now();
+
+        Promotion::booked()->where('type', Promotion::TYPE_FEATURED)->where('vehicle_id', $vehicle->id)->get()
+            ->each(fn (Promotion $p) => $p->update([
+                'starts_at' => $p->starts_at->isFuture() ? $now : $p->starts_at,
+                'ends_at' => $now,
+                'note' => trim(($p->note ? $p->note . ' · ' : '') . 'Ended: the vehicle was sold'),
+            ]));
+    }
+
     public function present(Promotion $p): array
     {
         return [

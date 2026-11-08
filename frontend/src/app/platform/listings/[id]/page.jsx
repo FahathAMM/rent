@@ -180,10 +180,24 @@ export default function PlatformListingDetailPage() {
                 </p>
               </div>
 
-              <div className="flex items-end gap-1">
-                <span className="text-3xl font-bold tracking-tight">{pricing.daily_rate != null ? format(pricing.daily_rate) : "—"}</span>
-                <span className="pb-1 text-sm text-muted-foreground">/ day</span>
-              </div>
+              {v.listing_type === "sale" ? (
+                <div className="space-y-1">
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-bold tracking-tight">{v.sale_detail ? format(v.sale_detail.price) : "—"}</span>
+                    <span className="pb-1 text-sm text-muted-foreground">for sale</span>
+                  </div>
+                  {v.sale_detail && (
+                    <p className="text-sm capitalize text-muted-foreground">
+                      {[v.sale_detail.condition?.replace("_", " "), `${Number(v.sale_detail.mileage_km).toLocaleString()} km`, v.sale_detail.sale_status].join(" · ")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-end gap-1">
+                  <span className="text-3xl font-bold tracking-tight">{pricing.daily_rate != null ? format(pricing.daily_rate) : "—"}</span>
+                  <span className="pb-1 text-sm text-muted-foreground">/ day</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <MiniStat icon={CalendarCheck} value={v.bookings_count ?? 0} label="Bookings" />
@@ -241,7 +255,7 @@ export default function PlatformListingDetailPage() {
                 )}
                 {v.status === "published" && v.slug && (
                   <Button asChild variant="ghost" size="sm" className="gap-1.5">
-                    <Link href={`/vehicles/${v.slug}`} target="_blank"><ExternalLink className="h-3.5 w-3.5" /> Public page</Link>
+                    <Link href={v.listing_type === "sale" ? `/buy/${v.slug}` : `/vehicles/${v.slug}`} target="_blank"><ExternalLink className="h-3.5 w-3.5" /> Public page</Link>
                   </Button>
                 )}
                 <WhatsAppShareButton vehicle={v} />

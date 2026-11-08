@@ -18,9 +18,13 @@ return new class extends Migration
         Schema::create('vehicles', function (Blueprint $table) {
             $table->id();
             $table->foreignId('shop_id')->constrained('rental_shops')->cascadeOnDelete();
+            $table->enum('listing_type', ['rent', 'sale'])->default('rent');
             $table->foreignId('category_id')->constrained('vehicle_categories')->restrictOnDelete();
-            // Nullable so older rows/fixtures stay valid; the vendor form requires it.
+            // Nullable so older rows/fixtures stay valid; the vendor form requires them.
             $table->foreignId('brand_id')->nullable()->constrained('vehicle_brands')->restrictOnDelete();
+            $table->foreignId('model_id')->nullable()->constrained('vehicle_models')->restrictOnDelete();
+            $table->foreignId('variant_id')->nullable()->constrained('vehicle_variants')->nullOnDelete();
+            $table->foreignId('colour_id')->nullable()->constrained('vehicle_colours')->nullOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
 
             $table->string('title');
@@ -30,7 +34,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('year');
             $table->string('variant')->nullable();
             $table->string('colour')->nullable();
-            $table->string('registration_number');
+            $table->string('registration_number')->nullable();
 
             $table->enum('transmission', ['manual', 'automatic', 'semi_automatic', 'cvt']);
             $table->enum('fuel_type', ['petrol', 'diesel', 'hybrid', 'electric', 'lpg']);
@@ -50,8 +54,6 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
             $table->timestamp('archived_at')->nullable();
 
-            $table->boolean('is_featured')->default(false);
-            $table->timestamp('featured_until')->nullable();
 
             $table->decimal('rating_avg', 3, 2)->default(0);
             $table->unsignedInteger('rating_count')->default(0);
@@ -66,7 +68,7 @@ return new class extends Migration
             $table->index(['shop_id', 'status']);
             $table->index(['category_id', 'status', 'moderation_status']);
             $table->index(['status', 'moderation_status', 'published_at']);
-            $table->index(['is_featured', 'featured_until']);
+            $table->index(['listing_type', 'status', 'moderation_status']);
         });
     }
 

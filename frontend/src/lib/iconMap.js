@@ -15,6 +15,7 @@ import {
   Laptop, MapPin, Inbox, AlertTriangle, FileBarChart, Recycle,
   Monitor, Smartphone, Keyboard, Printer, Armchair, Router,
   Car, CalendarCheck, Heart, User, Bike, Bus, CarFront, Sparkles, KeyRound, Crown, Megaphone,
+  BadgeDollarSign, MessageCircle,
 } from "lucide-react";
 
 const iconMap = {
@@ -126,6 +127,8 @@ const iconMap = {
   Bus,
   CarFront,
   Sparkles,
+  BadgeDollarSign,
+  MessageCircle,
 };
 
 export function getIcon(name) {

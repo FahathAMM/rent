@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('booking_id')->unique()->constrained('bookings')->cascadeOnDelete();
             $table->foreignId('vehicle_id')->constrained('vehicles')->cascadeOnDelete();
             $table->foreignId('shop_id')->constrained('rental_shops')->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('customers')->cascadeOnDelete();
 
             $table->unsignedTinyInteger('rating');
             $table->unsignedTinyInteger('rating_cleanliness')->nullable();

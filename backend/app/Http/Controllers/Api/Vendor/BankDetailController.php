@@ -37,9 +37,9 @@ class BankDetailController extends Controller
     public function index(Request $request): JsonResponse
     {
         $details = OwnerBankDetail::where('shop_id', VendorContext::shopId())
-            ->when($request->search, fn ($q) => $q
+            ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
                 ->where('bank_name', 'like', "%{$request->search}%")
-                ->orWhere('account_holder_name', 'like', "%{$request->search}%"))
+                ->orWhere('account_holder_name', 'like', "%{$request->search}%")))
             ->orderByDesc('is_primary')
             ->paginate(min((int) $request->get('perPage', 20), 100));
 

@@ -24,6 +24,9 @@ const STOCK_SLIDES = [
 
 const primaryImage = (v) => v.images?.find((i) => i.is_primary)?.url ?? v.images?.[0]?.url;
 
+// The vehicle / shop / price pill at the bottom of the hero. Hidden for now; set true to bring it back.
+const SHOW_CAPTION = false;
+
 /**
  * Full-bleed background for the home hero: crossfades through published
  * vehicles that have a photo, padded with stock photos. Renders behind the
@@ -95,7 +98,7 @@ export function HeroSlideshow({ vehicles, platformSlides, onActiveChange }) {
       <div className="absolute inset-x-0 bottom-4">
         <div className="mx-auto flex max-w-6xl items-end justify-between gap-4 px-4">
           <div key={current.id} className="min-w-0 animate-in fade-in duration-700">
-            {current.managed ? null : isListing ? (
+            {!SHOW_CAPTION || current.managed ? null : isListing ? (
               <Link
                 href={`/vehicles/${current.slug}`}
                 className="group inline-flex max-w-full items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs text-white/85 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"

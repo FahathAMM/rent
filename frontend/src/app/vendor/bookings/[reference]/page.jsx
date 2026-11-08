@@ -153,6 +153,14 @@ export default function VendorBookingDetailPage() {
     cashDeposit && deposit.status === "held"
       ? Number(deposit.amount_collected)
       : null;
+  // Return dialog reminder: the price only changes through Change return date, and not once the return is recorded.
+  const msToReturn = booking ? Date.parse(booking.return_at) - Date.now() : 0;
+  const returnNotice =
+    msToReturn < 0
+      ? "The return time has passed. To charge for the extra time, close this and use Change return date first."
+      : msToReturn >= 24 * 60 * 60 * 1000
+        ? "This is at least a day early. To refund the unused days, close this and use Change return date first. To keep the full price, just continue."
+        : null;
   const danger =
     "gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10";
   const actions = booking && (
@@ -210,6 +218,16 @@ export default function VendorBookingDetailPage() {
           onClick={() => setInspectionAction("handover")}
         >
           <KeyRound className="h-3.5 w-3.5" /> Record handover
+        </Button>
+      )}
+      {status === "active" && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => setRescheduling(true)}
+        >
+          <CalendarClock className="h-3.5 w-3.5" /> Change return date
         </Button>
       )}
       {status === "active" && (
@@ -313,6 +331,8 @@ export default function VendorBookingDetailPage() {
         title="Record Return"
         allowDamages
         depositHeld={depositHeld}
+        balanceDue={Number(booking?.balance_due ?? 0)}
+        notice={returnNotice}
         onSubmit={submitInspection}
         loading={returnVehicle.isPending}
       />

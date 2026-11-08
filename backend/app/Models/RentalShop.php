@@ -45,7 +45,7 @@ class RentalShop extends Model
         'email', 'phone', 'whatsapp', 'website',
         'address_line_1', 'address_line_2', 'city', 'district', 'postal_code',
         'latitude', 'longitude', 'operating_hours',
-        'policies',
+        'policies', 'booking_pickup_time', 'booking_return_time',
         'logo', 'cover_image', 'business_registration_no', 'tax_id',
         'status', 'verification_status', 'is_published', 'published_at', 'suspended_reason',
         'verified_at', 'verified_by',

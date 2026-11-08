@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   TextInput,
   PasswordInput,
@@ -79,13 +81,27 @@ export function RegisterFormFields({
             inputClassName="h-9 text-sm"
           />
         </div>
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id="terms-accepted"
+            className="mt-0.5"
+            checked={form.terms_accepted}
+            onCheckedChange={(v) => setForm((p) => ({ ...p, terms_accepted: !!v }))}
+          />
+          <Label htmlFor="terms-accepted" className="block cursor-pointer text-xs font-normal leading-relaxed text-muted-foreground">
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="text-primary font-medium hover:underline">Terms &amp; Conditions</Link>
+            {" "}and{" "}
+            <Link href="/privacy" target="_blank" className="text-primary font-medium hover:underline">Privacy Policy</Link>
+          </Label>
+        </div>
         <div className="flex gap-2">
           {cancelHref && (
             <Button type="button" variant="outline" className="flex-1" asChild>
               <Link href={cancelHref}>Cancel</Link>
             </Button>
           )}
-          <Button type="submit" className="flex-1" disabled={loading}>
+          <Button type="submit" className="flex-1" disabled={loading || !form.terms_accepted}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create account
           </Button>

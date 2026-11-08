@@ -23,7 +23,7 @@ const SORT_OPTIONS = [
   { value: "rating", label: "Top rated" },
   { value: "reviews", label: "Most reviewed" },
   { value: "bookings", label: "Most trips" },
-  { value: "fleet", label: "Largest fleet" },
+  { value: "fleet", label: "Most vehicles" },
   { value: "newest", label: "Newest" },
   { value: "name", label: "Name A–Z" },
 ];
@@ -231,15 +231,15 @@ function ShopsPageContent() {
         <div className="relative mx-auto max-w-6xl px-4 py-12 text-center sm:py-16">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            {data?.meta ? `${data.meta.total} rental companies` : "Trusted rental companies"} across Sri Lanka
+            {data?.meta ? `${data.meta.total} shops` : "Trusted shops"} across Sri Lanka
           </div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
             Find a{" "}
-            <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">rental company</span>
+            <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">shop</span>
             {" "}you can trust
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Compare registered rental shops by rating, fleet size and price. Every listing is reviewed before it goes live.
+            Compare registered shops by rating and vehicles for rent or sale. Every listing is reviewed before it goes live.
           </p>
 
           <form onSubmit={handleSearch} className="mx-auto mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl border bg-card/90 p-2 shadow-lg backdrop-blur-sm sm:flex-row">
@@ -248,7 +248,7 @@ function ShopsPageContent() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Company name, tagline or city..."
+                placeholder="Shop name, tagline or city..."
                 className="h-11 border-0 bg-transparent pl-10 shadow-none focus-visible:ring-0"
               />
             </div>
@@ -351,7 +351,7 @@ function ShopsPageContent() {
         {/* ── Result summary + active filters ─────────────────────────── */}
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <p className="mr-1 flex items-center gap-2 text-sm text-muted-foreground">
-            {isLoading ? "Searching..." : `${total} ${total === 1 ? "company" : "companies"} found`}
+            {isLoading ? "Searching..." : `${total} ${total === 1 ? "shop" : "shops"} found`}
             {isFetching && !isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           </p>
           {activeChips.map((chip) => (
@@ -388,7 +388,7 @@ function ShopsPageContent() {
             <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10">
               <Building2 className="h-7 w-7 text-primary" />
             </div>
-            <p className="font-medium">No rental companies match your search</p>
+            <p className="font-medium">No shops match your search</p>
             <p className="text-sm text-muted-foreground">Try another district, vehicle type or clear a filter.</p>
             <Button variant="outline" onClick={clearAll}>Clear filters</Button>
           </div>
@@ -399,9 +399,9 @@ function ShopsPageContent() {
           <Building2 className="absolute -right-6 -top-6 h-40 w-40 rotate-12 text-white/10" aria-hidden="true" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-lg">
-              <h2 className="text-2xl font-semibold tracking-tight">Run a rental business?</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">Run a vehicle business?</h2>
               <p className="mt-1.5 text-sm text-white/85">
-                List your fleet, take bookings online and reach customers across Sri Lanka. Registration takes only a few minutes.
+                List vehicles for rent or sale and reach customers across Sri Lanka. Registration takes only a few minutes.
               </p>
               <p className="mt-3 flex items-center gap-1.5 text-xs text-white/80"><Clock className="h-3.5 w-3.5" />Listings are reviewed before they go live</p>
             </div>

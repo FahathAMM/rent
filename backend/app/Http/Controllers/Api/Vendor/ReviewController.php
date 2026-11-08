@@ -17,7 +17,10 @@ class ReviewController extends Controller
 {
     use JsonResponseTrait;
 
-    public function __construct(private ReviewService $service) {}
+    public function __construct(private ReviewService $service)
+    {
+        $this->middleware('can:vendor-vehicles-reviews-view')->only('index');
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -28,9 +31,10 @@ class ReviewController extends Controller
         $reviews = Review::where('shop_id', VendorContext::shopId())
             ->where('status', Review::STATUS_PUBLISHED)
             ->when($request->vehicle_id, fn ($q) => $q->where('vehicle_id', $request->vehicle_id))
-            ->when($request->search, fn ($q) => $q->where('comment', 'like', "%{$request->search}%")
+            ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
+                ->where('comment', 'like', "%{$request->search}%")
                 ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%"))
-                ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%")))
+                ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%"))))
             ->with('vehicle:id,title', 'user:id,name')
             ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
@@ -41,6 +45,7 @@ class ReviewController extends Controller
     public function reply(ReplyReviewRequest $request, Review $review): JsonResponse
     {
         abort_unless($review->shop_id === VendorContext::shopId(), 404);
+        $this->authorize('reply', $review);
 
         $review = $this->service->reply(AuthUser::user(), $review, $request->validated('reply'));
 

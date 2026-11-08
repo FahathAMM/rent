@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusBanner } from "@/components/shared/StatusBanner";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { WriteReviewDialog } from "@/components/account/WriteReviewDialog";
+import { CreateDisputeDialog } from "@/components/account/CreateDisputeDialog";
 import { BankTransferCard } from "@/components/account/BankTransferCard";
 import { CustomerPaymentsList } from "@/components/account/CustomerPaymentsList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,7 @@ export default function BookingDetailPage() {
   const { format } = useCurrencyFormat();
   const [cancelling, setCancelling] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [disputing, setDisputing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(null); // "voucher" | "agreement" while the PDF is being fetched
 
   const { data: booking, isLoading } = useQuery({
@@ -102,6 +104,7 @@ export default function BookingDetailPage() {
   const originalDates = dateChanges[dateChanges.length - 1]?.from;
   // The voucher the customer shows the shop at pickup — once the shop has confirmed.
   const hasVoucher = ["confirmed", "active", "completed"].includes(booking.status);
+  const canDispute = hasVoucher && !booking.has_open_dispute;
 
   // Voucher or agreement PDF: view in a new tab, or download as "<booking no>.pdf".
   const openPdf = (kind, download) => {
@@ -192,11 +195,10 @@ export default function BookingDetailPage() {
         <StatusBanner icon={Ban} tone="info" title="Cancelled" body={booking.cancellation_reason} />
       )}
       {booking.has_open_dispute && (
-        <StatusBanner
-          icon={AlertTriangle}
-          tone="warning"
-          title="A dispute is open on this booking"
-        />
+        <div className="space-y-2">
+          <StatusBanner icon={AlertTriangle} tone="warning" title="A dispute is open on this booking" />
+          <p className="text-right"><Button asChild variant="outline" size="sm"><Link href="/account/disputes">View your disputes</Link></Button></p>
+        </div>
       )}
 
       <Card className="rounded-2xl shadow-sm">
@@ -295,7 +297,7 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {(canCancel || canReview) && (
+      {(canCancel || canReview || canDispute) && (
         <div className="flex flex-wrap justify-end gap-2">
           {canCancel && (
             <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
@@ -305,6 +307,11 @@ export default function BookingDetailPage() {
           {canReview && (
             <Button variant="outline" className="gap-1.5" onClick={() => setReviewing(true)}>
               <Star className="h-4 w-4" /> Write a Review
+            </Button>
+          )}
+          {canDispute && (
+            <Button variant="outline" className="gap-1.5" onClick={() => setDisputing(true)}>
+              <AlertTriangle className="h-4 w-4" /> Open a Dispute
             </Button>
           )}
         </div>
@@ -326,6 +333,8 @@ export default function BookingDetailPage() {
         onSubmit={handleReviewSubmit}
         loading={submitReview.isPending}
       />
+
+      {disputing && <CreateDisputeDialog booking={booking} onClose={() => setDisputing(false)} />}
     </div>
   );
 }

@@ -47,6 +47,10 @@ class BookingService
         $paymentMethod = $this->resolvePaymentMethod($vehicle, $data['payment_method'] ?? null);
 
         return DB::transaction(function () use ($customer, $vehicle, $pickupAt, $returnAt, $quote, $withDriver, $deliveryRequested, $responseHours, $data, $paymentMethod) {
+            // The row SaleListingService locks to move a car to sale: whichever runs second sees the other.
+            $listingType = DB::table('vehicles')->where('id', $vehicle->id)->lockForUpdate()->value('listing_type');
+            abort_unless($listingType === Vehicle::LISTING_RENT, 422, 'This vehicle is not currently available for booking.');
+
             $booking = Booking::create([
                 'booking_reference' => NumberGenerator::next($vehicle->shop_id, 'booking'),
                 'vehicle_id' => $vehicle->id,

@@ -6,9 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * status and payment_status are two independent axes - see
- * app-doc/marketplace/04-lifecycles.md. "Awaiting payment" is a derived
- * state (status = accepted AND payment_status in unpaid/initiated/failed),
- * not a status value of its own.
+ * app-doc/marketplace/04-lifecycles.md. Bookings are always paid to the
+ * shop directly (cash or bank transfer); there is no online payment step.
  *
  * shop_id is denormalised from vehicles.shop_id on purpose: without it,
  * every vendor booking query needs a join to vehicles for ShopScope to
@@ -25,7 +24,7 @@ return new class extends Migration
 
             $table->foreignId('vehicle_id')->constrained('vehicles')->restrictOnDelete();
             $table->foreignId('shop_id')->constrained('rental_shops')->restrictOnDelete();
-            $table->foreignId('customer_id')->constrained('users')->restrictOnDelete();
+            $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
 
             $table->foreignId('pickup_location_id')->nullable()->constrained('locations')->nullOnDelete();
             $table->string('pickup_address')->nullable();
@@ -46,18 +45,16 @@ return new class extends Migration
             $table->unsignedInteger('driver_days')->nullable();
 
             $table->enum('status', [
-                'pending', 'accepted', 'confirmed', 'active', 'completed',
+                'pending', 'confirmed', 'active', 'completed',
                 'rejected', 'expired', 'cancelled_by_customer', 'cancelled_by_owner',
                 'cancelled_by_admin', 'no_show',
             ])->default('pending');
 
-            $table->enum('payment_status', [
-                'unpaid', 'initiated', 'authorized', 'partially_paid', 'paid',
-                'refund_pending', 'partially_refunded', 'refunded', 'failed',
-            ])->default('unpaid');
+            // What the shop has received (cash / verified transfers) against total_payable.
+            $table->enum('payment_status', ['unpaid', 'partially_paid', 'paid'])->default('unpaid');
+            $table->string('payment_method', 20)->default('cash'); // cash | bank_transfer
 
             $table->timestamp('owner_response_deadline_at')->nullable();
-            $table->timestamp('payment_deadline_at')->nullable();
 
             $table->timestamp('accepted_at')->nullable();
             $table->foreignId('decided_by')->nullable()->constrained('users')->nullOnDelete();
@@ -86,7 +83,6 @@ return new class extends Migration
             $table->index(['customer_id', 'status']);
             $table->index(['vehicle_id', 'status', 'pickup_at', 'return_at']);
             $table->index(['status', 'owner_response_deadline_at']);
-            $table->index(['status', 'payment_deadline_at']);
         });
     }
 

@@ -18,7 +18,7 @@ export function PublicFooter() {
 
   return (
     <footer className="border-t bg-muted/30">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="sm:col-span-2 lg:col-span-1">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <BrandLogo
@@ -37,9 +37,10 @@ export function PublicFooter() {
           <p className="text-sm font-semibold">Explore</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li><Link href="/" className="hover:text-foreground">Home</Link></li>
-            <li><Link href="/browse" className="hover:text-foreground">Browse vehicles</Link></li>
-            <li><Link href="/locations" className="hover:text-foreground">Browse by location</Link></li>
-            <li><Link href="/shops" className="hover:text-foreground">Rental companies</Link></li>
+            <li><Link href="/rent" className="hover:text-foreground">Rent</Link></li>
+            <li><Link href="/buy" className="hover:text-foreground">Buy</Link></li>
+            <li><Link href="/locations" className="hover:text-foreground">Location</Link></li>
+            <li><Link href="/shops" className="hover:text-foreground">Shops</Link></li>
             <li><Link href="/how-it-works" className="hover:text-foreground">How it works</Link></li>
           </ul>
         </div>
@@ -48,7 +49,7 @@ export function PublicFooter() {
           <p className="text-sm font-semibold">For owners</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li><Link href="/vendor/register" className="hover:text-foreground">List your vehicle</Link></li>
-            <li><Link href="/vendor/register" className="hover:text-foreground">Register a rental business</Link></li>
+            <li><Link href="/vendor/register" className="hover:text-foreground">Register a business</Link></li>
           </ul>
         </div>
 
@@ -57,6 +58,17 @@ export function PublicFooter() {
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li><Link href="/login" className="hover:text-foreground">Sign in</Link></li>
             <li><Link href="/register" className="hover:text-foreground">Create an account</Link></li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold">Help &amp; Support</p>
+          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <li><Link href="/stay-safe" className="hover:text-foreground">Stay safe</Link></li>
+            <li><Link href="/faq" className="hover:text-foreground">FAQ</Link></li>
+            <li><Link href="/contact" className="hover:text-foreground">Contact us</Link></li>
+            <li><Link href="/terms" className="hover:text-foreground">Terms &amp; Conditions</Link></li>
+            <li><Link href="/privacy" className="hover:text-foreground">Privacy Policy</Link></li>
           </ul>
         </div>
       </div>

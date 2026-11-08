@@ -9,14 +9,10 @@ use App\Models\Scopes\ShopScope;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * A dispute can be raised by the customer OR by the shop side (owner /
- * staff) of the same booking - every account gets the customer role on
- * registration (see app-doc/marketplace/03-permissions-model.md), so
- * both sides reach a dispute through the same /disputes endpoints with
- * no shop context at all. Resolving the booking regardless of which
- * side the caller is on means ShopScope is the wrong question here,
- * exactly like CustomerBookingQuery. Sanctioned ShopScope bypass; see
- * tests/Feature/PublicScopeBoundaryTest.php.
+ * Resolves dispute booking relationships for the separate customer and
+ * marketplace-user guards. These cross-shop lookups intentionally bypass
+ * ShopScope and then constrain by the authenticated party's customer or
+ * shop id; see tests/Feature/PublicScopeBoundaryTest.php.
  */
 class CustomerDisputeQuery
 {

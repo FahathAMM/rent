@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { vehicleService } from "@/services/vehicleService";
+import { vendorService } from "@/services/vendorService";
 import { publicService } from "@/services/publicService";
+import { SaleFields, salePayload, toSale } from "@/app/vendor/sales/components/SaleFields";
 import { Button } from "@/components/ui/button";
 import {
   TextInput,
@@ -153,6 +155,15 @@ const TABS = [
   { id: "photos", label: "Photos", icon: Images, fields: [], optional: true },
 ];
 
+// A sale listing swaps the rental pricing step for the sale fields.
+const SALE_TAB = {
+  id: "sale",
+  label: "Sale details",
+  icon: DollarSign,
+  fields: ["price", "mileage_km", "condition", "owners_count", "warranty_months"],
+};
+const SALE_TABS = TABS.map((t) => (t.id === "pricing" ? SALE_TAB : t));
+
 /**
  * Photos chosen before the vehicle exists — previewed locally and uploaded
  * in order right after it's created (the first upload becomes the cover,
@@ -274,10 +285,17 @@ function PendingPhotos({ files, setFiles, disabled }) {
  * `onSaved(vehicle, { complete })` - complete is false when the vehicle
  * saved but its pricing or a photo didn't, so the caller can land the user
  * somewhere they can fix it. `onCancel` runs on Cancel.
+ *
+ * listingType="sale" is the same form for a car on sale: the sale fields save
+ * with the vehicle (they are required, unlike rental pricing), and a new or
+ * reconditioned car may have no registration number yet.
  */
-export function VehicleForm({ vehicle, onSaved, onCancel }) {
+export function VehicleForm({ vehicle, onSaved, onCancel, listingType = "rent" }) {
   const qc = useQueryClient();
   const editing = !!vehicle;
+  const isSale = listingType === "sale";
+  const tabs = isSale ? SALE_TABS : TABS;
+  const [sale, setSale] = useState(() => toSale(vehicle?.sale ?? {}));
   const [form, setForm] = useState(() =>
     vehicle ? toForm(vehicle) : defaultForm,
   );
@@ -291,6 +309,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
   const [progress, setProgress] = useState("");
   const [tab, setTab] = useState("details");
   const hadPricing = !!vehicle?.pricing;
+  const registrationRequired = !isSale || sale.condition === "used";
 
   const { data: categories } = useQuery({
     queryKey: ["public-categories"],
@@ -356,20 +375,23 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
       doors: form.doors || null,
       variant_id: form.variant_id || null,
       colour_id: form.colour_id || null,
+      registration_number: form.registration_number || null,
+      ...(isSale ? salePayload(sale) : {}),
     };
 
     // 1. The vehicle itself - nothing else can save without it.
     let saved;
     try {
       setProgress(editing ? "Saving details..." : "Creating vehicle...");
+      const api = isSale ? vendorService.sales.listings : vehicleService;
       const res = editing
-        ? await vehicleService.update(vehicle.id, payload)
-        : await vehicleService.create(payload);
+        ? await api.update(vehicle.id, payload)
+        : await api.create(payload);
       saved = res.data?.data ?? vehicle;
     } catch (err) {
       const errs = err.response?.data?.errors ?? {};
       setErrors(errs);
-      const firstTab = TABS.find((t) => t.fields.some((k) => errs[k]));
+      const firstTab = tabs.find((t) => t.fields.some((k) => errs[k]));
       if (firstTab) setTab(firstTab.id);
       if (err.response?.status !== 422)
         toast.error(err.response?.data?.message ?? "Could not save vehicle");
@@ -381,8 +403,8 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
 
     let complete = true;
 
-    // 2. Pricing (optional).
-    if (wantsPricing) {
+    // 2. Pricing (optional, rentals only).
+    if (!isSale && wantsPricing) {
       try {
         setProgress("Saving pricing...");
         await vehicleService.updatePricing(saved.id, pricing);
@@ -417,6 +439,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
     }
 
     qc.invalidateQueries({ queryKey: ["vendor-vehicle"] });
+    qc.invalidateQueries({ queryKey: ["vendor-sale-listing"] });
     qc.invalidateQueries({ queryKey: ["vehicle-images", saved.id] });
     setSaving(false);
     setProgress("");
@@ -424,8 +447,10 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
     if (complete) {
       toast.success(
         editing
-          ? "Vehicle updated"
-          : "Vehicle created — it will appear once approved and published",
+          ? isSale ? "Listing updated" : "Vehicle updated"
+          : isSale
+            ? "Listing created. Publish it once it passes review"
+            : "Vehicle created — it will appear once approved and published",
       );
     } else if (editing) {
       // Stay on the page so the pricing errors are visible.
@@ -455,7 +480,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
     ...(colours ?? []).map((c) => ({ value: String(c.id), label: c.name })),
   ];
 
-  const tabIndex = TABS.findIndex((t) => t.id === tab);
+  const tabIndex = tabs.findIndex((t) => t.id === tab);
   const tabHasError = (t) =>
     t.id === "pricing"
       ? Object.keys(pricingErrors).length > 0
@@ -473,7 +498,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
         "brand_id",
         "model_id",
         "year",
-        "registration_number",
+        ...(registrationRequired ? ["registration_number"] : []),
       ].every((k) => filled(form[k])),
     specs: () =>
       ["transmission", "fuel_type", "seating_capacity"].every((k) =>
@@ -481,10 +506,11 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
       ),
     description: () => filled(form.description),
     pricing: () => filled(pricing.daily_rate),
+    sale: () => filled(sale.price) && filled(sale.mileage_km),
     photos: () => photoCount > 0,
   };
   const isComplete = (t) => TAB_STATUS[t.id]();
-  const completeCount = TABS.filter(isComplete).length;
+  const completeCount = tabs.filter(isComplete).length;
   const tabHint = (t) => {
     if (tabHasError(t)) return "Needs attention";
     if (t.id === "photos")
@@ -512,7 +538,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
             aria-label="Vehicle form sections"
             className="grid min-w-[560px] grid-cols-5"
           >
-            {TABS.map((t, i) => {
+            {tabs.map((t, i) => {
               const active = t.id === tab;
               const error = tabHasError(t);
               const done = !error && isComplete(t);
@@ -526,7 +552,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
                   className="group relative flex flex-col items-center gap-1.5 px-1 pb-2 text-center focus-visible:outline-none"
                 >
                   {/* connector to the next step, running behind the circles */}
-                  {i < TABS.length - 1 && (
+                  {i < tabs.length - 1 && (
                     <span
                       aria-hidden="true"
                       className={cn(
@@ -602,11 +628,11 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 transition-all duration-500"
-              style={{ width: `${(completeCount / TABS.length) * 100}%` }}
+              style={{ width: `${(completeCount / tabs.length) * 100}%` }}
             />
           </div>
           <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
-            {completeCount} of {TABS.length} complete
+            {completeCount} of {tabs.length} complete
           </span>
         </div>
       </div>
@@ -690,7 +716,8 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
               label="Registration Number"
               value={form.registration_number}
               onChange={fi("registration_number")}
-              required
+              required={registrationRequired}
+              placeholder={registrationRequired ? undefined : "Leave empty if not registered yet"}
               error={errors.registration_number?.[0]}
             />
           </div>
@@ -759,7 +786,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
               value={form.description}
               onChange={fi("description")}
               error={errors.description?.[0]}
-              placeholder="What makes this vehicle a great rental — condition, features, ideal trips..."
+              placeholder={isSale ? "History, service records, extras: what a buyer should know..." : "What makes this vehicle a great rental — condition, features, ideal trips..."}
             />
             <TextareaInput
               label="Condition Notes (internal)"
@@ -865,6 +892,8 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
           </div>
         )}
 
+        {tab === "sale" && <SaleFields sale={sale} onChange={setSale} errors={errors} />}
+
         {tab === "photos" && (
           <div>
             {editing ? (
@@ -898,17 +927,17 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
           type="button"
           variant="outline"
           disabled={saving || tabIndex === 0}
-          onClick={() => setTab(TABS[tabIndex - 1].id)}
+          onClick={() => setTab(tabs[tabIndex - 1].id)}
           className="gap-1"
         >
           <ChevronLeft className="h-4 w-4" /> Back
         </Button>
-        {tabIndex < TABS.length - 1 && (
+        {tabIndex < tabs.length - 1 && (
           <Button
             type="button"
             variant="outline"
             disabled={saving}
-            onClick={() => setTab(TABS[tabIndex + 1].id)}
+            onClick={() => setTab(tabs[tabIndex + 1].id)}
             className="gap-1"
           >
             Next <ChevronRight className="h-4 w-4" />
@@ -916,7 +945,7 @@ export function VehicleForm({ vehicle, onSaved, onCancel }) {
         )}
         <Button type="submit" disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {editing ? "Save Changes" : "Add Vehicle"}
+          {editing ? "Save Changes" : isSale ? "Add Listing" : "Add Vehicle"}
         </Button>
       </div>
     </form>

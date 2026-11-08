@@ -29,7 +29,7 @@ class Customer extends Authenticatable
     protected $fillable = [
         'name', 'email', 'password', 'phone', 'phone_country', 'avatar',
         'date_of_birth', 'address', 'status', 'suspended_reason', 'suspended_at',
-        'last_login_at', 'registration_source',
+        'last_login_at', 'registration_source', 'terms_accepted_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -41,6 +41,7 @@ class Customer extends Authenticatable
         'date_of_birth' => 'date',
         'suspended_at' => 'datetime',
         'last_login_at' => 'datetime',
+        'terms_accepted_at' => 'datetime',
     ];
 
     public function isActive(): bool

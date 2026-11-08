@@ -20,9 +20,10 @@ import { Store, LayoutDashboard, LogOut, LogIn } from "lucide-react";
 
 // No "Home" item — the brand logo/name links to the home page.
 const NAV_ITEMS = [
-  { href: "/browse", label: "Browse Vehicles" },
-  { href: "/locations", label: "Browse by Location" },
-  { href: "/shops", label: "Rental Companies" },
+  { href: "/rent", label: "Rent" },
+  { href: "/buy", label: "Buy" },
+  { href: "/locations", label: "Location" },
+  { href: "/shops", label: "Shops" },
   { href: "/how-it-works", label: "How It Works" },
 ];
 

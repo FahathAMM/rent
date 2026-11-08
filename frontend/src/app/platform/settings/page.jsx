@@ -711,7 +711,10 @@ function ProfileCard({ admin }) {
             <Badge variant={admin?.admin_role === "platform_owner" ? "default" : "secondary"} className="capitalize">{admin?.admin_role?.replace("_", " ")}</Badge>
           </InfoRow>
           <InfoRow icon={Shield} label="Status">
-            <Badge variant="success" className="capitalize">{admin?.status}</Badge>
+            {(() => {
+              const status = admin?.status ?? (admin?.is_active === false ? "inactive" : "active");
+              return <Badge variant={status === "active" ? "success" : "secondary"} className="capitalize">{status}</Badge>;
+            })()}
           </InfoRow>
           <InfoRow icon={Clock} label="Last Login">
             {admin?.last_login_at ? formatDateTime(admin.last_login_at) : "—"}

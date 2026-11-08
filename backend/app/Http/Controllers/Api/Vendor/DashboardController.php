@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Review;
+use App\Models\SaleEnquiry;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
+use App\Models\VehicleSale;
+use App\Models\VehicleSaleDetail;
+use App\Services\SubscriptionService;
 use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -33,6 +37,7 @@ class DashboardController extends Controller
 
         return $this->response('Dashboard retrieved', [
             'listings' => $this->listingCounts(),
+            'sales' => $this->salesSummary($shopId),
             'bookings' => $this->bookingCounts(),
             'revenue' => $this->revenue(),
             'vehicle_utilisation' => $this->utilisation(),
@@ -45,9 +50,27 @@ class DashboardController extends Controller
         ]);
     }
 
+    /** Null when the shop's plan has no sales, so the dashboard shows nothing about them. */
+    private function salesSummary(?int $shopId): ?array
+    {
+        if (!$shopId || !app(SubscriptionService::class)->hasFeature($shopId, 'sales')) {
+            return null;
+        }
+
+        $soldThisMonth = VehicleSale::where('sold_at', '>=', now()->startOfMonth());
+
+        return [
+            'for_sale' => Vehicle::forSale()->where('status', Vehicle::STATUS_PUBLISHED)
+                ->whereHas('saleDetail', fn ($q) => $q->where('sale_status', VehicleSaleDetail::STATUS_AVAILABLE))->count(),
+            'enquiries_waiting' => SaleEnquiry::where('status', SaleEnquiry::STATUS_NEW)->count(),
+            'sold_this_month' => (clone $soldThisMonth)->count(),
+            'sold_value_this_month' => (float) (clone $soldThisMonth)->sum('sale_price'),
+        ];
+    }
+
     private function listingCounts(): array
     {
-        $byStatus = Vehicle::selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status');
+        $byStatus = Vehicle::forRent()->selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status');
 
         return [
             'total' => $byStatus->sum(),
@@ -66,7 +89,7 @@ class DashboardController extends Controller
     {
         $today = now();
 
-        return Vehicle::where('status', Vehicle::STATUS_PUBLISHED)
+        return Vehicle::forRent()->where('status', Vehicle::STATUS_PUBLISHED)
             ->whereDoesntHave('bookings', fn ($q) => $q
                 ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE])
                 ->where('pickup_at', '<=', $today)
@@ -145,7 +168,7 @@ class DashboardController extends Controller
     {
         $since = now()->subDays(30)->toDateString();
 
-        $rows = VehicleAvailability::whereIn('vehicle_id', Vehicle::pluck('id'))
+        $rows = VehicleAvailability::whereIn('vehicle_id', Vehicle::forRent()->pluck('id'))
             ->where('date', '>=', $since)
             ->selectRaw("status, count(*) as count")
             ->groupBy('status')
@@ -166,7 +189,7 @@ class DashboardController extends Controller
     /** Top 5 vehicles by booking_count, with the raw counters a conversion rate is built from. */
     private function listingPerformance(): array
     {
-        return Vehicle::orderByDesc('booking_count')
+        return Vehicle::forRent()->orderByDesc('booking_count')
             ->limit(5)
             ->get(['id', 'title', 'view_count', 'inquiry_count', 'booking_count'])
             ->map(fn ($v) => [

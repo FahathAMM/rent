@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Shop subscription plans — see app-doc/marketplace/10-monetization.md.
  *
- *  subscription_plans     Free / Pro / Business (admin-editable): price per period, limits, feature switches.
+ *  subscription_plans     Basic / Pro / Business (admin-editable): price per period, limits, feature switches.
  *  shop_subscriptions     One row per trial / paid period / admin grant. The shop's current plan is
  *                         worked out at read time (App\Services\SubscriptionService), so nothing has to
  *                         run on a schedule when a period ends.
@@ -26,9 +26,10 @@ return new class extends Migration
             $table->decimal('price', 12, 2)->default(0);           // per period, LKR
             $table->unsignedSmallInteger('period_days')->default(30);
             $table->unsignedInteger('max_vehicles')->nullable();   // null = unlimited
+            $table->unsignedInteger('max_sale_listings')->nullable(); // null = unlimited
             $table->unsignedInteger('max_staff')->nullable();
             $table->unsignedInteger('max_locations')->nullable();
-            $table->json('features')->nullable();                  // ["staff","expenses","calendar"]
+            $table->json('features')->nullable();                  // ["staff","expenses","calendar","sales","reports"]
             $table->boolean('is_active')->default(true);
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
@@ -70,19 +71,19 @@ return new class extends Migration
         $now = now();
         DB::table('subscription_plans')->insert([
             [
-                'code' => 'free', 'name' => 'Free', 'description' => 'Get listed and take bookings.',
-                'price' => 0, 'period_days' => 30, 'max_vehicles' => 2, 'max_staff' => 0, 'max_locations' => 1,
-                'features' => json_encode([]), 'is_active' => true, 'sort_order' => 1, 'created_at' => $now, 'updated_at' => $now,
+                'code' => 'basic', 'name' => 'Basic', 'description' => 'For a small shop: list a couple of vehicles and take bookings.',
+                'price' => 500, 'period_days' => 30, 'max_vehicles' => 2, 'max_sale_listings' => 2, 'max_staff' => 0, 'max_locations' => 1,
+                'features' => json_encode(['sales']), 'is_active' => true, 'sort_order' => 1, 'created_at' => $now, 'updated_at' => $now,
             ],
             [
                 'code' => 'pro', 'name' => 'Pro', 'description' => 'For a growing shop: more vehicles, the availability calendar and expenses.',
-                'price' => 2500, 'period_days' => 30, 'max_vehicles' => 10, 'max_staff' => 2, 'max_locations' => 3,
-                'features' => json_encode(['calendar', 'expenses', 'staff']), 'is_active' => true, 'sort_order' => 2, 'created_at' => $now, 'updated_at' => $now,
+                'price' => 2500, 'period_days' => 30, 'max_vehicles' => 10, 'max_sale_listings' => 10, 'max_staff' => 2, 'max_locations' => 3,
+                'features' => json_encode(['calendar', 'expenses', 'staff', 'sales', 'reports']), 'is_active' => true, 'sort_order' => 2, 'created_at' => $now, 'updated_at' => $now,
             ],
             [
                 'code' => 'business', 'name' => 'Business', 'description' => 'Unlimited vehicles, staff and branches.',
-                'price' => 6000, 'period_days' => 30, 'max_vehicles' => null, 'max_staff' => null, 'max_locations' => null,
-                'features' => json_encode(['calendar', 'expenses', 'staff']), 'is_active' => true, 'sort_order' => 3, 'created_at' => $now, 'updated_at' => $now,
+                'price' => 6000, 'period_days' => 30, 'max_vehicles' => null, 'max_sale_listings' => null, 'max_staff' => null, 'max_locations' => null,
+                'features' => json_encode(['calendar', 'expenses', 'staff', 'sales', 'reports']), 'is_active' => true, 'sort_order' => 3, 'created_at' => $now, 'updated_at' => $now,
             ],
         ]);
 
@@ -96,16 +97,6 @@ return new class extends Migration
                 'value' => json_encode(['value' => $value]), 'group' => 'subscriptions', 'label' => $label,
                 'description' => $description, 'type' => $type, 'is_public' => false, 'created_at' => $now, 'updated_at' => $now,
             ]);
-        }
-
-        // Shops already verified start a Pro trial now (unverified ones get it when they're verified).
-        $pro = DB::table('subscription_plans')->where('code', 'pro')->value('id');
-        $rows = DB::table('rental_shops')->where('verification_status', 'verified')->pluck('id')->map(fn ($shopId) => [
-            'shop_id' => $shopId, 'plan_id' => $pro, 'kind' => 'trial', 'starts_at' => $now, 'ends_at' => $now->copy()->addDays(30),
-            'note' => 'Free trial', 'created_at' => $now, 'updated_at' => $now,
-        ])->all();
-        if ($rows) {
-            DB::table('shop_subscriptions')->insert($rows);
         }
     }
 

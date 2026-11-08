@@ -14,8 +14,6 @@ return new class extends Migration
 
             $table->string('booking_prefix')->default('BKG');
             $table->unsignedInteger('next_booking_number')->default(1);
-            $table->string('payout_prefix')->default('PO');
-            $table->unsignedInteger('next_payout_number')->default(1);
             $table->string('agreement_prefix')->default('AGR');
             $table->unsignedInteger('next_agreement_number')->default(1);
             $table->string('expense_prefix')->default('EXP');
@@ -24,7 +22,6 @@ return new class extends Migration
             $table->unsignedInteger('next_branch_number')->default(1);
 
             $table->unsignedInteger('owner_response_hours')->default(24);
-            $table->unsignedInteger('payment_window_hours')->default(12);
             $table->boolean('auto_accept_bookings')->default(false);
             $table->unsignedInteger('advance_notice_hours')->default(4);
 
@@ -34,6 +31,7 @@ return new class extends Migration
             $table->json('cancellation_tiers')->nullable();
 
             $table->text('agreement_terms')->nullable();
+            $table->longText('sale_terms')->nullable();
             $table->text('invoice_footer')->nullable();
 
             $table->timestamps();

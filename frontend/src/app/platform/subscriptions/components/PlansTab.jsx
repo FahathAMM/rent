@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CarFront, Check, Crown, Loader2, MapPin, Minus, Pencil, Plus, Users } from "lucide-react";
+import { BadgeDollarSign, CarFront, Check, Crown, Loader2, MapPin, Minus, Pencil, Plus, Users } from "lucide-react";
 import { platformService } from "@/services/platformService";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { CheckboxInput, NumberInput, TextInput, TextareaInput } from "@/componen
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const EMPTY = { code: "", name: "", description: "", price: "0", period_days: "30", max_vehicles: "", max_staff: "", max_locations: "", features: [], is_active: true, sort_order: "0" };
+const EMPTY = { code: "", name: "", description: "", price: "0", period_days: "30", max_vehicles: "", max_sale_listings: "", max_staff: "", max_locations: "", features: [], is_active: true, sort_order: "0" };
 // Header band per plan — known codes get their own colour, others cycle.
 const ACCENTS = {
   basic: { band: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: "text-slate-500" },
@@ -44,7 +44,7 @@ export function PlansTab({ canEdit }) {
     setForm(plan ? {
       ...EMPTY, ...plan,
       price: String(plan.price), period_days: String(plan.period_days), sort_order: String(plan.sort_order ?? 0),
-      max_vehicles: plan.max_vehicles ?? "", max_staff: plan.max_staff ?? "", max_locations: plan.max_locations ?? "",
+      max_vehicles: plan.max_vehicles ?? "", max_sale_listings: plan.max_sale_listings ?? "", max_staff: plan.max_staff ?? "", max_locations: plan.max_locations ?? "",
       description: plan.description ?? "",
     } : EMPTY);
   };
@@ -54,7 +54,7 @@ export function PlansTab({ canEdit }) {
       const n = (v) => (v === "" || v === null ? null : Number(v));
       const payload = {
         ...form, price: Number(form.price), period_days: Number(form.period_days), sort_order: Number(form.sort_order || 0),
-        max_vehicles: n(form.max_vehicles), max_staff: n(form.max_staff), max_locations: n(form.max_locations),
+        max_vehicles: n(form.max_vehicles), max_sale_listings: n(form.max_sale_listings), max_staff: n(form.max_staff), max_locations: n(form.max_locations),
       };
       return editing?.id ? platformService.subscriptions.updatePlan(editing.id, payload) : platformService.subscriptions.createPlan(payload);
     },
@@ -102,8 +102,8 @@ export function PlansTab({ canEdit }) {
               </div>
 
               <CardContent className="flex flex-1 flex-col gap-4 p-5">
-                <div className="grid grid-cols-3 gap-2">
-                  {[[CarFront, "Vehicles", plan.max_vehicles], [Users, "Staff", plan.max_staff], [MapPin, "Locations", plan.max_locations]].map(([Icon, label, n]) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {[[CarFront, "Vehicles", plan.max_vehicles], [BadgeDollarSign, "For sale", plan.max_sale_listings], [Users, "Staff", plan.max_staff], [MapPin, "Locations", plan.max_locations]].map(([Icon, label, n]) => (
                     <div key={label} className="rounded-xl border bg-muted/30 px-2 py-2.5 text-center">
                       <Icon className="mx-auto h-4 w-4 text-muted-foreground" />
                       <p className="mt-1 text-lg font-semibold leading-none tabular-nums">{n === null || n === undefined ? "∞" : n}</p>
@@ -151,6 +151,7 @@ export function PlansTab({ canEdit }) {
               <NumberInput label="Price (LKR per period)" value={form.price} onChange={f("price")} min="0" error={errors.price?.[0]} />
               <NumberInput label="Period (days)" value={form.period_days} onChange={f("period_days")} min="1" error={errors.period_days?.[0]} />
               <NumberInput label="Max vehicles (blank = unlimited)" value={form.max_vehicles} onChange={f("max_vehicles")} min="0" error={errors.max_vehicles?.[0]} />
+              <NumberInput label="Max sale listings (blank = unlimited)" value={form.max_sale_listings} onChange={f("max_sale_listings")} min="0" error={errors.max_sale_listings?.[0]} />
               <NumberInput label="Max staff (blank = unlimited)" value={form.max_staff} onChange={f("max_staff")} min="0" error={errors.max_staff?.[0]} />
               <NumberInput label="Max locations (blank = unlimited)" value={form.max_locations} onChange={f("max_locations")} min="0" error={errors.max_locations?.[0]} />
               <NumberInput label="Order" value={form.sort_order} onChange={f("sort_order")} min="0" error={errors.sort_order?.[0]} />

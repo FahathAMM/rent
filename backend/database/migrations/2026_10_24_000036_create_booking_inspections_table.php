@@ -21,6 +21,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->boolean('customer_present')->default(true);
             $table->string('customer_signature_path')->nullable();
+            $table->text('terms_snapshot')->nullable();
+            $table->timestamp('terms_accepted_at')->nullable();
             $table->foreignId('conducted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('conducted_at')->nullable();
             $table->timestamps();

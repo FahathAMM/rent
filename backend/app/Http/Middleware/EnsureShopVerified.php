@@ -20,7 +20,7 @@ class EnsureShopVerified
         abort_unless(
             AuthUser::user()?->shop?->isVerified(),
             403,
-            'Your rental shop must be verified before you can use the vendor workspace.'
+            'Your shop must be verified before you can use the vendor workspace.'
         );
 
         return $next($request);

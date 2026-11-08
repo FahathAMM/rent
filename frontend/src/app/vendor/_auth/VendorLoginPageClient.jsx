@@ -17,7 +17,7 @@ import { Car, CalendarCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
-  { icon: Car, tile: "bg-blue-600", title: "List & manage vehicles", body: "Publish your fleet, set pricing and control availability." },
+  { icon: Car, tile: "bg-blue-600", title: "List & manage vehicles", body: "Publish vehicles for rent or sale, and set your prices." },
   { icon: CalendarCheck, tile: "bg-teal-600", title: "Accept bookings instantly", body: "Review requests, confirm trips and track handovers." },
   { icon: Wallet, tile: "bg-purple-600", title: "Get paid, reliably", body: "Track bookings, payments and earnings in one place." },
 ];
@@ -139,7 +139,7 @@ export default function VendorLoginPageClient({ initialBrand, initialView = "log
         <div className="hidden h-full flex-col justify-center overflow-y-auto px-10 lg:flex">
           <div className="max-w-md animate-in fade-in slide-in-from-right-6 duration-700">
             <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-balance">
-              Run your rental business, your way.
+              Run your vehicle business, your way.
             </h1>
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
               Everything you need to list vehicles, manage bookings and get paid — built for Sri Lankan vehicle owners and shops.

@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('booking_status_histories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
-            $table->enum('field', ['status', 'payment_status']);
+            $table->enum('field', ['status', 'payment_status', 'dates']);
             $table->string('from_value')->nullable();
             $table->string('to_value');
             $table->enum('actor_type', ['customer', 'owner', 'staff', 'system_admin', 'system']);

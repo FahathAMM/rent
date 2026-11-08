@@ -19,35 +19,30 @@ return new class extends Migration
             $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
             $table->string('payment_reference')->unique();
 
-            $table->enum('gateway', ['payhere', 'bank_transfer', 'cash', 'manual']);
-            $table->string('gateway_order_id')->nullable();
-            $table->string('gateway_payment_id')->nullable();
-            $table->string('gateway_status_code')->nullable();
-
-            $table->enum('type', ['rental', 'security_deposit', 'extra', 'damage', 'late_fee', 'balance'])
-                ->default('rental');
-
-            $table->decimal('amount', 12, 2);
+            // A customer statement: charges are debits, money received is a credit,
+            // balance is the running debit - credit per booking.
+            $table->enum('type', [
+                'booking_charge', 'adjustment', 'rental', 'security_deposit', 'deposit_release',
+                'extra', 'damage', 'late_fee', 'balance',
+            ]);
+            $table->decimal('credit', 12, 2)->default(0);
+            $table->decimal('debit', 12, 2)->default(0);
+            $table->decimal('balance', 12, 2)->nullable();
             $table->char('currency', 3)->default('LKR');
-            $table->decimal('gateway_fee', 10, 2)->default(0);
 
-            $table->enum('status', [
-                'initiated', 'pending', 'authorized', 'succeeded', 'failed',
-                'cancelled', 'expired', 'chargeback',
-            ])->default('initiated');
+            $table->enum('status', ['pending', 'succeeded', 'failed', 'cancelled'])->default('pending');
 
-            $table->enum('method', [
-                'visa', 'mastercard', 'amex', 'ezcash', 'mcash', 'genie', 'bank', 'cash', 'other',
-            ])->nullable();
-            $table->json('method_detail')->nullable();
+            // Money lines only (cash / bank); statement lines like the booking charge have none.
+            $table->enum('method', ['cash', 'bank'])->nullable();
+            $table->string('transfer_reference')->nullable();
+            $table->string('note')->nullable();
 
             $table->timestamp('paid_at')->nullable();
-            $table->timestamp('failed_at')->nullable();
-            $table->string('failure_reason')->nullable();
 
             $table->string('idempotency_key')->unique();
-            $table->foreignId('initiated_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->json('raw_response')->nullable();
+            $table->foreignId('initiated_by')->nullable()->constrained('customers')->nullOnDelete();
+            $table->foreignId('verified_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('verified_at')->nullable();
 
             $table->timestamps();
             $table->softDeletes();

@@ -40,7 +40,7 @@ class ReportService
             throw ValidationException::withMessages(['reportable_id' => ['The reported item was not found.']]);
         }
 
-        return Report::create([
+        $report = Report::create([
             'reportable_type' => $modelClass,
             'reportable_id' => $reportableId,
             'reported_by_user_id' => $user?->id,
@@ -49,6 +49,16 @@ class ReportService
             'description' => $description,
             'status' => Report::STATUS_NEW,
         ]);
+
+        PlatformNotifier::notify(
+            'abuse_report_submitted',
+            'New abuse report',
+            ucfirst($type) . " reported: {$reason}",
+            '/platform/abuse-reports',
+            ['report_id' => $report->id],
+        );
+
+        return $report;
     }
 
     public function action(SystemAdmin $admin, Report $report, string $status, ?string $actionTaken, ?string $internalNote): Report

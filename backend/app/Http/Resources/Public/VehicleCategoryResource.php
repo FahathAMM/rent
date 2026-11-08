@@ -14,7 +14,7 @@ class VehicleCategoryResource extends JsonResource
             'slug' => $this->slug,
             'icon' => $this->icon,
             'description' => $this->description,
-            'image' => $this->image,
+            'vehicles_count' => $this->vehicles_count,
         ];
     }
 }

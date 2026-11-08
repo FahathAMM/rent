@@ -21,6 +21,11 @@ return new class extends Migration
             $table->string('login_eyebrow')->nullable();
             $table->string('login_heading')->nullable();
             $table->text('login_description')->nullable();
+            $table->string('support_email')->nullable();
+            $table->string('support_phone', 30)->nullable();
+            $table->string('support_whatsapp', 30)->nullable();
+            $table->string('support_address', 500)->nullable();
+            $table->string('support_hours')->nullable();
             $table->timestamps();
         });
     }

@@ -213,7 +213,7 @@ export default function PlatformHeroSlidesPage() {
             <TextInput label="Headline" required maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} error={errors.title?.[0]} placeholder="e.g. Rent any vehicle, anywhere in Sri Lanka" />
             <TextareaInput label="Subtitle (optional)" rows={2} maxLength={255} value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} error={errors.subtitle?.[0]} />
             <div className="grid gap-3 sm:grid-cols-2">
-              <TextInput label="Button link (optional)" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} error={errors.link_url?.[0]} placeholder="/browse?category_id=3" />
+              <TextInput label="Button link (optional)" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} error={errors.link_url?.[0]} placeholder="/rent?category_id=3" />
               <TextInput label="Button text" maxLength={40} value={form.link_label} onChange={(e) => setForm({ ...form, link_label: e.target.value })} error={errors.link_label?.[0]} placeholder="See SUVs" disabled={!form.link_url} />
             </div>
             <label className="flex items-center gap-2 text-sm">

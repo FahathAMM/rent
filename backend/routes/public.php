@@ -4,9 +4,11 @@ use App\Http\Controllers\Api\Public\BrandController;
 use App\Http\Controllers\Api\Public\CategoryController;
 use App\Http\Controllers\Api\Public\VehicleCatalogueController;
 use App\Http\Controllers\Api\Public\DistrictController;
+use App\Http\Controllers\Api\Public\HelpItemController;
 use App\Http\Controllers\Api\Public\HeroSlideController;
 use App\Http\Controllers\Api\Public\InquiryController;
 use App\Http\Controllers\Api\Public\LocationController;
+use App\Http\Controllers\Api\Public\SaleController;
 use App\Http\Controllers\Api\Public\ShopController;
 use App\Http\Controllers\Api\Public\VehicleController;
 use Illuminate\Support\Facades\Route;
@@ -30,13 +32,20 @@ Route::prefix('public')->group(function () {
     Route::get('vehicles/{slug}/reviews', [VehicleController::class, 'reviews']);
     Route::get('vehicles/{slug}/availability', [VehicleController::class, 'availability']);
 
+    // The Buy page — cars for sale, through App\Repositories\PublicSaleRepo.
+    Route::get('buy', [SaleController::class, 'index']);
+    Route::get('buy/filters', [SaleController::class, 'filters']); // before buy/{slug}
+    Route::get('buy/{slug}', [SaleController::class, 'show']);
+
     Route::get('shops', [ShopController::class, 'index']);
     Route::get('shops/{slug}', [ShopController::class, 'show']);
     Route::get('shops/{slug}/vehicles', [ShopController::class, 'vehicles']);
+    Route::get('shops/{slug}/sale-vehicles', [ShopController::class, 'saleVehicles']);
     Route::get('shops/{slug}/reviews', [ShopController::class, 'reviews']);
 
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('hero-slides', [HeroSlideController::class, 'index']);
+    Route::get('help-items', [HelpItemController::class, 'index']);
     Route::get('brands', [BrandController::class, 'index']);
     Route::get('models', [VehicleCatalogueController::class, 'models']);     // ?brand_id=
     Route::get('variants', [VehicleCatalogueController::class, 'variants']); // ?model_id=

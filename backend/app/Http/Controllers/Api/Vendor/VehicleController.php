@@ -10,7 +10,6 @@ use App\Http\Requests\Vehicle\UpdateVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehiclePricingRequest;
 use App\Http\Resources\Vendor\VehicleResource;
 use App\Models\Vehicle;
-use App\Models\PlatformSetting;
 use App\Models\VehiclePricing;
 use App\Repositories\VehicleRepo;
 use App\Services\AuditService;
@@ -24,7 +23,8 @@ use Illuminate\Http\Request;
  * Vehicle's BelongsToShop) has already confined every {vehicle} route
  * parameter to the active shop before it reaches here - an id belonging
  * to another shop 404s at route-model-binding time. VehiclePolicy is the
- * second, explicit check (permission-gated, not just shop-gated).
+ * second, explicit check (permission-gated, not just shop-gated). Rentals
+ * only: a car on sale is a 404 here and lives under Vendor\SaleListingController.
  */
 class VehicleController extends Controller
 {
@@ -59,6 +59,7 @@ class VehicleController extends Controller
 
     public function show(Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('view', $vehicle);
 
         $vehicle->load(['category', 'pricing', 'images.attachment', 'pickupLocations.location']);
@@ -68,6 +69,7 @@ class VehicleController extends Controller
 
     public function update(UpdateVehicleRequest $request, Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('update', $vehicle);
 
         $vehicle = $this->repo->update($vehicle, $request);
@@ -79,6 +81,7 @@ class VehicleController extends Controller
 
     public function destroy(Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('delete', $vehicle);
 
         $name = $vehicle->title;
@@ -91,21 +94,10 @@ class VehicleController extends Controller
 
     public function publish(Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('publish', $vehicle);
 
-        $shop = $vehicle->shop;
-        abort_unless(
-            $shop?->isVerified() || PlatformSetting::get('allow_unapproved_owner_publishing', false),
-            403,
-            'Your rental shop must be verified before you can publish listings.'
-        );
-
-        abort_if($vehicle->moderation_status === Vehicle::MODERATION_FLAGGED, 422,
-            'This listing was taken offline by the platform' . ($vehicle->moderation_note ? ": {$vehicle->moderation_note}" : '') . '. Please contact the platform admin to have it republished.');
-
-        abort_unless($vehicle->moderation_status === Vehicle::MODERATION_APPROVED, 422,
-            'This vehicle must pass moderation before it can be published.');
-
+        $this->repo->assertCanPublish($vehicle);
         app(SubscriptionService::class)->ensureCanPublish($vehicle);
 
         $vehicle = $this->repo->publish($vehicle);
@@ -115,6 +107,7 @@ class VehicleController extends Controller
 
     public function unpublish(Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('update', $vehicle);
 
         $vehicle = $this->repo->unpublish($vehicle);
@@ -124,6 +117,7 @@ class VehicleController extends Controller
 
     public function archive(Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('delete', $vehicle);
 
         $vehicle = $this->repo->archive($vehicle);
@@ -133,6 +127,7 @@ class VehicleController extends Controller
 
     public function updatePricing(UpdateVehiclePricingRequest $request, Vehicle $vehicle): JsonResponse
     {
+        $this->assertRental($vehicle);
         $this->authorize('managePricing', $vehicle);
 
         $pricing = VehiclePricing::updateOrCreate(
@@ -143,5 +138,10 @@ class VehicleController extends Controller
         AuditService::edit('VehiclePricing', $vehicle->id, $vehicle->title);
 
         return $this->response('Pricing updated successfully', $pricing);
+    }
+
+    private function assertRental(Vehicle $vehicle): void
+    {
+        abort_if($vehicle->isForSale(), 404);
     }
 }

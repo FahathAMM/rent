@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingInspection;
+use App\Models\RentalShop;
 use App\Models\ShopSettings;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -101,18 +102,8 @@ class RentalAgreementService
 
         $handover?->loadMissing('conductedBy');
 
-        // The shop logo, embedded so DomPDF never fetches a URL.
-        $logo = null;
-        $logoPath = $booking->shop?->logo;
-        if ($logoPath && !str_starts_with($logoPath, 'http') && Storage::disk('public')->exists($logoPath)) {
-            $mime = Storage::disk('public')->mimeType($logoPath);
-            if (in_array($mime, ['image/png', 'image/jpeg', 'image/gif'], true)) {
-                $logo = "data:{$mime};base64," . base64_encode(Storage::disk('public')->get($logoPath));
-            }
-        }
-
         return Pdf::loadView('pdf.rental-agreement', [
-            'logo' => $logo,
+            'logo' => $this->logoDataUri($booking->shop),
             'booking' => $booking,
             'shop' => $booking->shop,
             'customer' => $booking->customer,
@@ -141,7 +132,22 @@ class RentalAgreementService
         ];
     }
 
-    private function decodePng(string $dataUrl): string
+    /** The shop logo, embedded so DomPDF never fetches a URL. */
+    public function logoDataUri(?RentalShop $shop): ?string
+    {
+        $logoPath = $shop?->logo;
+        if (!$logoPath || str_starts_with($logoPath, 'http') || !Storage::disk('public')->exists($logoPath)) {
+            return null;
+        }
+
+        $mime = Storage::disk('public')->mimeType($logoPath);
+
+        return in_array($mime, ['image/png', 'image/jpeg', 'image/gif'], true)
+            ? "data:{$mime};base64," . base64_encode(Storage::disk('public')->get($logoPath))
+            : null;
+    }
+
+    public function decodePng(string $dataUrl): string
     {
         if (!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#', $dataUrl, $m)) {
             throw ValidationException::withMessages(['customer_signature' => ['The signature must be a PNG image.']]);

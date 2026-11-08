@@ -48,8 +48,9 @@ class BookingController extends Controller
 
         $bookings = Booking::with('vehicle', 'customer', 'pricing')
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->search, fn ($q) => $q->where('booking_reference', 'like', "%{$request->search}%")
-                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$request->search}%")))
+            ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
+                ->where('booking_reference', 'like', "%{$request->search}%")
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$request->search}%"))))
             ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
@@ -167,6 +168,7 @@ class BookingController extends Controller
             Carbon::parse($request->validated('pickup_at'), config('app.timezone')),
             Carbon::parse($request->validated('return_at'), config('app.timezone')),
             $request->validated('reason'),
+            $request->validated('refund_method'),
         );
 
         AuditService::edit('Booking', $booking->id, $booking->booking_reference, $old, [

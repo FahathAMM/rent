@@ -100,6 +100,43 @@ export const vendorService = {
     proof: (paymentId) => api.get(`/vendor/subscription/payments/${paymentId}/proof`, { responseType: "blob" }),
   },
 
+  /** Business reports, by the slug in ShopReportService::REPORTS. params are { from?, to? }. */
+  reports: {
+    get: (report, params) => api.get(`/vendor/reports/${report}`, { params }),
+    /** format is pdf or csv. */
+    export: (report, format, params) => api.get(`/vendor/reports/${report}/export`, { params: { ...params, format }, responseType: "blob" }),
+  },
+
+  /** Vehicle sales: listings, the enquiry inbox, sold cars and sale terms. Photos reuse vehicleService. */
+  sales: {
+    listings: {
+      getOne: (id) => api.get(`/vendor/sales/listings/${id}`),
+      create: (data) => api.post("/vendor/sales/listings", data),
+      update: (id, data) => api.put(`/vendor/sales/listings/${id}`, data),
+      delete: (id) => api.delete(`/vendor/sales/listings/${id}`),
+      publish: (id) => api.post(`/vendor/sales/listings/${id}/publish`),
+      withdraw: (id) => api.post(`/vendor/sales/listings/${id}/withdraw`),
+      moveToRent: (id) => api.post(`/vendor/sales/listings/${id}/move-to-rent`),
+    },
+    /** A rental vehicle becomes a sale listing. `data` is the sale fields. */
+    moveToSale: (vehicleId, data) => api.post(`/vendor/sales/vehicles/${vehicleId}/move-to-sale`, data),
+    /** { buyer_name, buyer_phone, buyer_nic, sale_price, payment_method, enquiry_reference?, customer_signature?, terms_accepted? } */
+    recordSale: (vehicleId, data) => api.post(`/vendor/sales/listings/${vehicleId}/sell`, data),
+    enquiries: {
+      getOne: (reference) => api.get(`/vendor/sales/enquiries/${reference}`),
+      reply: (reference, body) => api.post(`/vendor/sales/enquiries/${reference}/messages`, { body }),
+      close: (reference, reason) => api.post(`/vendor/sales/enquiries/${reference}/close`, { reason }),
+    },
+    sold: {
+      getOne: (reference) => api.get(`/vendor/sales/sold/${reference}`),
+      agreement: (reference) => api.get(`/vendor/sales/sold/${reference}/agreement`, { responseType: "blob" }),
+    },
+    terms: {
+      get: () => api.get("/vendor/sales/terms"),
+      update: (terms) => api.put("/vendor/sales/terms", { terms }),
+    },
+  },
+
   /** The shop's own roles — shop owner only. See Vendor\ShopRoleController (backend). */
   roles: {
     getAll: () => api.get("/vendor/roles"),

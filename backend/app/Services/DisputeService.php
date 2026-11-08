@@ -6,6 +6,7 @@ use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\Dispute;
 use App\Models\DisputeMessage;
+use App\Models\Customer;
 use App\Models\SystemAdmin;
 use App\Notifications\MarketplaceNotification;
 use Illuminate\Support\Facades\DB;
@@ -28,19 +29,34 @@ class DisputeService
 
     public function create(User $user, Booking $booking, string $raisedBySide, array $data): Dispute
     {
-        if (!in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true)) {
+        return $this->createForParty($booking, $raisedBySide, $data, $user->id, null);
+    }
+
+    public function createForCustomer(Customer $customer, Booking $booking, array $data): Dispute
+    {
+        return $this->createForParty($booking, 'customer', $data, null, $customer->id);
+    }
+
+    private function createForParty(Booking $booking, string $raisedBySide, array $data, ?int $userId, ?int $customerId): Dispute
+    {
+        if (!in_array(
+            $booking->status,
+            [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED],
+            true
+        )) {
             throw ValidationException::withMessages(['booking' => ['A dispute can only be raised on a confirmed, active, or completed booking.']]);
         }
 
-        return DB::transaction(function () use ($user, $booking, $raisedBySide, $data) {
-            $dispute = Dispute::create($data + [
+        return DB::transaction(function () use ($booking, $raisedBySide, $data, $userId, $customerId) {
+            $dispute = Dispute::create(array_merge($data, [
                 'dispute_reference' => 'DSP-' . Str::upper(Str::random(10)),
                 'booking_id' => $booking->id,
-                'raised_by_user_id' => $user->id,
+                'raised_by_user_id' => $userId,
+                'raised_by_customer_id' => $customerId,
                 'raised_by_side' => $raisedBySide,
                 'status' => Dispute::STATUS_OPEN,
                 'priority' => $data['priority'] ?? 'normal',
-            ]);
+            ]));
 
             $booking->update(['has_open_dispute' => true]);
 
@@ -50,6 +66,14 @@ class DisputeService
                 body: "A dispute was raised on booking {$booking->booking_reference}: {$dispute->subject}",
                 actionUrl: '/account/disputes/' . $dispute->dispute_reference,
             ));
+
+            PlatformNotifier::notify(
+                'dispute_opened',
+                'New dispute',
+                "{$dispute->dispute_reference} on booking {$booking->booking_reference}: {$dispute->subject}",
+                '/platform/disputes/' . $dispute->dispute_reference,
+                ['dispute_id' => $dispute->id],
+            );
 
             return $dispute;
         });
@@ -85,7 +109,7 @@ class DisputeService
             if ($booking && $posterSide !== null) {
                 $this->notifyCounterpart($booking, $posterSide, $notification);
             } elseif ($booking) {
-                $dispute->raisedBy?->notify($notification);
+                $this->notifyRaiser($dispute, $notification);
                 $this->notifyCounterpart($booking, $dispute->raised_by_side, $notification);
             }
         }
@@ -127,7 +151,7 @@ class DisputeService
                 body: "Dispute {$dispute->dispute_reference} on booking {$booking->booking_reference} has been resolved.",
                 actionUrl: '/account/disputes/' . $dispute->dispute_reference,
             );
-            $dispute->raisedBy?->notify($notification);
+            $this->notifyRaiser($dispute, $notification);
             $this->notifyCounterpart($booking, $dispute->raised_by_side, $notification);
 
             return $dispute->fresh();
@@ -155,5 +179,11 @@ class DisputeService
         } else {
             $booking->customer?->notify($notification);
         }
+    }
+
+    private function notifyRaiser(Dispute $dispute, MarketplaceNotification $notification): void
+    {
+        $dispute->raisedBy?->notify($notification);
+        $dispute->raisedByCustomer?->notify($notification);
     }
 }

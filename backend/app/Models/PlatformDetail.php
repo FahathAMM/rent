@@ -13,6 +13,7 @@ class PlatformDetail extends Model
     protected $fillable = [
         'name', 'logo', 'login_logo', 'tagline',
         'login_eyebrow', 'login_heading', 'login_description',
+        'support_email', 'support_phone', 'support_whatsapp', 'support_address', 'support_hours',
     ];
 
     public static function current(): ?self

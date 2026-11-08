@@ -3,7 +3,7 @@ import { Building2 } from "lucide-react";
 
 /**
  * Real shop logos only, duplicated once for the seamless .animate-marquee
- * loop (see TrustMarquee / globals.css). Needs at least a handful of
+ * loop (see globals.css). Needs at least a handful of
  * shops to look continuous rather than choppy — callers should only
  * render this once `shops.length` clears a small floor.
  */

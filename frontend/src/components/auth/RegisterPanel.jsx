@@ -14,6 +14,7 @@ const EMPTY_FORM = {
   phone: "",
   password: "",
   password_confirmation: "",
+  terms_accepted: false,
 };
 
 export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
@@ -54,7 +55,7 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
 
       <div className="mb-4 space-y-1 text-center lg:text-left">
         <h2 className="text-lg font-semibold tracking-tight">Create your account</h2>
-        <p className="text-muted-foreground text-xs">Rent any vehicle, anywhere in Sri Lanka</p>
+        <p className="text-muted-foreground text-xs">Rent or buy a vehicle, anywhere in Sri Lanka</p>
       </div>
 
       <RegisterFormFields

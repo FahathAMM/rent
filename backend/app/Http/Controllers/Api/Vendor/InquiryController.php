@@ -7,6 +7,7 @@ use App\Http\Requests\Vendor\ReplyInquiryRequest;
 use App\Models\VehicleInquiry;
 use App\Services\AuthUser;
 use App\Services\InquiryService;
+use App\Support\ShopGate;
 use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,10 @@ class InquiryController extends Controller
 {
     use JsonResponseTrait;
 
-    public function __construct(private InquiryService $service) {}
+    public function __construct(private InquiryService $service)
+    {
+        $this->middleware('can:vendor-vehicles-inquiries-view')->only('index');
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -27,9 +31,10 @@ class InquiryController extends Controller
 
         $inquiries = VehicleInquiry::where('shop_id', VendorContext::shopId())
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%")
+            ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
+                ->where('name', 'like', "%{$request->search}%")
                 ->orWhere('email', 'like', "%{$request->search}%")
-                ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%")))
+                ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%"))))
             ->with('vehicle:id,title')
             ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
@@ -40,6 +45,7 @@ class InquiryController extends Controller
     public function reply(ReplyInquiryRequest $request, VehicleInquiry $inquiry): JsonResponse
     {
         abort_unless($inquiry->shop_id === VendorContext::shopId(), 404);
+        abort_unless(ShopGate::allowsCurrent(AuthUser::user(), 'vendor-vehicles-inquiries-edit'), 403);
 
         $inquiry = $this->service->reply(AuthUser::user(), $inquiry, $request->validated('reply_message'));
 

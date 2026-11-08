@@ -9,13 +9,11 @@ use Illuminate\Support\Facades\Schema;
  * Paid visibility — app-doc/marketplace/10-monetization.md 2.2.
  *
  *  promotion_packages  What can be bought: "featured" (one vehicle at the top of search, the home row, a badge)
- *                      or "sponsored" (a shop pinned at the top of one category's or its city's results),
+ *                      or "sponsored" (a shop pinned at the top of its city's results),
  *                      each for N days at a price. Admin-editable.
  *  promotions          One purchase / admin grant. Live while approved and starts_at <= now < ends_at —
  *                      worked out at read time, nothing runs on a schedule. Receipt = Attachment
  *                      (document_type promotion_proof).
- *
- * Replaces vehicles.is_featured / featured_until: listings featured today become 30-day granted promotions.
  */
 return new class extends Migration
 {
@@ -41,9 +39,7 @@ return new class extends Migration
             $table->foreignId('package_id')->nullable()->constrained('promotion_packages')->nullOnDelete();
             $table->string('type', 20);                   // featured | sponsored
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->cascadeOnDelete();     // featured
-            $table->string('target_type', 20)->nullable(); // sponsored: category | city
-            $table->foreignId('category_id')->nullable()->constrained('vehicle_categories')->cascadeOnDelete();
-            $table->string('city', 100)->nullable();
+            $table->string('city', 100)->nullable();        // sponsored
             $table->unsignedSmallInteger('days');
             $table->decimal('amount', 12, 2)->default(0);
             $table->string('kind', 20)->default('paid');  // paid | granted
@@ -79,37 +75,10 @@ return new class extends Migration
                 'description' => $description, 'type' => 'integer', 'is_public' => false, 'created_at' => $now, 'updated_at' => $now,
             ]);
         }
-
-        // Today's featured listings carry on as 30-day (or their own end date) granted promotions.
-        $featured = DB::table('vehicles')->where('is_featured', true)->get(['id', 'shop_id', 'featured_until']);
-        foreach ($featured as $i => $vehicle) {
-            $ends = $vehicle->featured_until && $vehicle->featured_until > $now ? $vehicle->featured_until : $now->copy()->addDays(30);
-            DB::table('promotions')->insert([
-                'reference_no' => 'PRM-' . $now->format('ymd') . '-M' . str_pad((string) ($i + 1), 4, '0', STR_PAD_LEFT),
-                'shop_id' => $vehicle->shop_id, 'type' => 'featured', 'vehicle_id' => $vehicle->id,
-                'days' => 30, 'amount' => 0, 'kind' => 'granted', 'status' => 'approved',
-                'starts_at' => $now, 'ends_at' => $ends, 'note' => 'Featured before promotions existed',
-                'reviewed_at' => $now, 'created_at' => $now, 'updated_at' => $now,
-            ]);
-        }
-
-        Schema::table('vehicles', function (Blueprint $table) {
-            $table->dropIndex(['is_featured', 'featured_until']);
-            $table->dropColumn(['is_featured', 'featured_until']);
-        });
     }
 
     public function down(): void
     {
-        Schema::table('vehicles', function (Blueprint $table) {
-            $table->boolean('is_featured')->default(false);
-            $table->timestamp('featured_until')->nullable();
-            $table->index(['is_featured', 'featured_until']);
-        });
-        DB::table('promotions')->where('type', 'featured')->where('status', 'approved')->where('ends_at', '>', now())
-            ->get(['vehicle_id', 'ends_at'])
-            ->each(fn ($p) => DB::table('vehicles')->where('id', $p->vehicle_id)->update(['is_featured' => true, 'featured_until' => $p->ends_at]));
-
         Schema::dropIfExists('promotions');
         Schema::dropIfExists('promotion_packages');
         DB::table('platform_settings')->where('group', 'promotions')->delete();

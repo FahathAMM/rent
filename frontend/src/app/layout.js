@@ -8,10 +8,10 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: {
-    default: "LankaLane — Vehicle rentals from trusted shops across Sri Lanka",
+    default: "LankaLane — Rent or buy vehicles from trusted shops across Sri Lanka",
     template: "%s | LankaLane",
   },
-  description: "Compare and hire cars, vans and SUVs from verified rental shops across Sri Lanka.",
+  description: "Compare, rent and buy cars, vans and SUVs from verified shops across Sri Lanka.",
 };
 
 export default function RootLayout({ children }) {

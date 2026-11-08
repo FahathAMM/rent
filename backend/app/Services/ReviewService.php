@@ -43,6 +43,14 @@ class ReviewService
             'is_verified_booking' => true,
         ]);
 
+        PlatformNotifier::notify(
+            'review_submitted',
+            'Review waiting for moderation',
+            "{$review->rating}★ review on booking {$booking->booking_reference}.",
+            '/platform/reviews',
+            ['review_id' => $review->id],
+        );
+
         return $review;
     }
 

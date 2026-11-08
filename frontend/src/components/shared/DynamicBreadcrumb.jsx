@@ -17,7 +17,7 @@ import Link from "next/link";
 export default function DynamicBreadcrumb({ items = [] }) {
   return (
     <Breadcrumb className="rounded-lg border bg-card px-3 py-2 shadow-sm">
-      <BreadcrumbList className="flex-nowrap overflow-x-auto">
+      <BreadcrumbList className="no-scrollbar flex-nowrap overflow-x-auto">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
 

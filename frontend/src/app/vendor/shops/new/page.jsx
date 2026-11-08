@@ -38,10 +38,10 @@ const TAGLINE_MAX = 255;
 const GRADIENT = "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90";
 
 const BENEFITS = [
-  { icon: Users, title: "Reach more renters", body: "List on the marketplace and get found by travellers island-wide." },
-  { icon: CarFront, title: "Manage your fleet", body: "Vehicles, pricing, availability and photos in one place." },
+  { icon: Users, title: "Reach more customers", body: "List on the marketplace and get found by renters and buyers island-wide." },
+  { icon: CarFront, title: "Manage your vehicles", body: "Rentals, sale listings, pricing and photos in one place." },
   { icon: Wallet, title: "Get paid directly", body: "Customers pay you in cash at pickup or by bank transfer to your account." },
-  { icon: ShieldCheck, title: "Verified badge", body: "Verified shops earn renters' trust and rank higher." },
+  { icon: ShieldCheck, title: "Verified badge", body: "Verified shops earn customers' trust and rank higher." },
 ];
 
 const NEXT_STEPS = [
@@ -206,7 +206,7 @@ export default function NewShopPage() {
               <p className="mb-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
                 <Sparkles className="h-3 w-3" /> Become a vendor
               </p>
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Register a Rental Shop</h1>
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Register a Shop</h1>
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
                 Run a business with multiple vehicles and staff. Registration takes a few minutes — your vendor workspace opens once our team verifies your shop.
               </p>
@@ -234,9 +234,9 @@ export default function NewShopPage() {
             <form onSubmit={handleRegister} className="space-y-5">
               <ValidationError errors={errors} />
 
-              <Section icon={Building2} title="Shop identity" description="How renters will see your business on the marketplace.">
+              <Section icon={Building2} title="Shop identity" description="How customers will see your business on the marketplace.">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <TextInput label="Shop Name" placeholder="e.g. Island Car Rentals" value={form.name} onChange={fi("name")} required error={errors.name?.[0]} />
+                  <TextInput label="Shop Name" placeholder="e.g. Island Motors" value={form.name} onChange={fi("name")} required error={errors.name?.[0]} />
                   <div>
                     <TextInput label="Tagline" placeholder="e.g. Explore Sri Lanka your way" maxLength={TAGLINE_MAX} value={form.tagline} onChange={fi("tagline")} error={errors.tagline?.[0]} />
                     <p className="mt-1 text-right text-[11px] text-muted-foreground">{form.tagline.length}/{TAGLINE_MAX}</p>
@@ -244,7 +244,7 @@ export default function NewShopPage() {
                 </div>
                 <TextareaInput
                   label="Description"
-                  placeholder="Tell renters about your fleet, service area, and what makes you different…"
+                  placeholder="Tell customers about your vehicles, service area, and what makes you different…"
                   rows={4}
                   value={form.description}
                   onChange={fi("description")}
@@ -252,7 +252,7 @@ export default function NewShopPage() {
                 />
               </Section>
 
-              <Section icon={Phone} title="Contact" description="Renters use these to reach you about bookings.">
+              <Section icon={Phone} title="Contact" description="Customers use these to reach you.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TextInput label="Email" required type="email" placeholder="bookings@yourshop.lk" value={form.email} onChange={fi("email")} error={errors.email?.[0]} />
                   <TextInput label="Phone" required type="tel" placeholder="07X XXX XXXX" value={form.phone} onChange={fi("phone")} error={errors.phone?.[0]} />
@@ -261,7 +261,7 @@ export default function NewShopPage() {
                 </div>
               </Section>
 
-              <Section icon={MapPin} title="Location" description="Your main branch — renters filter shops by district and city.">
+              <Section icon={MapPin} title="Location" description="Your main branch — customers filter shops by district and city.">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <TextInput label="Address Line 1" required placeholder="No. 12, Galle Road" value={form.address_line_1} onChange={fi("address_line_1")} error={errors.address_line_1?.[0]} />
                   <TextInput label="Address Line 2" value={form.address_line_2} onChange={fi("address_line_2")} error={errors.address_line_2?.[0]} />
@@ -416,7 +416,7 @@ function ShopPreview({ shop }) {
         </div>
         <p className={cn("mt-2 truncate font-semibold", !shop.name && "text-muted-foreground")}>{shop.name || "Your shop name"}</p>
         <p className={cn("line-clamp-2 text-sm", shop.tagline ? "text-muted-foreground" : "italic text-muted-foreground/60")}>
-          {shop.tagline || "A short tagline renters will see"}
+          {shop.tagline || "A short tagline customers will see"}
         </p>
         <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
           <PreviewLine icon={MapPin} value={place} fallback="City, District" />

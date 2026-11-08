@@ -69,7 +69,7 @@ return [
     |
     */
 
-    'timezone' => 'Asia/Colombo',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Colombo'),
 
     /*
     |--------------------------------------------------------------------------

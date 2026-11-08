@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BookingDateRange } from "./BookingDateRange";
 import { CheckboxInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
 import { Banknote, Landmark, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { APP_TIMEZONE_OFFSET, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // What a signed-out customer had filled in when they hit "Log in to book",
@@ -42,11 +42,8 @@ function daysBetween(from, to) {
 }
 
 /**
- * Submits -> pending (see app-doc/marketplace/04-lifecycles.md). Fixed
- * 10:00 pickup/return time rather than a separate time picker — matches
- * MarketplaceDemoSeeder's convention and keeps the first version of this
- * widget simple; a time picker is a small, isolated follow-up, not a
- * structural change.
+ * Submits -> pending (see app-doc/marketplace/04-lifecycles.md). The shop
+ * chooses default pickup and return times in its profile settings.
  */
 export function BookingRequestWidget({ vehicle }) {
   const router = useRouter();
@@ -98,6 +95,8 @@ export function BookingRequestWidget({ vehicle }) {
 
   const rentalDays = daysBetween(range.from, range.to);
   const pricing = vehicle.pricing;
+  const pickupTime = vehicle.shop?.booking_pickup_time?.slice(0, 5) || "10:00";
+  const returnTime = vehicle.shop?.booking_return_time?.slice(0, 5) || "10:00";
 
   const estimate = useMemo(() => {
     if (!rentalDays || !pricing) return null;
@@ -131,8 +130,8 @@ export function BookingRequestWidget({ vehicle }) {
 
     create.mutate({
       vehicle_id: vehicle.id,
-      pickup_at: `${range.from}T10:00:00`,
-      return_at: `${range.to}T10:00:00`,
+      pickup_at: `${range.from}T${pickupTime}:00${APP_TIMEZONE_OFFSET}`,
+      return_at: `${range.to}T${returnTime}:00${APP_TIMEZONE_OFFSET}`,
       with_driver: withDriver,
       delivery_requested: deliveryRequested,
       customer_note: note || undefined,
@@ -145,6 +144,9 @@ export function BookingRequestWidget({ vehicle }) {
       <ValidationError errors={errors} />
 
       <BookingDateRange vehicle={vehicle} label="Pickup & return dates" value={range} onChange={setRange} placeholder="Choose your dates" />
+      <p className="text-xs text-muted-foreground">
+        Pickup {pickupTime} · Return {returnTime} (Sri Lanka time)
+      </p>
 
       {pricing?.driver_rate_per_day > 0 && (
         <CheckboxInput label={`Add a driver (+${format(pricing.driver_rate_per_day)}/day)`} checked={withDriver} onChange={setWithDriver} />

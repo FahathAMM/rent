@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { NumberInput, TextInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { Banknote, CheckCircle2, FileText, Landmark, Loader2, Plus, ReceiptText, Wallet, XCircle } from "lucide-react";
-import { cn, formatDateTime, openBlob } from "@/lib/utils";
+import { cn, formatDateTime, fromAppDateTimeInput, openBlob, toAppDateTimeInput } from "@/lib/utils";
 import { isMoneyLine, lineDelta, lineLabel, statementSummary } from "@/lib/statement";
 import { toast } from "sonner";
 
@@ -35,6 +35,8 @@ export function ShopPaymentsCard({ booking, canEdit, onChanged, summaryExtra, de
   const [recording, setRecording] = useState(false);
   const payments = booking.payments ?? [];
   const open = ["confirmed", "active"].includes(booking.status);
+  // An extended rental can still owe a balance after the vehicle is back.
+  const canRecord = open || booking.status === "completed";
   const balance = Number(booking.balance_due ?? 0);
   const summary = statementSummary(payments);
 
@@ -63,11 +65,11 @@ export function ShopPaymentsCard({ booking, canEdit, onChanged, summaryExtra, de
         <div>
           <CardTitle className="flex items-center gap-2 text-base"><Wallet className="h-4 w-4" /> Payments & statement</CardTitle>
           <CardDescription>
-            Received {format(booking.amount_paid ?? 0)} · {format(balance)} still due{balance > 0 && open ? " (collect any rest in cash at handover)" : ""}.
+            Received {format(booking.amount_paid ?? 0)} · {format(balance)} still due{balance > 0 && booking.status === "confirmed" ? " (collect any rest in cash at handover)" : ""}.
             {booking.payment_method === "bank_transfer" && " Check your bank account before verifying a receipt."}
           </CardDescription>
         </div>
-        {canEdit && open && balance > 0 && (
+        {canEdit && canRecord && balance > 0 && (
           <Button size="sm" className="gap-1.5" onClick={() => setRecording(true)}><Plus className="h-3.5 w-3.5" /> Record payment</Button>
         )}
       </CardHeader>
@@ -185,9 +187,7 @@ export function ShopPaymentsCard({ booking, canEdit, onChanged, summaryExtra, de
 
 /** "YYYY-MM-DDTHH:mm" in the browser's local time — the max a datetime-local input accepts for "now". */
 function nowLocal() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return toAppDateTimeInput(new Date());
 }
 
 /** Mounted only while open, so every opening starts from a clean form. */
@@ -207,8 +207,8 @@ function RecordPaymentDialog({ booking, balance, onClose, onSaved }) {
     mutationFn: () => {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => v !== "" && fd.append(k, v));
-      // datetime-local is the vendor's local time with no zone; the API runs in UTC, so send an explicit UTC instant.
-      if (form.paid_at) fd.set("paid_at", new Date(form.paid_at).toISOString());
+      // datetime-local has no zone; interpret it consistently as Sri Lanka time.
+      if (form.paid_at) fd.set("paid_at", fromAppDateTimeInput(form.paid_at));
       if (file) fd.append("proof", file);
       return vendorService.bookings.recordPayment(booking.booking_reference, fd);
     },
@@ -227,7 +227,7 @@ function RecordPaymentDialog({ booking, balance, onClose, onSaved }) {
       setErrors({ amount: [`Enter an amount up to the ${format(balance)} still due.`] });
       return;
     }
-    if (form.paid_at && new Date(form.paid_at) > new Date()) {
+    if (form.paid_at && Date.parse(fromAppDateTimeInput(form.paid_at)) > Date.now()) {
       setErrors({ paid_at: ["The date received can't be in the future."] });
       return;
     }

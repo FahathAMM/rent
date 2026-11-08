@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HowItWorksSection } from "@/components/public/HowItWorksSection";
-import { ShieldCheck, Wallet, Clock, ArrowRight } from "lucide-react";
+import { HowBuyingWorks } from "@/app/(public)/buy/components/HowBuyingWorks";
+import { ShieldCheck, Wallet, Clock, ArrowRight, Handshake } from "lucide-react";
 
 const FOR_SHOPS = [
-  { title: "Register your shop", body: "Tell us about your rental business and upload your business registration — it only takes a few minutes." },
+  { title: "Register your shop", body: "Tell us about your business and upload your business registration — it only takes a few minutes." },
   { title: "Get verified", body: "Our team reviews your documents and publishes your shop once verified." },
-  { title: "Get booked & paid", body: "Accept booking requests, hand the vehicle over, and get paid out automatically." },
+  { title: "Rent, sell & get paid", body: "List vehicles for rent or for sale, accept bookings, answer buyers' enquiries, and get paid directly by your customers." },
 ];
 
 export default function HowItWorksPage() {
@@ -20,7 +21,7 @@ export default function HowItWorksPage() {
         <div className="relative mx-auto max-w-6xl px-4 py-16 text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">How it works</h1>
           <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-            Renting a vehicle — or listing your shop&apos;s fleet — only takes a few steps.
+            Renting or buying a vehicle — or listing your shop&apos;s vehicles — only takes a few steps.
           </p>
         </div>
       </section>
@@ -28,11 +29,26 @@ export default function HowItWorksPage() {
       <div className="mx-auto max-w-6xl px-4 py-14">
         <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">For renters</h2>
         <HowItWorksSection />
+        <div className="mt-8 flex justify-center">
+          <Button asChild variant="outline" size="lg">
+            <Link href="/rent">See vehicles for rent <ArrowRight className="ml-2 h-4 w-4" /></Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pb-14">
+        <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">For buyers</h2>
+        <HowBuyingWorks />
+        <div className="mt-8 flex justify-center">
+          <Button asChild variant="outline" size="lg">
+            <Link href="/buy">See vehicles for sale <ArrowRight className="ml-2 h-4 w-4" /></Link>
+          </Button>
+        </div>
       </div>
 
       <div className="border-y bg-muted/30">
         <div className="mx-auto max-w-6xl px-4 py-14">
-          <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">For rental shops</h2>
+          <h2 className="mb-8 text-center text-xl font-semibold tracking-tight">For shops</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             {FOR_SHOPS.map(({ title, body }, i) => (
               <div key={title} className="rounded-2xl border bg-card p-6 shadow-sm">
@@ -51,12 +67,12 @@ export default function HowItWorksPage() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-14">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex items-start gap-3 rounded-2xl border bg-card p-5">
             <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
             <div>
               <h3 className="font-semibold">Verified shops</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Every rental shop is verified before it can publish a listing.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Every shop is verified before it can publish a listing.</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-2xl border bg-card p-5">
@@ -71,6 +87,13 @@ export default function HowItWorksPage() {
             <div>
               <h3 className="font-semibold">Fast booking requests</h3>
               <p className="mt-1 text-sm text-muted-foreground">Shops typically respond within hours, not days.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 rounded-2xl border bg-card p-5">
+            <Handshake className="h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <h3 className="font-semibold">See before you buy</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Nothing for a sale is paid online. See the vehicle first, then pay the shop directly.</p>
             </div>
           </div>
         </div>

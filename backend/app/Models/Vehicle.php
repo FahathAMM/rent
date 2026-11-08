@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Administration\User;
 use App\Models\Concerns\BelongsToShop;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,10 @@ class Vehicle extends Model
 {
     use HasFactory, BelongsToShop, SoftDeletes;
 
+    /** A vehicle is one or the other, never both — see app-doc/marketplace/13-vehicle-sales.md. */
+    public const LISTING_RENT = 'rent';
+    public const LISTING_SALE = 'sale';
+
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PENDING_REVIEW = 'pending_review';
     public const STATUS_PUBLISHED = 'published';
@@ -37,7 +42,7 @@ class Vehicle extends Model
     public const MODERATION_FLAGGED = 'flagged';
 
     protected $fillable = [
-        'shop_id', 'category_id', 'brand_id', 'model_id', 'variant_id', 'colour_id', 'created_by',
+        'shop_id', 'listing_type', 'category_id', 'brand_id', 'model_id', 'variant_id', 'colour_id', 'created_by',
         'title', 'slug', 'make', 'model', 'year', 'variant', 'colour', 'registration_number',
         'transmission', 'fuel_type', 'engine_capacity_cc', 'seating_capacity', 'luggage_capacity',
         'doors', 'air_conditioned', 'features', 'description', 'condition_notes',
@@ -54,6 +59,21 @@ class Vehicle extends Model
     ];
 
     private ?bool $featuredCache = null;
+
+    public function scopeForRent(Builder $query): Builder
+    {
+        return $query->where('vehicles.listing_type', self::LISTING_RENT);
+    }
+
+    public function scopeForSale(Builder $query): Builder
+    {
+        return $query->where('vehicles.listing_type', self::LISTING_SALE);
+    }
+
+    public function isForSale(): bool
+    {
+        return $this->listing_type === self::LISTING_SALE;
+    }
 
     /**
      * Featured right now (a live "featured" promotion). Search adds it as a column
@@ -125,6 +145,11 @@ class Vehicle extends Model
     public function pricing(): HasOne
     {
         return $this->hasOne(VehiclePricing::class);
+    }
+
+    public function saleDetail(): HasOne
+    {
+        return $this->hasOne(VehicleSaleDetail::class);
     }
 
     public function pickupLocations(): HasMany

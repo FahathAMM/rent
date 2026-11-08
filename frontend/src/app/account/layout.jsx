@@ -16,6 +16,8 @@ import { Loader2, Menu } from "lucide-react";
 const CUSTOMER_NAV_ITEMS = [
   { id: "dashboard", name: "Dashboard", route_name: "/account/dashboard", icon: "LayoutDashboard" },
   { id: "bookings", name: "My Bookings", route_name: "/account/bookings", icon: "CalendarCheck" },
+  { id: "enquiries", name: "Enquiries", route_name: "/account/enquiries", icon: "MessageCircle" },
+  { id: "notifications", name: "Notifications", route_name: "/account/notifications", icon: "Bell" },
   { id: "favorites", name: "Favorites", route_name: "/account/favorites", icon: "Heart" },
   { id: "reviews", name: "My Reviews", route_name: "/account/reviews", icon: "Star" },
   { id: "disputes", name: "Disputes", route_name: "/account/disputes", icon: "AlertTriangle" },
@@ -57,7 +59,7 @@ export default function AccountLayout({ children }) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex min-h-screen flex-1 flex-col lg:ml-64">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:ml-64">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b bg-background px-4 py-3 lg:hidden">
           <Button variant="outline" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-4 w-4" />
@@ -65,7 +67,7 @@ export default function AccountLayout({ children }) {
         </header>
 
         {/* Every page sits in one framed panel on the tinted background, left/right edges shared — pages don't add their own centering. */}
-        <main className="relative isolate flex flex-1 flex-col p-3 sm:p-5 lg:p-6">
+        <main className="relative isolate flex min-w-0 flex-1 flex-col p-3 sm:p-5 lg:p-6">
           {/* Soft brand-colour washes behind the panel so the page never reads as flat grey. */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute -top-32 right-0 size-[28rem] rounded-full bg-pink-400/15 blur-3xl" />

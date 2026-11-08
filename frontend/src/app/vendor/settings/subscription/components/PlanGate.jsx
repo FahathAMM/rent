@@ -5,7 +5,7 @@ import { Crown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "./useSubscription";
 
-const FEATURE_LABELS = { calendar: "The availability calendar", expenses: "Expenses", staff: "Staff & roles" };
+const FEATURE_LABELS = { calendar: "The availability calendar", expenses: "Expenses", staff: "Staff & roles", sales: "Vehicle sales", reports: "Business reports" };
 
 /**
  * Wraps a vendor page whose feature depends on the plan (used from each

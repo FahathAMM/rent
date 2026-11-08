@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { vendorService } from "@/services/vendorService";
+import { useAuthStore } from "@/store/authStore";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { ActionButton } from "@/components/Datatable/ActionButton";
@@ -16,6 +17,7 @@ import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function VendorInquiriesPage() {
+  const canReply = useAuthStore((s) => s.can("vendor-vehicles-inquiries-edit"));
   const [selected, setSelected] = useState(null);
   const [draft, setDraft] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -48,7 +50,7 @@ export default function VendorInquiriesPage() {
       header: "Actions",
       cell: (row) => row.reply_message ? (
         <span className="text-xs font-medium text-emerald-600">Replied</span>
-      ) : (
+      ) : canReply && (
         <ActionButton onClick={() => openInquiry(row)} icon={MessageSquareReply} label="Reply" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
       ),
     },

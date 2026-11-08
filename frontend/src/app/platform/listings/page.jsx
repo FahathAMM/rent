@@ -12,6 +12,11 @@ import { Eye, Home, ImageOff, Star } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { WhatsAppTableActionButton } from "@/components/shared/WhatsAppShareButton";
 
+const LISTING_TYPE_OPTIONS = [
+  { value: "rent", label: "Rentals" },
+  { value: "sale", label: "For sale" },
+];
+
 const MODERATION_OPTIONS = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
@@ -23,6 +28,7 @@ const primaryImageUrl = (img) => (img?.attachment ? `/storage/${img.attachment.f
 
 export default function PlatformListingsPage() {
   const [moderationStatus, setModerationStatus] = useState("");
+  const [listingType, setListingType] = useState("");
 
   const columns = () => [
     {
@@ -47,6 +53,7 @@ export default function PlatformListingsPage() {
         );
       },
     },
+    { accessorKey: "listing_type", header: "Type", cell: (row) => (row.listing_type === "sale" ? "For sale" : "Rental") },
     { accessorKey: "category", header: "Category", cell: (row) => row.category?.name ?? "—" },
     { accessorKey: "status", header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
     { accessorKey: "moderation_status", header: "Moderation", cell: (row) => <StatusBadge status={row.moderation_status} /> },
@@ -75,9 +82,10 @@ export default function PlatformListingsPage() {
         endpoint="/platform/listings"
         columns={columns}
         breadcrumb={[]}
-        filters={{ moderation_status: moderationStatus || undefined }}
+        filters={{ moderation_status: moderationStatus || undefined, listing_type: listingType || undefined }}
       >
         <FilterSelect value={moderationStatus} onChange={setModerationStatus} options={MODERATION_OPTIONS} allLabel="All moderation states" />
+        <FilterSelect value={listingType} onChange={setListingType} options={LISTING_TYPE_OPTIONS} allLabel="Rentals and sales" />
       </ServerDataTable>
     </HomePageWrapper>
   );

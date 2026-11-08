@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 
 /**
  * The managed vehicle lists under a brand - models, variants and colours.
- * Feeds the vendor vehicle form's cascading dropdowns and the /browse
+ * Feeds the vendor vehicle form's cascading dropdowns and the /rent
  * filters. Only active entries; models also carry how many publicly
  * visible vehicles they have (same rules as search, via PublicVehicleRepo).
  */

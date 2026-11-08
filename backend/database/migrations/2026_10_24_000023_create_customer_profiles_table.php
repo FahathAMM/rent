@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('customer_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('user_id')->unique()->constrained('customers')->cascadeOnDelete();
             $table->text('nic_number')->nullable(); // encrypted cast
             $table->text('driving_licence_no')->nullable(); // encrypted cast
             $table->string('licence_country')->nullable();
