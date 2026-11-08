@@ -16,7 +16,8 @@ class UpdateCategoryRequest extends FormRequest
             'parent_id' => ['nullable', 'integer', 'exists:vehicle_categories,id', 'different:' . $categoryId],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:vehicle_categories,slug,' . $categoryId],
-            'icon' => ['nullable', 'string', 'max:100'],
+            // A react-icons component name, e.g. MdDirectionsCarFilled (see frontend/src/lib/vehicleTypeIcons.jsx).
+            'icon' => ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z][A-Za-z0-9]*$/'],
             'description' => ['nullable', 'string', 'max:1000'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
