@@ -17,6 +17,12 @@ use Illuminate\Http\Request;
  */
 class AuditLogController extends Controller
 {
+    /** Not a menu page, so no role can hold this permission: only the shop owner passes (Gate::before). */
+    public function __construct()
+    {
+        $this->middleware('can:vendor-audit-logs-view');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = AuditLog::with('user:id,name,email')

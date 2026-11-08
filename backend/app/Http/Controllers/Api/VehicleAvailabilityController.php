@@ -33,7 +33,7 @@ class VehicleAvailabilityController extends Controller
         $from = $request->from ? Carbon::parse($request->from, config('app.timezone')) : now()->startOfMonth();
         $to = $request->to ? Carbon::parse($request->to, config('app.timezone')) : $from->copy()->addDays(41);
 
-        $vehicles = Vehicle::with(['images' => fn ($q) => $q->where('is_primary', true)->with('attachment')])
+        $vehicles = Vehicle::forRent()->with(['images' => fn ($q) => $q->where('is_primary', true)->with('attachment')])
             ->orderBy('title')
             ->get(['id', 'title', 'registration_number']);
 
@@ -65,6 +65,8 @@ class VehicleAvailabilityController extends Controller
 
     public function block(BlockAvailabilityRequest $request, Vehicle $vehicle): JsonResponse
     {
+        abort_if($vehicle->isForSale(), 404);
+
         $period = Carbon::parse($request->from, config('app.timezone'))->toPeriod($request->to);
 
         $alreadyBooked = VehicleAvailability::where('vehicle_id', $vehicle->id)
@@ -88,6 +90,8 @@ class VehicleAvailabilityController extends Controller
 
     public function unblock(Request $request, Vehicle $vehicle): JsonResponse
     {
+        abort_if($vehicle->isForSale(), 404);
+
         $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from']]);
 
         VehicleAvailability::where('vehicle_id', $vehicle->id)

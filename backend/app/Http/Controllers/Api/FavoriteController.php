@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Public\VehicleResource;
 use App\Models\Favorite;
+use App\Models\Vehicle;
 use App\Queries\CustomerFavoriteQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,7 +49,7 @@ class FavoriteController extends Controller
 
     public function store(Request $request, int $vehicle): JsonResponse
     {
-        abort_unless(DB::table('vehicles')->where('id', $vehicle)->exists(), 404, 'Vehicle not found.');
+        abort_unless(DB::table('vehicles')->where('id', $vehicle)->where('listing_type', Vehicle::LISTING_RENT)->exists(), 404, 'Vehicle not found.');
 
         $favorite = Favorite::firstOrCreate([
             'user_id' => auth('customer')->id(),
