@@ -36,7 +36,7 @@ const SEARCH_MODES = [
 ];
 
 /** The home page hero: slideshow, headline, search card, shortcuts and stats. */
-export function HeroSection({ featured, saleTotal, heroSlides, categories, cities, shopsTotal }) {
+export function HeroSection({ featured, saleTotal, heroSlides, categories, allDistricts, shopsTotal }) {
   const router = useRouter();
   const t = useTranslations("home.hero");
   const [mode, setMode] = useState("rent");
@@ -46,7 +46,8 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, citie
   const [heroIndex, setHeroIndex] = useState(0);
   const heroSlide = heroSlides?.length ? heroSlides[heroIndex % heroSlides.length] : null;
 
-  const districts = Array.from(new Set((cities ?? []).map((c) => c.district).filter(Boolean))).sort();
+  // All 25 districts, not only ones with listings — same as the Rent page filter.
+  const districts = (allDistricts ?? []).map((d) => d.name).sort();
 
   const handleSearch = (e) => {
     e.preventDefault();
