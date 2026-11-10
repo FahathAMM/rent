@@ -76,7 +76,7 @@ class VehicleImageController extends Controller
         $wasPrimary = $image->is_primary;
         $attachment = $image->attachment;
 
-        // Demo photos are shared across vehicles (see DemoVehiclePhotoSeeder) —
+        // Demo photos are shared across vehicles (see F2VipRentalShopSeeder) —
         // only remove the file once no other attachment points at it.
         $sharedFile = $attachment && Attachment::where('disk', $attachment->disk)
             ->where('file_path', $attachment->file_path)

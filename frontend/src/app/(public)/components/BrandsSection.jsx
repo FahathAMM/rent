@@ -20,10 +20,9 @@ const BRAND_GRADIENTS = [
 const BRANDS_PREVIEW = 6;
 
 /**
- * Brands with vehicles first (most first). The preview always fills
- * BRANDS_PREVIEW tiles: if fewer brands have vehicles, it's topped up with
- * active brands that don't yet (logo'd ones first), shown as "Coming soon"
- * and not clickable. "Show all" only ever expands the brands with vehicles.
+ * Every active brand: the ones with vehicles first (most first), then the
+ * rest (logo'd ones first) as "Coming soon" tiles that aren't clickable.
+ * The preview shows the first BRANDS_PREVIEW; "Show all" shows every brand.
  */
 export function BrandsSection({ brands }) {
   const [showAll, setShowAll] = useState(false);
@@ -34,8 +33,8 @@ export function BrandsSection({ brands }) {
     .sort((a, b) => Number(!!b.logo_url) - Number(!!a.logo_url) || (a.sort_order ?? 0) - (b.sort_order ?? 0) || byName(a, b));
   const max = withVehicles[0]?.vehicles_count || 1;
   const total = withVehicles.reduce((sum, b) => sum + b.vehicles_count, 0);
-  const visible = showAll ? withVehicles : [...withVehicles, ...fillers].slice(0, BRANDS_PREVIEW);
-  const sorted = withVehicles;
+  const ordered = [...withVehicles, ...fillers];
+  const visible = showAll ? ordered : ordered.slice(0, BRANDS_PREVIEW);
 
   return (
     <section className="relative isolate overflow-hidden py-6 sm:py-10">
@@ -44,7 +43,7 @@ export function BrandsSection({ brands }) {
         <SectionHeader
           eyebrow="Choose your make"
           title="Browse by brand"
-          subtitle={`${total} vehicles from ${sorted.length} ${sorted.length === 1 ? "brand" : "brands"} — pick the make you love.`}
+          subtitle={`${total} vehicles from ${withVehicles.length} ${withVehicles.length === 1 ? "brand" : "brands"} — pick the make you love.`}
           href="/rent"
           linkLabel="See all rentals"
         />
@@ -68,7 +67,7 @@ export function BrandsSection({ brands }) {
                 {/* soft glow behind the mark */}
                 <span aria-hidden="true" className={cn("absolute left-1/2 top-4 size-20 -translate-x-1/2 rounded-full bg-gradient-to-br opacity-15 blur-2xl transition-opacity group-hover:opacity-30", gradient)} />
 
-                {i === 0 && !showAll && sorted.length > 1 && (
+                {i === 0 && withVehicles.length > 1 && (
                   <span className="absolute left-1.5 top-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-1.5 py-0.5 text-[8px] sm:left-2 sm:top-2 sm:px-2 sm:text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
                     Most popular
                   </span>
@@ -107,10 +106,10 @@ export function BrandsSection({ brands }) {
           })}
         </div>
 
-        {sorted.length > BRANDS_PREVIEW && (
+        {ordered.length > BRANDS_PREVIEW && (
           <div className="mt-6 flex justify-center sm:mt-8">
             <Button variant="outline" onClick={() => setShowAll((s) => !s)} className="gap-1.5 rounded-full px-6">
-              {showAll ? "Show fewer brands" : `Show all ${sorted.length} brands`}
+              {showAll ? "Show fewer brands" : `Show all ${ordered.length} brands`}
             </Button>
           </div>
         )}

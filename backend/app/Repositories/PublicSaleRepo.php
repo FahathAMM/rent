@@ -111,11 +111,20 @@ class PublicSaleRepo
      */
     public function filterOptions(?int $brandId): array
     {
-        $brandIds = $this->base()->whereNotNull('brand_id')->distinct()->pluck('brand_id');
+        // Every active brand, each with how many cars it has for sale - the ones with cars first.
+        $forSale = $this->base()->whereNotNull('brand_id')
+            ->selectRaw('brand_id, count(*) as aggregate')
+            ->groupBy('brand_id')
+            ->pluck('aggregate', 'brand_id');
         $modelIds = $brandId ? $this->base()->where('brand_id', $brandId)->whereNotNull('model_id')->distinct()->pluck('model_id') : collect();
 
+        $brands = VehicleBrand::where('is_active', true)->orderBy('name')->get(['id', 'name'])
+            ->each(fn (VehicleBrand $b) => $b->vehicles_count = (int) ($forSale[$b->id] ?? 0))
+            ->sortBy(fn (VehicleBrand $b) => $b->vehicles_count > 0 ? 0 : 1)
+            ->values();
+
         return [
-            'brands' => VehicleBrand::whereIn('id', $brandIds)->orderBy('name')->get(['id', 'name']),
+            'brands' => $brands,
             'models' => VehicleModel::whereIn('id', $modelIds)->orderBy('name')->get(['id', 'name']),
             'locations' => $this->base()
                 ->join('rental_shops', 'rental_shops.id', '=', 'vehicles.shop_id')
