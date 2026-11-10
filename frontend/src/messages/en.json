@@ -60,6 +60,7 @@
     "account": "Account",
     "createAccount": "Create an account",
     "help": "Help & Support",
+    "guide": "Customer guide",
     "staySafe": "Stay safe",
     "faq": "FAQ",
     "contact": "Contact us",
@@ -662,5 +663,114 @@
     "showMoreReviews": "Show more reviews",
     "policiesTitle": "Rental policies",
     "noPolicies": "This shop hasn’t added any policies yet — contact them for details."
+  },
+  "guide": {
+    "title": "Customer guide",
+    "description": "Everything you need to rent or buy a vehicle on LankaLane, step by step.",
+    "onThisPage": "On this page",
+    "step": "STEP {n}",
+    "tip": "Tip:",
+    "sections": [
+      {
+        "id": "account",
+        "title": "Create your account",
+        "intro": "You can browse without an account, but you need one to book or ask a shop a question.",
+        "steps": [
+          "Tap Create an account at the top of the page.",
+          "Fill in your details and choose a password.",
+          "Open Account → Profile and add your phone number, so the shop can reach you about your booking."
+        ],
+        "tip": "Use the EN | த switch in the header to read the whole site in English or Tamil.",
+        "link": "Create an account"
+      },
+      {
+        "id": "find",
+        "title": "Find a vehicle",
+        "intro": "Every listing comes from a shop our team has verified.",
+        "steps": [
+          "Choose Rent or Buy from the menu.",
+          "Filter by district, dates, vehicle type, transmission or budget.",
+          "Open a vehicle to see its photos, price, features, shop details and reviews.",
+          "Tap the heart to save it. Saved vehicles are under Account → Favourites."
+        ],
+        "tip": "Compare a few shops in the same district. Prices and extras such as a driver or delivery differ from shop to shop.",
+        "link": "See vehicles for rent"
+      },
+      {
+        "id": "book",
+        "title": "Request a rental",
+        "steps": [
+          "On the vehicle page, pick your pickup and return dates.",
+          "Add a driver or delivery to your location if the shop offers them.",
+          "Choose how you will pay the shop: cash at pickup or bank transfer.",
+          "Add a note for the shop if needed (for example, arriving by flight), then tap Request to book."
+        ],
+        "tip": "Tap See how this price is calculated. Longer rentals are charged at cheaper weekly and monthly rates.",
+        "link": "Start a booking"
+      },
+      {
+        "id": "pay",
+        "title": "Confirmation and payment",
+        "intro": "You always pay the shop directly. Nothing is charged by LankaLane.",
+        "steps": [
+          "The shop checks availability and confirms your request. You get a notification, and the status changes under Account → Bookings.",
+          "Cash: pay the full amount to the shop when you pick up the vehicle.",
+          "Bank transfer: the shop's bank details appear on your booking page. Transfer at least the advance shown, then upload the receipt there.",
+          "The shop checks the transfer against its bank statement and marks it as received. Any balance is paid at pickup."
+        ],
+        "tip": "Only transfer money to the bank account shown on your booking page, never to a number sent by phone or chat.",
+        "link": "My bookings"
+      },
+      {
+        "id": "pickup",
+        "title": "Pick up and return",
+        "steps": [
+          "Open your booking and download the booking voucher. Show it at the shop.",
+          "Check the vehicle with the shop before you drive off: scratches, fuel level, mileage and tyres.",
+          "Pay any security deposit. It is returned when you bring the vehicle back in the same condition.",
+          "Return the vehicle on time, at the place agreed with the shop."
+        ],
+        "tip": "Take photos of the vehicle at pickup and at return. They help if there is a disagreement later.",
+        "link": "My bookings"
+      },
+      {
+        "id": "buy",
+        "title": "Buying a vehicle",
+        "steps": [
+          "Open a vehicle on the Buy page and tap Ask the shop (you need to be logged in).",
+          "The shop replies in your account under Enquiries. Chat there and arrange a time to see the vehicle.",
+          "Inspect the vehicle and its documents in person.",
+          "Pay the shop directly. Nothing is paid online. The shop gives you a sale agreement."
+        ],
+        "tip": "Never pay a deposit before you have seen the vehicle and checked that the papers match it.",
+        "link": "See vehicles for sale"
+      },
+      {
+        "id": "cancel",
+        "title": "Changes and cancellations",
+        "steps": [
+          "You can cancel from your booking page while the request is still waiting for the shop.",
+          "After the shop confirms, you can still cancel there as long as you have not paid or sent a transfer.",
+          "If you have already paid, contact the shop to cancel or change your dates. Its details are on your booking page."
+        ],
+        "link": "My bookings"
+      },
+      {
+        "id": "after",
+        "title": "Reviews and getting help",
+        "steps": [
+          "When your rental is completed, open the booking and write a review. It helps other customers choose.",
+          "Problem with a booking? Raise a dispute from the booking page and our team will look into it.",
+          "See a listing that looks wrong or suspicious? Tap Report this listing on the vehicle page.",
+          "For anything else, use the Contact us page."
+        ],
+        "link": "Stay safe tips"
+      }
+    ],
+    "ctaTitle": "Ready to go?",
+    "ctaBody": "Find a vehicle from a verified shop near you.",
+    "ctaRent": "Rent a vehicle",
+    "ctaBuy": "Buy a vehicle",
+    "ctaHelp": "Contact us"
   }
 }
