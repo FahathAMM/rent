@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * One enquiry, for both sides of the conversation. The buyer's contact details
@@ -39,6 +40,13 @@ class SaleEnquiryResource extends JsonResource
                 'name' => $this->shop->name,
                 'slug' => $this->shop->slug,
                 'city' => $this->shop->city,
+                'logo_url' => $this->shop->logo_url,
+            ] : null),
+            // The inbox preview: who wrote last and the start of what they said.
+            'last_message' => $this->whenLoaded('latestMessage', fn () => $this->latestMessage ? [
+                'sender_type' => $this->latestMessage->sender_type,
+                'body' => Str::limit($this->latestMessage->body, 140),
+                'created_at' => $this->latestMessage->created_at?->toISOString(),
             ] : null),
             'customer' => $this->whenLoaded('customer', fn () => $this->customer ? [
                 'name' => $this->customer->name,

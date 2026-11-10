@@ -571,6 +571,7 @@ class TransitionBooking
 
             $pricing = $preview['pricing'];
             $booking->pricing->update([
+                'rate_plan' => $pricing['rate_plan'],
                 'rate_breakdown' => $pricing['rate_breakdown'],
                 'base_amount' => $pricing['base_amount'],
                 'delivery_amount' => $pricing['delivery_amount'],

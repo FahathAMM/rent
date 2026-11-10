@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Vendor;
 
 use App\Support\VendorContext;
 use App\Services\SubscriptionService;

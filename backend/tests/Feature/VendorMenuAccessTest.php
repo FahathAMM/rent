@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Administration\AuditLog;
 use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\Customer;

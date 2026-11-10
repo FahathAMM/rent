@@ -4,16 +4,16 @@ use App\Http\Controllers\Api\Vendor\SubscriptionController as VendorSubscription
 use App\Http\Controllers\Api\Vendor\PromotionController as VendorPromotionController;
 use App\Http\Controllers\Api\Administration\AuditLogController;
 use App\Http\Controllers\Api\Administration\MenuController;
-use App\Http\Controllers\Api\AttachmentController;
+use App\Http\Controllers\Api\Vendor\AttachmentController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\DisputeController;
-use App\Http\Controllers\Api\ExpenseCategoryController;
-use App\Http\Controllers\Api\ExpenseController;
-use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\Vendor\ExpenseCategoryController;
+use App\Http\Controllers\Api\Vendor\ExpenseController;
+use App\Http\Controllers\Api\Vendor\LocationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PlatformDetailController;
 use App\Http\Controllers\Api\ReportController;
-use App\Http\Controllers\Api\ShopOnboardingController;
+use App\Http\Controllers\Api\Vendor\ShopOnboardingController;
 use App\Http\Controllers\Api\Vendor\BankDetailController as VendorBankDetailController;
 use App\Http\Controllers\Api\Vendor\BookingController as VendorBookingController;
 use App\Http\Controllers\Api\Vendor\DashboardController as VendorDashboardController;
@@ -29,13 +29,14 @@ use App\Http\Controllers\Api\Vendor\ShopRoleController as VendorShopRoleControll
 use App\Http\Controllers\Api\Vendor\VehicleController as VendorVehicleController;
 use App\Http\Controllers\Api\Vendor\VehicleImageController;
 use App\Http\Controllers\Api\Vendor\VehicleSaleController as VendorVehicleSaleController;
-use App\Http\Controllers\Api\VehicleAvailabilityController;
+use App\Http\Controllers\Api\Vendor\VehicleAvailabilityController;
 use App\Http\Controllers\Api\VisitLogController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public ───────────────────────────────────────────────────────────────────
 
-Route::prefix('auth')->group(function () {
+// throttle:auth — see AppServiceProvider (per email+IP and per IP).
+Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     Route::post('login',    [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
 });
@@ -47,7 +48,7 @@ Route::get('platform-details', [PlatformDetailController::class, 'show']);
 
 // Simple traffic logging (public page visits, link clicks) — one log file
 // per day in storage/logs/public_visit/, no database table.
-Route::post('visits', [VisitLogController::class, 'track']);
+Route::post('visits', [VisitLogController::class, 'track'])->middleware('throttle:60,1');
 
 // The public marketplace catalogue (search, vehicle detail, shop profile,
 // categories, reviews) — see routes/public.php.
@@ -70,7 +71,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // the caller's permissions. See app-doc/marketplace/03-permissions-
     // model.md "The navigation menu becomes three trees".
     Route::get('menus/navigation', [MenuController::class, 'navigation']);
-    Route::get('menus/flat',       [MenuController::class, 'flat']);
 
     // Shop onboarding — deliberately NOT behind shop.context: shop
     // registration is how the first shop is created at all, and until a

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Administration\User;
+use App\Models\Customer;
 use App\Models\PublicVisit;
 use App\Models\SystemAdmin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +46,34 @@ class PublicVisitTest extends TestCase
         $file = $this->logDir . '/' . now()->toDateString() . '.log';
         $this->assertFileExists($file);
         $this->assertStringContainsString('site_visit | path: /login', File::get($file), 'every type still goes to the daily file');
+    }
+
+    public function test_a_signed_in_customer_is_recorded_on_the_visit(): void
+    {
+        $customer = Customer::factory()->create(['name' => 'Nimal Perera']);
+        $token = $customer->createToken('t')->plainTextToken;
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/visits', ['type' => 'public_visit', 'path' => '/browse'])->assertOk();
+
+        $visit = PublicVisit::sole();
+        $this->assertSame($customer->id, $visit->customer_id);
+        $this->assertSame('Nimal Perera', $visit->customer_name);
+
+        $file = $this->logDir . '/' . now()->toDateString() . '.log';
+        $this->assertStringContainsString("customer_id: {$customer->id} | customer_name: Nimal Perera", File::get($file));
+    }
+
+    public function test_a_guest_or_a_vendor_token_leaves_the_customer_blank(): void
+    {
+        $this->postJson('/api/visits', ['type' => 'public_visit', 'path' => '/browse'])->assertOk();
+
+        $vendorToken = User::factory()->create()->createToken('t')->plainTextToken;
+        $this->withHeader('Authorization', "Bearer {$vendorToken}")
+            ->postJson('/api/visits', ['type' => 'public_visit', 'path' => '/shops'])->assertOk();
+
+        $this->assertSame([null, null], PublicVisit::pluck('customer_id')->all());
+        $this->assertSame([null, null], PublicVisit::pluck('customer_name')->all());
     }
 
     public function test_platform_admins_see_the_visits_and_a_summary(): void

@@ -63,6 +63,12 @@ class SaleEnquiry extends Model
         return $this->hasMany(SaleEnquiryMessage::class, 'enquiry_id');
     }
 
+    /** The newest message — the inbox preview line. */
+    public function latestMessage(): HasOne
+    {
+        return $this->hasOne(SaleEnquiryMessage::class, 'enquiry_id')->latestOfMany();
+    }
+
     /** The deal, when this enquiry became the sale. */
     public function sale(): HasOne
     {

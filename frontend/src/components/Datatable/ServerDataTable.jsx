@@ -204,11 +204,7 @@ export default function ServerDataTable({
 
   return (
     <div>
-      {/* <div className="pt-4"> */}
-        {/* ====================== */}
         <div className="space-y-3 px-3 pt-3">
-          {/* Header */}
-
           {/* Search & Filters */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             {/* Left Section (Search + Filters) */}
@@ -468,7 +464,6 @@ export default function ServerDataTable({
             </Button>
           </div>
         </div>
-      {/* </div> */}
     </div>
   );
 }

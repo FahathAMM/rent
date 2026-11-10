@@ -4,19 +4,21 @@ namespace Database\Seeders;
 
 use App\Models\PlatformDetail;
 use App\Models\SystemAdmin;
+use Database\Seeders\Concerns\SeedsPasswords;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
  * Every platform (SaaS admin) row the app needs to boot, in one place: the
  * initial Platform Owner account and the default platform branding row.
- * Safe to run in production — the admin credentials come from env vars
- * (falling back to a clearly-marked dev-only default) rather than being
- * hardcoded, so a real deployment overrides them via .env instead of
- * shipping a fixed secret.
+ * Safe to run in production — the admin credentials come from
+ * PLATFORM_ADMIN_EMAIL / PLATFORM_ADMIN_PASSWORD; with no password set,
+ * production gets a random one (printed once), never a committed default.
  */
 class PlatformSeeder extends Seeder
 {
+    use SeedsPasswords;
+
     public function run(): void
     {
         $this->seedPlatformAdmin();
@@ -25,11 +27,16 @@ class PlatformSeeder extends Seeder
 
     private function seedPlatformAdmin(): void
     {
-        SystemAdmin::firstOrCreate(
-            ['email' => env('PLATFORM_ADMIN_EMAIL', 'admin@example.com')],
+        $email = env('PLATFORM_ADMIN_EMAIL', 'admin@example.com');
+        if (SystemAdmin::where('email', $email)->exists()) {
+            return; // never touch an existing owner's password
+        }
+
+        SystemAdmin::create(
             [
-                'name'       => 'fahathammex90@gmail.com',
-                'password'   => Hash::make(env('PLATFORM_ADMIN_PASSWORD', 'Fahath@321')),
+                'email'      => $email,
+                'name'       => 'Platform Owner',
+                'password'   => Hash::make($this->seedPassword('PLATFORM_ADMIN_PASSWORD', 'change-me-dev-only', 'Platform owner ' . $email)),
                 'admin_role' => 'platform_owner',
                 'is_active'  => true,
             ]

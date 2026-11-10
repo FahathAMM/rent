@@ -16,7 +16,6 @@ use App\Models\VehicleSaleDetail;
 use App\Queries\ShopEarningsQuery;
 use App\Support\VendorContext;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The day-to-day reports, in the same shape as ShopReportService. Payment,
@@ -285,7 +284,7 @@ class ShopActivityReports
 
     public function customers(Carbon $from, Carbon $to): array
     {
-        $rows = ShopEarningsQuery::rows($from->toDateString(), $to->toDateString())->with('customer:id,name,phone')->get()
+        $rows = ShopEarningsQuery::totals($from->toDateString(), $to->toDateString())->with('customer:id,name,phone')->get()
             ->groupBy('customer_id')
             ->map(function ($bookings) {
                 $customer = $bookings->first()->customer;

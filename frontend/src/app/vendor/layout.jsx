@@ -11,10 +11,12 @@ import { platformDetailService } from "@/services/platformDetailService";
 import { useNavigationMenu } from "@/hooks/useMenus";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { HeaderClock } from "@/components/layout/HeaderClock";
+import { DashboardFooter } from "@/components/layout/DashboardFooter";
 import { PlanBanner } from "./settings/subscription/components/PlanBanner";
 import { SubscriptionLock, useIsShopOwner } from "./settings/subscription/components/SubscriptionLock";
 import { useSubscription } from "./settings/subscription/components/useSubscription";
-import { Building2, Loader2, ShieldOff, Store } from "lucide-react";
+import { BadgeCheck, Loader2, MapPin, ShieldOff, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -53,6 +55,54 @@ function NoShopView() {
         <Link href="/vendor/shops/new">Register a shop</Link>
       </Button>
     </div>
+  );
+}
+
+/** The current shop in the header: logo (or a shop icon), name, verified tick, city and the user's role. */
+function ShopCard({ shop }) {
+  const name = shop.shop_name ?? `Shop #${shop.shop_id}`;
+  const meta = [shop.city, shop.role_label].filter(Boolean);
+
+  const body = (
+    <>
+      {shop.logo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={shop.logo} alt={name} className="h-9 w-9 shrink-0 rounded-lg bg-white object-cover ring-1 ring-border" />
+      ) : (
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
+          <Store className="h-5 w-5" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <p className="truncate text-sm font-semibold">{name}</p>
+          {shop.is_verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" aria-label="Verified shop" />}
+        </div>
+        {meta.length > 0 && (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+            {shop.city && <MapPin className="h-3 w-3 shrink-0" />}
+            <span className="truncate">{meta.join(" · ")}</span>
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  // Same footprint as the header clock it replaced: fixed height, shown from xl up.
+  const cardClass = "hidden h-[50px] w-56 shrink-0 items-center gap-2.5 rounded-xl border bg-card px-2.5 shadow-sm xl:flex";
+
+  return shop.slug ? (
+    <Link
+      href={`/shops/${shop.slug}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View your public shop page"
+      className={`${cardClass} transition-colors hover:bg-muted/50`}
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className={cardClass}>{body}</div>
   );
 }
 
@@ -123,6 +173,8 @@ const PLAN_FEATURE_ROUTES = {
 // and the module-tile chrome entirely (there's nothing to show tiles for).
 const ONBOARDING_ROUTES = ["/vendor/shops/new"];
 
+const SIDEBAR_COLLAPSED_KEY = "vendor-sidebar-collapsed";
+
 /** True when pathname is this route or a page beneath it — never a sibling that merely shares a prefix. */
 function matchesRoute(pathname, route) {
   return pathname === route || pathname.startsWith(`${route}/`);
@@ -165,7 +217,23 @@ export default function VendorLayout({ children }) {
   const { data: navigation, isLoading: navLoading } = useNavigationMenu("vendor");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeModuleId, setActiveModuleId] = useState(null);
+  // Desktop hide/show — remembered per browser.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isOwner = useIsShopOwner();
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {}
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
 
   const isAuthRoute = pathname === "/vendor/login" || pathname === "/vendor/register";
   const isOnboardingRoute = ONBOARDING_ROUTES.some((route) => pathname.startsWith(route));
@@ -278,27 +346,31 @@ export default function VendorLayout({ children }) {
         navigation={navigation}
         planLockedRoutes={planLockedRoutes}
         open={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebarCollapsed}
         onClose={() => setSidebarOpen(false)}
-        topSlot={
-          <div className="flex items-center gap-2 px-6 pt-4 pb-2 text-sm text-muted-foreground">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">{shop.shop_name ?? `Shop #${shop.shop_id}`}</span>
-          </div>
-        }
+        topSlot={<HeaderClock variant="sidebar" />}
       />
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
+      <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-200 ease-out ${sidebarCollapsed ? "lg:ml-0" : "lg:ml-56"}`}>
         <Header
           navigation={navigation}
           activeModuleId={activeModuleId}
           planLockedRoutes={planLockedRoutes}
           onMenuClick={() => setSidebarOpen(true)}
+          sidebarCollapsed={sidebarCollapsed}
+          onShowSidebar={toggleSidebarCollapsed}
+          leftSlot={<ShopCard shop={shop} />}
         />
         <PlanBanner />
-        <main className="flex-1 overflow-auto bg-muted/10 p-1 pb-20 lg:pb-1">
+        <main className="flex-1 overflow-auto bg-muted/10 p-1">
           {locked
             ? <SubscriptionLock shopName={shop.shop_name} isOwner={isOwner} />
             : hasPageAccess ? children : <UnauthorizedView title={title} />}
         </main>
+        {/* Below lg the header is docked to the bottom, so leave room for it under the footer. */}
+        <div className="pb-20 lg:pb-0">
+          <DashboardFooter />
+        </div>
       </div>
     </div>
   );

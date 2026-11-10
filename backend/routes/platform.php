@@ -40,7 +40,7 @@ use Illuminate\Support\Facades\Route;
 // marketplace user's token is rejected by the `platform` guard (see
 // config/auth.php).
 Route::prefix('platform')->group(function () {
-    Route::post('login', [PlatformAuthController::class, 'login']);
+    Route::post('login', [PlatformAuthController::class, 'login'])->middleware('throttle:auth');
 
     Route::middleware('platform.admin')->group(function () {
         Route::post('logout', [PlatformAuthController::class, 'logout']);
@@ -93,9 +93,11 @@ Route::prefix('platform')->group(function () {
         // Database backups (Spatie Laravel Backup) — /platform/settings.
         Route::get('backups',          [PlatformBackupController::class, 'index']);
         Route::post('backups',         [PlatformBackupController::class, 'store']);
-        Route::get('backups/download', [PlatformBackupController::class, 'download']);
-        Route::post('backups/email',   [PlatformBackupController::class, 'email']);
+        // A backup is the whole database (every customer, payment, KYC
+        // record) — taking a copy out, or sending one anywhere, is Platform Owner only.
         Route::middleware('platform.owner')->group(function () {
+            Route::get('backups/download', [PlatformBackupController::class, 'download']);
+            Route::post('backups/email',   [PlatformBackupController::class, 'email']);
             Route::delete('backups', [PlatformBackupController::class, 'destroy']);
         });
 

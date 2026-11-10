@@ -90,5 +90,9 @@ class CustomerAuthService
         }
 
         $customer->update(['password' => $newPassword]);
+
+        // Sign out every other session — whoever may have had the old password loses access now.
+        $current = $customer->currentAccessToken();
+        $customer->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->id))->delete();
     }
 }

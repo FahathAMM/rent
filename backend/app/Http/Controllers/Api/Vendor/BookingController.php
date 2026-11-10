@@ -10,13 +10,14 @@ use App\Http\Requests\Vendor\RecordPaymentRequest;
 use App\Http\Requests\Vendor\RescheduleBookingRequest;
 use App\Http\Resources\Vendor\BookingResource;
 use App\Models\Booking;
+use App\Models\BookingPricing;
 use App\Models\Payment;
 use App\Services\AuditService;
 use App\Services\RentalAgreementService;
+use App\Support\PdfDocument;
 use App\Services\BankTransferService;
 use App\Services\AuthUser;
 use App\Traits\JsonResponse as JsonResponseTrait;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,6 +52,9 @@ class BookingController extends Controller
             ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
                 ->where('booking_reference', 'like', "%{$request->search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$request->search}%"))))
+            // Pickup-date range filter (YYYY-MM-DD, both ends inclusive).
+            ->when($request->date('date_from'), fn ($q, $from) => $q->where('pickup_at', '>=', $from->startOfDay()))
+            ->when($request->date('date_to'), fn ($q, $to) => $q->where('pickup_at', '<', $to->startOfDay()->addDay()))
             ->orderBy($sort, $dir)
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
@@ -154,6 +158,8 @@ class BookingController extends Controller
             'amount_paid' => $preview['amount_paid'],
             'balance_due' => $preview['balance_due'],
             'overpaid' => $preview['overpaid'],
+            // Line-by-line breakdown for the price popup (month / week / day lines, extras, tax, deposit).
+            'breakdown' => BookingPricing::breakdownFrom($preview['pricing']),
         ]);
     }
 
@@ -205,17 +211,13 @@ class BookingController extends Controller
 
         $booking->load(['vehicle', 'shop', 'customer', 'pricing', 'payments', 'pickupLocation', 'returnLocation']);
 
-        $pdf = Pdf::loadView('pdf.booking-confirmation', [
+        return PdfDocument::make('pdf.booking-confirmation', [
             'booking' => $booking,
             'shop' => $booking->shop,
             'customer' => $booking->customer,
             'vehicle' => $booking->vehicle,
             'pricing' => $booking->pricing,
-        ])->setPaper('a4');
-
-        $filename = "{$booking->booking_reference}.pdf";
-
-        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+        ], PdfDocument::localeFrom($request))->response($booking->booking_reference, $request->boolean('download'));
     }
 
     /** The rental agreement: booking, the shop's terms and the customer's handover signature. ?download=1 saves it. */
@@ -224,10 +226,8 @@ class BookingController extends Controller
         $this->authorize('view', $booking);
         abort_unless(in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true), 422, 'The agreement is available once the booking is confirmed.');
 
-        $pdf = app(RentalAgreementService::class)->pdf($booking);
-        $filename = "{$booking->booking_reference}.pdf";
-
-        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+        return app(RentalAgreementService::class)->pdf($booking, PdfDocument::localeFrom($request))
+            ->response($booking->booking_reference, $request->boolean('download'));
     }
 
     /** The customer's uploaded receipt, streamed from the private disk. */

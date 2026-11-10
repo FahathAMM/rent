@@ -126,6 +126,80 @@ class ShopReportsTest extends TestCase
         return $this->as($user ?? $this->owner)->getJson("/api/vendor/reports/{$name}?from=2026-01-01&to=2026-12-31")->assertOk();
     }
 
+    /**
+     * The earnings list works figures out per row, while the summary, dashboard and
+     * reports add every payment up in one pass (ShopEarningsQuery rows() vs totals()).
+     * Both must give the same money for every kind of statement line.
+     */
+    public function test_earnings_list_summary_and_dashboard_agree(): void
+    {
+        $car = $this->vehicle('Aqua');
+        $line = fn (Booking $b, string $type, ?string $method, float $credit, float $debit, string $status = Payment::STATUS_SUCCEEDED, bool $deleted = false) => DB::table('payments')->insert([
+            'booking_id' => $b->id, 'payment_reference' => 'PAY-' . Str::random(10), 'idempotency_key' => Str::random(20),
+            'type' => $type, 'method' => $method, 'credit' => $credit, 'debit' => $debit, 'status' => $status,
+            'created_at' => now(), 'updated_at' => now(), 'deleted_at' => $deleted ? now() : null,
+        ]);
+
+        // Paid in full in cash, deposit taken and handed back: received 10,000.
+        $paid = $this->booking($car, 10000);
+        $line($paid, 'booking_charge', null, 0, 10000);
+        $line($paid, 'rental', 'cash', 10000, 0);
+        $line($paid, 'security_deposit', 'cash', 5000, 0);
+        $line($paid, 'security_deposit', 'cash', 0, 5000);
+
+        // 2,000 of the deposit kept for damage: earnings 8,000 + 2,000, received 6,000 + 2,000.
+        $damaged = $this->booking($car, 8000);
+        $line($damaged, 'rental', 'cash', 6000, 0);
+        $line($damaged, 'damage', null, 0, 2000);
+
+        // A rejected transfer and a deleted payment don't count; an overpayment is capped at earnings.
+        $messy = $this->booking($car, 5000, Booking::STATUS_ACTIVE);
+        $line($messy, 'balance', 'bank', 3000, 0, Payment::STATUS_FAILED);
+        $line($messy, 'rental', 'cash', 1000, 0, Payment::STATUS_SUCCEEDED, deleted: true);
+        $line($messy, 'rental', 'cash', 6000, 0);
+
+        $nothingYet = $this->booking($car, 4000, Booking::STATUS_CONFIRMED);
+        $this->booking($car, 9999, Booking::STATUS_CANCELLED_BY_CUSTOMER, paid: 9999); // not going ahead — never counted
+
+        // Another shop's booking must not leak into this shop's totals.
+        VendorContext::forget();
+        $theirs = Vehicle::withoutGlobalScopes()->create([
+            'shop_id' => $this->otherShop->id, 'category_id' => $this->category->id, 'title' => 'Theirs',
+            'slug' => 'theirs-' . Str::lower(Str::random(6)), 'make' => 'Toyota', 'model' => 'Aqua', 'year' => 2020,
+            'registration_number' => 'XYZ-' . random_int(1000, 9999), 'transmission' => 'automatic', 'fuel_type' => 'hybrid',
+            'seating_capacity' => 5, 'status' => Vehicle::STATUS_PUBLISHED, 'moderation_status' => Vehicle::MODERATION_APPROVED,
+        ]);
+        $this->booking($theirs, 50000, paid: 50000);
+
+        $expected = [
+            $paid->booking_reference => [10000, 10000],
+            $damaged->booking_reference => [10000, 8000],
+            $messy->booking_reference => [5000, 5000],
+            $nothingYet->booking_reference => [4000, 0],
+        ];
+
+        // Per-row figures, in both the per-row shape (default sort) and the one-pass shape (sorted by an amount).
+        foreach (['', '&sort_field=earnings_amount&sort_direction=desc'] as $sort) {
+            $rows = collect($this->as($this->owner)->getJson("/api/vendor/earnings/bookings?perPage=50{$sort}")->assertOk()->json('record.data'))
+                ->mapWithKeys(fn ($r) => [$r['booking_reference'] => [(float) $r['earnings_amount'], (float) $r['received_amount']]])
+                ->all();
+            $this->assertEquals($expected, $rows, "earnings rows {$sort}");
+        }
+
+        $summary = $this->as($this->owner)->getJson('/api/vendor/earnings')->assertOk()->json('data.summary');
+        $this->assertSame(4, $summary['bookings_count']);
+        $this->assertEquals(29000, (float) $summary['earnings_amount']);
+        $this->assertEquals(23000, (float) $summary['received_amount']);
+        $this->assertEquals(6000, (float) $summary['pending_amount']);
+
+        $revenue = $this->as($this->owner)->getJson('/api/dashboard')->assertOk()->json('data.revenue');
+        $this->assertEquals(['rental_income' => 29000, 'received' => 23000, 'still_due' => 6000], array_map('floatval', $revenue));
+
+        // Outstanding lists only the two bookings still owing.
+        $owing = collect($this->report('outstanding')->json('data.rows'))->pluck('due', 'reference')->map(fn ($v) => (float) $v)->all();
+        $this->assertEquals([$damaged->booking_reference => 2000.0, $nothingYet->booking_reference => 4000.0], $owing);
+    }
+
     public function test_profit_and_loss_adds_up_by_month_and_matches_earnings(): void
     {
         $car = $this->vehicle('Aqua');

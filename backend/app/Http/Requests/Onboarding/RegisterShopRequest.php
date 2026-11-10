@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Onboarding;
 
+use App\Http\Requests\Concerns\NormalizesWebsite;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterShopRequest extends FormRequest
 {
+    use NormalizesWebsite;
+
     public function authorize(): bool { return true; }
 
     public function rules(): array
@@ -17,7 +20,7 @@ class RegisterShopRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
             'whatsapp' => ['required', 'string', 'max:20'],
-            'website' => ['nullable', 'string', 'max:255'],
+            'website' => $this->websiteRules(),
             'address_line_1' => ['required', 'string', 'max:255'],
             'address_line_2' => ['nullable', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:100'],

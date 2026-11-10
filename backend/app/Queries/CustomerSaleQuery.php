@@ -22,6 +22,7 @@ class CustomerSaleQuery
                 'shop:id,name,slug,city,logo',
                 'vehicle' => fn ($q) => $q->withoutGlobalScope(ShopScope::class)->with(['saleDetail', 'images' => fn ($i) => $i->orderBy('sort_order')->with('attachment')]),
                 'sale' => fn ($q) => $q->withoutGlobalScope(ShopScope::class),
+                'latestMessage',
             ])
             ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender_type', SaleEnquiry::SENDER_SHOP)->whereNull('read_at')]);
     }

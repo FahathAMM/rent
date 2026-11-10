@@ -401,6 +401,8 @@ function BackupsCard() {
                     <p className="font-medium">{formatDateTime(backup.created_at)}</p>
                     <p className="text-xs text-muted-foreground">{formatBytes(backup.size)}</p>
                   </div>
+                  {/* Download, email and delete are Platform Owner only (backend: platform.owner). */}
+                  {isOwner && (
                   <div className="flex items-center gap-1">
                     <Button
                       type="button"
@@ -425,7 +427,6 @@ function BackupsCard() {
                     >
                       <Mail className="!h-3.5 !w-3.5" />
                     </Button>
-                    {isOwner && (
                       <Button
                         type="button"
                         variant="outline"
@@ -435,8 +436,8 @@ function BackupsCard() {
                       >
                         <Trash2 className="!h-3.5 !w-3.5" />
                       </Button>
-                    )}
                   </div>
+                  )}
                 </li>
               ))}
             </ul>

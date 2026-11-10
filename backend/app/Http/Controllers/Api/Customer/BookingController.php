@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Customer;
 
 use App\Services\RentalAgreementService;
+use App\Support\PdfDocument;
 use App\Actions\TransitionBooking;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
@@ -16,7 +17,6 @@ use App\Services\AuditService;
 use App\Services\BankTransferService;
 use App\Services\BookingService;
 use App\Traits\JsonResponse as JsonResponseTrait;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -135,17 +135,13 @@ class BookingController extends Controller
         abort_unless($booking, 404);
         abort_unless(in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true), 422, 'The voucher is available once the shop confirms your booking.');
 
-        $pdf = Pdf::loadView('pdf.booking-confirmation', [
+        return PdfDocument::make('pdf.booking-confirmation', [
             'booking' => $booking,
             'shop' => $booking->shop,
             'customer' => auth('customer')->user(),
             'vehicle' => $booking->vehicle,
             'pricing' => $booking->pricing,
-        ])->setPaper('a4');
-
-        $filename = "{$booking->booking_reference}.pdf";
-
-        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+        ], PdfDocument::localeFrom($request))->response($booking->booking_reference, $request->boolean('download'));
     }
 
     /** The rental agreement for the customer's own booking: the shop's terms and their handover signature. */
@@ -155,10 +151,8 @@ class BookingController extends Controller
         abort_unless($booking, 404);
         abort_unless(in_array($booking->status, [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED], true), 422, 'The agreement is available once the shop confirms your booking.');
 
-        $pdf = app(RentalAgreementService::class)->pdf($booking);
-        $filename = "{$booking->booking_reference}.pdf";
-
-        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+        return app(RentalAgreementService::class)->pdf($booking, PdfDocument::localeFrom($request))
+            ->response($booking->booking_reference, $request->boolean('download'));
     }
 
     /** The customer's own receipt, streamed from the private disk. */

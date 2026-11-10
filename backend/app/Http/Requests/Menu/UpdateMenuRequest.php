@@ -22,7 +22,8 @@ class UpdateMenuRequest extends FormRequest
                 'sometimes', 'required', 'string', 'max:100', 'regex:/^[a-z0-9_]+$/',
                 Rule::unique('menus', 'slug')->where('audience', $audience)->ignore($id),
             ],
-            'route_name' => 'nullable|string|max:200',
+            // An in-app path only ("/vendor/..."), never javascript: or another site.
+            'route_name' => ['nullable', 'string', 'max:200', 'regex:#^/(?![/\\\\])#'],
             'icon'       => 'nullable|string|max:100',
             'parent_id'  => "nullable|exists:menus,id|not_in:{$id}",
             'sort_order' => 'nullable|integer|min:0',

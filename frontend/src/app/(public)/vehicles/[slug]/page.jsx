@@ -133,7 +133,6 @@ export default function VehicleDetailPage() {
   // Phone-width spec tiles are too narrow for "Automatic" — use the short form when there is one.
   const shortGearbox = vehicle.transmission && enumLabel("transmissionShort", vehicle.transmission);
   const depositMethod = p.deposit_method ? enumLabel("depositMethod", p.deposit_method) : "";
-  const subtitle = [vehicle.make, vehicle.model, vehicle.variant].filter(Boolean).join(" ") + (vehicle.year ? ` · ${vehicle.year}` : "");
 
   return (
     <div className="pb-24 lg:pb-16">
@@ -202,7 +201,7 @@ export default function VehicleDetailPage() {
                   </div>
                 )}
                 <h1 className="text-xl font-bold leading-tight tracking-tight sm:text-3xl">{vehicle.title}</h1>
-                {subtitle.trim() && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+                {/* {subtitle.trim() && <p className="text-sm text-muted-foreground">{subtitle}</p>} */}
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
                   {vehicle.rating_count > 0 ? (
@@ -393,38 +392,45 @@ export default function VehicleDetailPage() {
           <div className="sticky top-20 space-y-4">
             <div className="overflow-hidden rounded-3xl border bg-card shadow-lg">
               <div className="h-1.5 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500" />
-              <div className="space-y-4 p-5">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("from")}</p>
-                  <p className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-3xl font-bold text-transparent">
-                    {format(p.daily_rate)}<span className="text-sm font-normal text-muted-foreground">{tc("perDay")}</span>
-                  </p>
+              <div className="space-y-3 p-4">
+                <div className="flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("from")}</p>
+                    <p className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-3xl font-bold text-transparent">
+                      {format(p.daily_rate)}<span className="text-sm font-normal text-muted-foreground">{tc("perDay")}</span>
+                    </p>
+                  </div>
+                  {/* Deposit sits beside the price so the booking button fits without scrolling. */}
+                  {Number(p.security_deposit) > 0 && (
+                    <div className="shrink-0 text-right text-[11px] leading-tight text-muted-foreground" title={t("securityDeposit", { amount: format(p.security_deposit), method: depositMethod })}>
+                      <p className="flex items-center justify-end gap-1"><Wallet className="h-3 w-3" /> {t("depositLabel")}</p>
+                      <p className="text-sm font-semibold text-foreground">{format(p.security_deposit)}</p>
+                      <p>{depositMethod}</p>
+                    </div>
+                  )}
                 </div>
 
                 {(p.weekly_rate || p.monthly_rate) && (
                   <div className="grid grid-cols-2 gap-2">
                     {p.weekly_rate && (
-                      <div className="rounded-xl border bg-muted/30 p-2.5">
-                        <p className="text-[11px] text-muted-foreground">{t("weekly")}</p>
-                        <p className="text-sm font-semibold">{format(p.weekly_rate)}</p>
-                        {weeklySave > 0 && <p className="text-[11px] font-medium text-emerald-600">{t("savePct", { pct: weeklySave })}</p>}
+                      <div className="rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                        <div className="flex items-center justify-between gap-1 text-[11px] leading-tight">
+                          <span className="text-muted-foreground">{t("weekly")}</span>
+                          {weeklySave > 0 && <span className="font-medium text-emerald-600">{t("savePct", { pct: weeklySave })}</span>}
+                        </div>
+                        <p className="text-sm font-semibold leading-tight">{format(p.weekly_rate)}</p>
                       </div>
                     )}
                     {p.monthly_rate && (
-                      <div className="rounded-xl border bg-muted/30 p-2.5">
-                        <p className="text-[11px] text-muted-foreground">{t("monthly")}</p>
-                        <p className="text-sm font-semibold">{format(p.monthly_rate)}</p>
-                        {monthlySave > 0 && <p className="text-[11px] font-medium text-emerald-600">{t("savePct", { pct: monthlySave })}</p>}
+                      <div className="rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                        <div className="flex items-center justify-between gap-1 text-[11px] leading-tight">
+                          <span className="text-muted-foreground">{t("monthly")}</span>
+                          {monthlySave > 0 && <span className="font-medium text-emerald-600">{t("savePct", { pct: monthlySave })}</span>}
+                        </div>
+                        <p className="text-sm font-semibold leading-tight">{format(p.monthly_rate)}</p>
                       </div>
                     )}
                   </div>
-                )}
-
-                {Number(p.security_deposit) > 0 && (
-                  <p className="flex items-center gap-2 rounded-xl bg-muted/60 p-2.5 text-xs text-muted-foreground">
-                    <Wallet className="h-4 w-4 shrink-0" />
-                    {t("securityDeposit", { amount: format(p.security_deposit), method: depositMethod })}
-                  </p>
                 )}
 
                 <BookingRequestWidget vehicle={vehicle} />

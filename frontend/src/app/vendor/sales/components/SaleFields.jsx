@@ -3,7 +3,7 @@
 import { CheckboxInput, TextInput } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 
-export const CONDITIONS = [
+const CONDITIONS = [
   { value: "used", label: "Used" },
   { value: "reconditioned", label: "Reconditioned" },
   { value: "brand_new", label: "Brand new" },

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronDownIcon, Crown, ChevronLeft, ChevronRight, LogOutIcon, Menu, SettingsIcon, UserIcon, UsersIcon } from "lucide-react";
+import { Check, ChevronDownIcon, Crown, ChevronLeft, ChevronRight, LogOutIcon, Menu, PanelLeftOpen, SettingsIcon, UserIcon, UsersIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/iconMap";
 import { TILE_COLORS } from "@/lib/tileColors";
@@ -47,7 +47,7 @@ function ModuleTab({ item, isActive, colorClass, planLocked = false }) {
   );
 }
 
-export function Header({ navigation, activeModuleId, planLockedRoutes = [], onMenuClick }) {
+export function Header({ navigation, activeModuleId, planLockedRoutes = [], onMenuClick, sidebarCollapsed = false, onShowSidebar, leftSlot }) {
   const pathname = usePathname();
   const tabs = navigation?.filter((item) => item.route_name || item.children?.length) ?? [];
   const onStandalonePage = (item) => !!item.route_name && (pathname === item.route_name || pathname.startsWith(`${item.route_name}/`));
@@ -99,8 +99,20 @@ export function Header({ navigation, activeModuleId, planLockedRoutes = [], onMe
         <Button variant="ghost" size="icon" onClick={onMenuClick} className="lg:hidden shrink-0" title="Open menu">
           <Menu className="h-5 w-5" />
         </Button>
+        {sidebarCollapsed && onShowSidebar && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onShowSidebar}
+            className="hidden lg:inline-flex shrink-0"
+            title="Show sidebar"
+            aria-label="Show sidebar"
+          >
+            <PanelLeftOpen className="h-5 w-5" />
+          </Button>
+        )}
 
-        <HeaderClock />
+        {leftSlot ?? <HeaderClock />}
 
         <div className="group relative flex-1 min-w-0">
           {canScrollLeft && (

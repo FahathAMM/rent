@@ -22,9 +22,9 @@ export const vendorService = {
     /** FormData: method (cash | bank_transfer), amount, paid_at?, reference?, note?, proof? — money the shop received outside the app. */
     recordPayment: (reference, data) => api.post(`/vendor/bookings/${reference}/payments`, data, multipart),
     /** The booking voucher PDF (same one the customer gets) — a blob, since it needs the staff token. */
-    voucher: (reference, download = false) => api.get(`/vendor/bookings/${reference}/voucher`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    voucher: (reference, download = false, lang) => api.get(`/vendor/bookings/${reference}/voucher`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     /** The rental agreement PDF — the shop's terms with the customer's handover signature. */
-    agreement: (reference, download = false) => api.get(`/vendor/bookings/${reference}/agreement`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    agreement: (reference, download = false, lang) => api.get(`/vendor/bookings/${reference}/agreement`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     /** { pickup_at, return_at } as ISO strings — what changing the dates would cost; nothing is saved. */
     previewReschedule: (reference, data) => api.post(`/vendor/bookings/${reference}/reschedule/preview`, data),
     /** { pickup_at, return_at, reason? } — moves the booking's dates (confirmed bookings, before handover). */

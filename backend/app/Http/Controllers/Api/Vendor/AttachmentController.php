@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Attachment\StoreAttachmentRequest;
@@ -9,6 +9,7 @@ use App\Models\Attachment;
 use App\Repositories\AttachmentRepo;
 use App\Services\AuditService;
 use App\Services\AuthUser;
+use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,6 +67,7 @@ class AttachmentController extends Controller
 
     public function download(Attachment $attachment): StreamedResponse
     {
+        $this->assertOwnShop($attachment);
         $this->authorizeFor($attachment->attachable_type, 'view');
 
         abort_unless(Storage::disk('local')->exists($attachment->file_path), 404);
@@ -75,6 +77,7 @@ class AttachmentController extends Controller
 
     public function destroy(Attachment $attachment): JsonResponse
     {
+        $this->assertOwnShop($attachment);
         $this->authorizeFor($attachment->attachable_type, 'edit');
 
         $name = $attachment->file_name;
@@ -83,6 +86,22 @@ class AttachmentController extends Controller
         AuditService::delete('Attachment', $attachment->id, $name);
 
         return $this->response('File deleted successfully');
+    }
+
+    /**
+     * Attachment is deliberately not shop-scoped (see the model), so a
+     * bound {attachment} can be any shop's — 404 unless it is this shop's
+     * own row AND its parent record still resolves inside this shop
+     * (the parent model's ShopScope).
+     */
+    private function assertOwnShop(Attachment $attachment): void
+    {
+        abort_unless(
+            $attachment->shop_id !== null
+                && (int) $attachment->shop_id === VendorContext::shopId()
+                && $attachment->attachable !== null,
+            404
+        );
     }
 
     private function authorizeFor(string $type, string $action): void

@@ -5,7 +5,7 @@ import { TextInput, TextareaInput } from "@/components/forms/FormField";
 import { DEFAULT_LOCALE, LOCALES, LOCALE_LABELS, LOCALE_META } from "@/i18n/config";
 
 /** Languages that get their own text (English lives in the normal fields). */
-export const TRANSLATION_LOCALES = LOCALES.filter((l) => l !== DEFAULT_LOCALE);
+const TRANSLATION_LOCALES = LOCALES.filter((l) => l !== DEFAULT_LOCALE);
 
 /**
  * A record's `translations` as form state: { ta: { name: "", ... } } with

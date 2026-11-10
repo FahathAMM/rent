@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\Customer\DisputeController as CustomerDisputeController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
+use App\Http\Controllers\Api\Customer\BookingController;
+use App\Http\Controllers\Api\Customer\DisputeController as CustomerDisputeController;
+use App\Http\Controllers\Api\Customer\FavoriteController;
 use App\Http\Controllers\Api\Customer\NotificationController as CustomerNotificationController;
+use App\Http\Controllers\Api\Customer\ReviewController;
 use App\Http\Controllers\Api\Customer\SaleEnquiryController as CustomerSaleEnquiryController;
-use App\Http\Controllers\Api\FavoriteController;
-use App\Http\Controllers\Api\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Customer — entirely separate identity/guard from the vendor/owner/───────
@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Route;
 // same as routes/platform.php. A vendor/owner/staff token is rejected by
 // the `customer` guard, and vice versa (see config/auth.php).
 Route::prefix('customer')->group(function () {
-    Route::post('register', [CustomerAuthController::class, 'register']);
-    Route::post('login',    [CustomerAuthController::class, 'login']);
+    Route::post('register', [CustomerAuthController::class, 'register'])->middleware('throttle:auth');
+    Route::post('login',    [CustomerAuthController::class, 'login'])->middleware('throttle:auth');
 
     Route::middleware('customer.auth')->group(function () {
         Route::post('logout', [CustomerAuthController::class, 'logout']);

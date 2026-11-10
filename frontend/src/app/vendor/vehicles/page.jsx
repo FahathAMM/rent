@@ -69,6 +69,7 @@ export default function VehiclesPage() {
   const columns = ({ sortField, sortOrder, handleSort }) => [
     {
       accessorKey: "title",
+      class: "w-[30%]",
       header: () => <SortableHeader label="Vehicle" column="title" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
       cell: (row) => (
         <div>
@@ -86,6 +87,7 @@ export default function VehiclesPage() {
     { accessorKey: "moderation_status", header: "Moderation", cell: (row) => <StatusBadge status={row.moderation_status} /> },
     {
       accessorKey: "booking_count",
+      class: "w-20",
       header: () => <SortableHeader label="Bookings" column="booking_count" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
     },
     {

@@ -482,6 +482,39 @@ class VehicleSalesTest extends TestCase
         $this->as($this->owner)->postJson("/api/vendor/sales/enquiries/{$reference}/messages", ['body' => 'Too late'])->assertStatus(422);
     }
 
+    public function test_the_shops_inbox_previews_the_last_message_and_filters_unread(): void
+    {
+        $answered = $this->openEnquiry($this->saleCar());
+        $waiting = $this->openEnquiry($this->saleCar());
+        $this->as($this->owner)->getJson("/api/vendor/sales/enquiries/{$answered}")->assertOk(); // read it
+        $this->as($this->owner)->postJson("/api/vendor/sales/enquiries/{$answered}/messages", ['body' => 'Come on Saturday.'])->assertOk();
+
+        $inbox = $this->as($this->owner)->getJson('/api/vendor/sales/enquiries')->assertOk();
+        $row = collect($inbox->json('record.data'))->firstWhere('reference', $answered);
+        $this->assertSame(['sender_type' => 'shop', 'body' => 'Come on Saturday.'], array_intersect_key($row['last_message'], array_flip(['sender_type', 'body'])));
+        $this->assertArrayHasKey('image_url', $row['vehicle']);
+
+        $this->assertSame([$waiting], $this->as($this->owner)->getJson('/api/vendor/sales/enquiries?unread=1')->json('record.data.*.reference'));
+    }
+
+    public function test_the_buyers_inbox_previews_the_last_message_and_filters_open_and_closed(): void
+    {
+        $openRef = $this->openEnquiry($this->saleCar());
+        $closedRef = $this->openEnquiry($this->saleCar());
+        $this->as($this->owner)->postJson("/api/vendor/sales/enquiries/{$openRef}/messages", ['body' => 'Yes, it is still available.'])->assertOk();
+        $this->as($this->buyer)->postJson("/api/sales/enquiries/{$closedRef}/close")->assertOk();
+
+        $all = $this->as($this->buyer)->getJson('/api/sales/enquiries')->assertOk();
+        $this->assertSame(2, $all->json('record.total'));
+        $row = collect($all->json('record.data'))->firstWhere('reference', $openRef);
+        $this->assertSame('shop', $row['last_message']['sender_type']);
+        $this->assertSame('Yes, it is still available.', $row['last_message']['body']);
+        $this->assertArrayHasKey('logo_url', $row['shop']);
+
+        $this->assertSame([$openRef], $this->as($this->buyer)->getJson('/api/sales/enquiries?status=open')->json('record.data.*.reference'));
+        $this->assertSame([$closedRef], $this->as($this->buyer)->getJson('/api/sales/enquiries?status=closed')->json('record.data.*.reference'));
+    }
+
     public function test_enquiries_and_sales_stay_inside_their_shop_and_with_their_buyer(): void
     {
         $car = $this->saleCar();

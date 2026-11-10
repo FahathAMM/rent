@@ -38,7 +38,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('backup:clean')->hourly();
     })->withMiddleware(function (Middleware $middleware) {
 
-        $middleware->trustProxies(at: '*');
+        // Only our own reverse proxies (nginx, the Next.js server) may set
+        // X-Forwarded-For — trusting '*' let any visitor fake their IP, which
+        // defeated the IP rate limits and the IPs in audit logs / visits.
+        // Override with TRUSTED_PROXIES (comma-separated IPs/CIDRs).
+        // Read with getenv() too: env() is empty here once config is cached.
+        $middleware->trustProxies(at: array_filter(array_map('trim', explode(',',
+            (string) (env('TRUSTED_PROXIES') ?: getenv('TRUSTED_PROXIES') ?: '127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16')
+        ))));
 
         $middleware->alias([
             'role'               => RoleMiddleware::class,

@@ -127,6 +127,22 @@ class RescheduleBookingTest extends TestCase
         $this->assertEquals(21000, $booking->pricing->base_amount);
     }
 
+    public function test_extending_to_ten_days_uses_the_quoted_weekly_rate_plus_daily(): void
+    {
+        $this->booking->pricing->update(['pricing_snapshot' => $this->booking->pricing->pricing_snapshot + ['weekly_rate' => 40000, 'monthly_rate' => 150000]]);
+        VehiclePricing::create(['vehicle_id' => $this->vehicle->id, 'daily_rate' => 9000, 'weekly_rate' => 50000]);
+
+        $booking = $this->move(8, 10);
+
+        $this->assertEquals(40000 + 3 * 7000, $booking->pricing->base_amount, '1 week + 3 days at the quoted rates');
+        $this->assertSame('mixed', $booking->pricing->rate_plan);
+
+        $booking = $this->move(8, 30);
+
+        $this->assertEquals(150000, $booking->pricing->base_amount, '30 days = 1 month');
+        $this->assertSame('monthly', $booking->pricing->rate_plan);
+    }
+
     public function test_overlapping_dates_are_refused_and_nothing_changes(): void
     {
         $this->makeConfirmedBooking('BKG-OTHER-001', now()->addDays(20)->startOfDay()->addHours(10), 3);
@@ -346,7 +362,10 @@ class RescheduleBookingTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.available', true)
             ->assertJsonPath('data.new_total', 19000)
-            ->assertJsonPath('data.current_total', 26000);
+            ->assertJsonPath('data.current_total', 26000)
+            ->assertJsonPath('data.breakdown.rate_breakdown.0.plan', 'daily')
+            ->assertJsonPath('data.breakdown.rate_breakdown.0.units', 2)
+            ->assertJsonPath('data.breakdown.base_amount', 14000);
         $this->assertEquals(26000, $this->booking->fresh()->pricing->total_payable, 'preview saves nothing');
 
         $this->withHeaders($owner)->postJson('/api/vendor/bookings/BKG-MOVE-001/reschedule', $body)

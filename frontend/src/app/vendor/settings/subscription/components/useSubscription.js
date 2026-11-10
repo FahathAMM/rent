@@ -18,6 +18,3 @@ export function useSubscription({ enabled = true } = {}) {
     enabled,
   });
 }
-
-/** null limit = unlimited. */
-export const limitLabel = (n) => (n === null || n === undefined ? "Unlimited" : String(n));

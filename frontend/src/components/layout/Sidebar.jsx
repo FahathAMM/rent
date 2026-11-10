@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getIcon } from "@/lib/iconMap";
-import { Check, ChevronDown, Crown, Store, X, Linkedin, Globe, ExternalLink } from "lucide-react";
+import { Check, ChevronDown, Crown, Store, X, Linkedin, Globe, ExternalLink, PanelLeftClose } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
@@ -162,7 +162,7 @@ function NavLink({ item, activeRoute, depth, onNavigate }) {
 }
 
 // ── Sidebar — Start-menu-style tile grid for the active module's pages ───────
-export function Sidebar({ activeModule, navigation, planLockedRoutes = [], open = false, onClose, topSlot, brandHref = "/" }) {
+export function Sidebar({ activeModule, navigation, planLockedRoutes = [], open = false, collapsed = false, onToggleCollapsed, onClose, topSlot, brandHref = "/" }) {
   const pathname = usePathname();
   const activeRoute = findActiveRoute(navigation, pathname);
 
@@ -188,12 +188,28 @@ export function Sidebar({ activeModule, navigation, planLockedRoutes = [], open 
 
       <aside
         className={cn(
-          "w-72 h-screen bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border",
+          "w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out",
-          "lg:translate-x-0 lg:w-64",
+          "lg:w-56",
+          // On desktop the sidebar is static unless the user has hidden it.
+          collapsed ? "lg:-translate-x-full" : "lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
+        {/* Desktop hide — vertically centred on the right border. Once hidden,
+            the show button lives in the Header instead. */}
+        {onToggleCollapsed && !collapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            title="Hide sidebar"
+            aria-label="Hide sidebar"
+            className="absolute right-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/70 shadow-md transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:flex"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        )}
+
         {/* Brand */}
         <div className="flex items-center justify-between gap-2 border-b border-sidebar-border p-3">
           {/* The app name opens the public site in a new tab, keeping the dashboard open. */}

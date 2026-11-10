@@ -11,6 +11,7 @@ import { SelectInput } from "@/components/forms/SelectInput";
 import { AlertTriangle, CalendarClock, CheckCircle2, Loader2 } from "lucide-react";
 import { cn, formatDateTime, fromAppDateTimeInput, toAppDateTimeInput } from "@/lib/utils";
 import { toast } from "sonner";
+import { PriceBreakdownDialog, breakdownData } from "@/components/shared/PriceBreakdownDialog";
 
 const REFUND_METHODS = [
   { value: "cash", label: "Cash" },
@@ -115,6 +116,21 @@ export function RescheduleDialog({ booking, onClose, onSaved }) {
                   <div className="flex justify-between font-medium"><span>New balance due</span><span>{format(p.balance_due)}</span></div>
                 )}
                 {active && p.balance_due > 0 && <p className="text-xs text-muted-foreground">Collect it with Record payment after saving.</p>}
+                {p.breakdown && (
+                  <PriceBreakdownDialog
+                    format={format}
+                    from={fromAppDateTimeInput(pickup)}
+                    to={fromAppDateTimeInput(ret)}
+                    data={breakdownData(p.breakdown, p.rental_days, "New total")}
+                    extraRows={[
+                      { label: "Previous total", amount: p.current_total },
+                      { label: "Already paid", amount: p.amount_paid },
+                      p.overpaid > 0
+                        ? { label: active ? "Pay back to the customer" : "Customer overpaid", amount: p.overpaid, strong: true, tone: "warn" }
+                        : { label: "New balance due", amount: p.balance_due, strong: true },
+                    ]}
+                  />
+                )}
               </div>
             ) : null}
           </div>

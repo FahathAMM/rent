@@ -119,7 +119,7 @@ class BookingLifecycleHttpTest extends TestCase
         $this->assertSame(3, VehicleAvailability::where('booking_id', $booking()->id)->count());
 
         // The customer sees it confirmed, with a voucher.
-        $this->asCustomer()->getJson("/api/bookings/{$ref}")->assertOk()->assertJsonPath('data.status', 'confirmed');
+        $this->asCustomer()->getJson("/api/bookings/{$ref}")->assertOk()->assertJsonPath('data.status', 'confirmed')->assertJsonPath('data.pricing.breakdown.rate_breakdown.0.plan', 'daily')->assertJsonPath('data.pricing.breakdown.daily_rate', 7000);
         $this->asCustomer()->get("/api/bookings/{$ref}/voucher")->assertOk();
 
         // Pickup day: handover needs the cash confirmed.

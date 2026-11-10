@@ -20,7 +20,10 @@ class BookingPricingCalculator
     {
         $rentalDays = max(1, (int) ceil($pickupAt->diffInHours($returnAt) / 24));
 
-        $baseAmount = round((float) $pricing->daily_rate * $rentalDays, 2);
+        $rateBreakdown = $this->rateBreakdown($pricing, $rentalDays);
+        $baseAmount = round(array_sum(array_map(fn ($line) => $line['units'] * $line['rate'], $rateBreakdown)), 2);
+        $plans = array_unique(array_column($rateBreakdown, 'plan'));
+        $ratePlan = count($plans) === 1 ? $plans[0] : 'mixed';
         $driverAmount = $withDriver ? round((float) $pricing->driver_rate_per_day * $rentalDays, 2) : 0;
         $deliveryAmount = $deliveryRequested && $pricing->delivery_available
             ? round((float) ($pricing->delivery_flat_fee ?? 0), 2)
@@ -47,8 +50,8 @@ class BookingPricingCalculator
             'pricing' => [
                 'currency' => $pricing->currency,
                 'pricing_snapshot' => $snapshot,
-                'rate_plan' => 'daily',
-                'rate_breakdown' => [['plan' => 'daily', 'units' => $rentalDays, 'rate' => (float) $pricing->daily_rate]],
+                'rate_plan' => $ratePlan,
+                'rate_breakdown' => $rateBreakdown,
                 'base_amount' => $baseAmount,
                 'extras_amount' => 0,
                 'delivery_amount' => $deliveryAmount,
@@ -68,5 +71,35 @@ class BookingPricingCalculator
                 'snapshot_hash' => hash('sha256', json_encode([$vehicle->id, $pricing->id, $pickupAt->toISOString(), $returnAt->toISOString(), $withDriver, $deliveryRequested, $totalPayable])),
             ],
         ];
+    }
+
+    /**
+     * Whole 30-day months at the monthly rate, then whole 7-day weeks at the
+     * weekly rate, then leftover days at the daily rate. A missing (or zero)
+     * weekly/monthly rate falls back to the daily rate for those days.
+     * e.g. 40 days = 1 month + 1 week + 3 days.
+     */
+    private function rateBreakdown(VehiclePricing $pricing, int $rentalDays): array
+    {
+        $daily = (float) $pricing->daily_rate;
+        $weekly = (float) $pricing->weekly_rate;
+        $monthly = (float) $pricing->monthly_rate;
+
+        $remaining = $rentalDays;
+        $lines = [];
+
+        if ($monthly > 0 && $remaining >= 30) {
+            $lines[] = ['plan' => 'monthly', 'units' => intdiv($remaining, 30), 'rate' => $monthly];
+            $remaining %= 30;
+        }
+        if ($weekly > 0 && $remaining >= 7) {
+            $lines[] = ['plan' => 'weekly', 'units' => intdiv($remaining, 7), 'rate' => $weekly];
+            $remaining %= 7;
+        }
+        if ($remaining > 0) {
+            $lines[] = ['plan' => 'daily', 'units' => $remaining, 'rate' => $daily];
+        }
+
+        return $lines;
     }
 }

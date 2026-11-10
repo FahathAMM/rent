@@ -36,6 +36,7 @@ class BookingService
         $returnAt = Carbon::parse($data['return_at'], config('app.timezone'));
 
         $this->assertRequestIsValid($vehicle, $pricing, $pickupAt, $returnAt);
+        $this->assertLocationsBelongToShop($vehicle, $data);
 
         $withDriver = (bool) ($data['with_driver'] ?? false);
         $deliveryRequested = (bool) ($data['delivery_requested'] ?? false);
@@ -86,6 +87,25 @@ class BookingService
 
             return $booking->fresh(['pricing']);
         });
+    }
+
+    /** A pickup/return point must be one of this vehicle's own shop's locations — never another shop's. */
+    private function assertLocationsBelongToShop(Vehicle $vehicle, array $data): void
+    {
+        foreach (['pickup_location_id', 'return_location_id'] as $field) {
+            if (empty($data[$field])) {
+                continue;
+            }
+
+            $belongs = DB::table('locations')
+                ->where('id', $data[$field])
+                ->where('shop_id', $vehicle->shop_id)
+                ->exists();
+
+            if (!$belongs) {
+                throw ValidationException::withMessages([$field => [__('Choose one of this shop\'s locations.')]]);
+            }
+        }
     }
 
     /** The customer's pick of paying the shop in cash at pickup or by bank transfer (only if the shop has a bank account). */

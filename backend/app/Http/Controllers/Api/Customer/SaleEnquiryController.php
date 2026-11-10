@@ -23,7 +23,12 @@ class SaleEnquiryController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // ?status=open|closed — the inbox tabs; anything else lists all.
+        $status = $request->get('status');
+
         $enquiries = CustomerSaleQuery::forCustomer($request->user('customer')->id)
+            ->when($status === 'open', fn ($q) => $q->open())
+            ->when($status === 'closed', fn ($q) => $q->whereNotIn('sale_enquiries.status', SaleEnquiry::OPEN_STATUSES))
             ->orderByDesc('last_message_at')
             ->paginate(min((int) $request->get('per_page', 10), 50));
         $enquiries->through(fn ($enquiry) => (new SaleEnquiryResource($enquiry))->resolve());

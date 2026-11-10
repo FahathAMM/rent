@@ -140,6 +140,8 @@ export default function VendorDashboardPage() {
   const sales = data?.sales ?? null; // null when the plan has no sales
   const bookings = data?.bookings ?? {};
   const revenue = data?.revenue ?? {};
+  // Older API responses have no flag — keep showing money then; a false flag hides it.
+  const seesMoney = isLoading || data?.can_view_money !== false;
   const utilisation = data?.vehicle_utilisation ?? {};
   const performance = data?.listing_performance ?? [];
   const reviews = data?.reviews ?? {};
@@ -217,10 +219,12 @@ export default function VendorDashboardPage() {
             <StatTile label="Vehicles For Sale" value={sales.for_sale} sub="live on the Buy page" icon={BadgeDollarSign} tone="bg-emerald-100 text-emerald-700" href="/vendor/sales/listings" />
             <StatTile label="Enquiries Waiting" value={sales.enquiries_waiting} sub="waiting for your reply" icon={MessageCircle} tone="bg-amber-100 text-amber-700" href="/vendor/sales/enquiries" />
             <StatTile label="Sold This Month" value={sales.sold_this_month} sub="recorded by your shop" icon={Handshake} tone="bg-sky-100 text-sky-700" href="/vendor/sales/sold" />
-            <StatTile label="Sales This Month" value={format(sales.sold_value_this_month)} sub="total sale value" icon={TrendingUp} tone="bg-violet-100 text-violet-700" href="/vendor/sales/sold" />
+            {seesMoney && <StatTile label="Sales This Month" value={format(sales.sold_value_this_month)} sub="total sale value" icon={TrendingUp} tone="bg-violet-100 text-violet-700" href="/vendor/sales/sold" />}
           </div>
         )}
 
+        {/* Income and money — only for those allowed to see the shop's earnings. */}
+        {seesMoney && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
           <SectionCard
             title="Rental Income"
@@ -267,6 +271,7 @@ export default function VendorDashboardPage() {
             </div>
           </SectionCard>
         </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
           <SectionCard title="Today" icon={CalendarCheck}>

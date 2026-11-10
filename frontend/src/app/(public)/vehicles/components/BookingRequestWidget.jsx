@@ -9,8 +9,9 @@ import { useCustomerAuthStore } from "@/store/customerAuthStore";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { Button } from "@/components/ui/button";
 import { BookingDateRange } from "./BookingDateRange";
+import { PriceBreakdownDialog } from "@/components/shared/PriceBreakdownDialog";
 import { CheckboxInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
-import { Banknote, Landmark, Loader2 } from "lucide-react";
+import { Banknote, Landmark, Loader2, Plus } from "lucide-react";
 import { APP_TIMEZONE_OFFSET, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -42,6 +43,26 @@ function daysBetween(from, to) {
   return Math.max(1, Math.round(ms / 86400000));
 }
 
+// Must match BookingPricingCalculator::rateBreakdown(): 30-day months, then
+// 7-day weeks, then leftover days; a missing weekly/monthly rate falls back to daily.
+function rentalLines(pricing, days) {
+  const daily = Number(pricing.daily_rate) || 0;
+  const weekly = Number(pricing.weekly_rate) || 0;
+  const monthly = Number(pricing.monthly_rate) || 0;
+  let remaining = days;
+  const lines = [];
+  if (monthly > 0 && remaining >= 30) {
+    lines.push({ plan: "monthly", units: Math.floor(remaining / 30), rate: monthly });
+    remaining %= 30;
+  }
+  if (weekly > 0 && remaining >= 7) {
+    lines.push({ plan: "weekly", units: Math.floor(remaining / 7), rate: weekly });
+    remaining %= 7;
+  }
+  if (remaining > 0) lines.push({ plan: "daily", units: remaining, rate: daily });
+  return lines;
+}
+
 /**
  * Submits -> pending (see app-doc/marketplace/04-lifecycles.md). The shop
  * chooses default pickup and return times in its profile settings.
@@ -55,6 +76,8 @@ export function BookingRequestWidget({ vehicle }) {
   const [withDriver, setWithDriver] = useState(false);
   const [deliveryRequested, setDeliveryRequested] = useState(false);
   const [note, setNote] = useState("");
+  // The note box stays tucked away until asked for, so the booking button fits without scrolling.
+  const [showNote, setShowNote] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [errors, setErrors] = useState({});
   const containerRef = useRef(null);
@@ -102,14 +125,15 @@ export function BookingRequestWidget({ vehicle }) {
 
   const estimate = useMemo(() => {
     if (!rentalDays || !pricing) return null;
-    const base = Number(pricing.daily_rate) * rentalDays;
+    const lines = rentalLines(pricing, rentalDays);
+    const base = lines.reduce((sum, l) => sum + l.units * l.rate, 0);
     const driver = withDriver ? Number(pricing.driver_rate_per_day ?? 0) * rentalDays : 0;
     const delivery = deliveryRequested && pricing.delivery_available ? Number(pricing.delivery_flat_fee ?? 0) : 0;
     const tax = Math.round((base + driver + delivery) * Number(pricing.tax_rate ?? 0)) / 100;
     const deposit = Number(pricing.security_deposit ?? 0);
     // Must match BookingPricingCalculator: everything the shop collects, deposit included unless waived.
     return {
-      base, driver, delivery, tax, deposit,
+      lines, base, driver, delivery, tax, deposit,
       total: base + driver + delivery + tax + (pricing.deposit_method !== "waived" ? deposit : 0),
     };
   }, [rentalDays, pricing, withDriver, deliveryRequested]);
@@ -151,10 +175,10 @@ export function BookingRequestWidget({ vehicle }) {
       </p>
 
       {pricing?.driver_rate_per_day > 0 && (
-        <CheckboxInput label={t("addDriver", { price: format(pricing.driver_rate_per_day) })} checked={withDriver} onChange={setWithDriver} />
+        <CheckboxInput label={t("addDriver", { price: format(pricing.driver_rate_per_day) })} checked={withDriver} onChange={setWithDriver} className="pt-0" />
       )}
       {pricing?.delivery_available && (
-        <CheckboxInput label={t("addDelivery", { price: format(pricing.delivery_flat_fee ?? 0) })} checked={deliveryRequested} onChange={setDeliveryRequested} />
+        <CheckboxInput label={t("addDelivery", { price: format(pricing.delivery_flat_fee ?? 0) })} checked={deliveryRequested} onChange={setDeliveryRequested} className="pt-0" />
       )}
 
       {canTransfer && (
@@ -176,7 +200,7 @@ export function BookingRequestWidget({ vehicle }) {
                 )}
               >
                 <span className="flex items-center gap-1.5 font-medium"><o.icon className="h-4 w-4" /> {o.title}</span>
-                <span className="text-xs text-muted-foreground">{o.sub}</span>
+                <span className="max-w-full truncate text-xs text-muted-foreground" title={o.sub}>{o.sub}</span>
               </button>
             ))}
           </div>
@@ -184,7 +208,13 @@ export function BookingRequestWidget({ vehicle }) {
         </div>
       )}
 
-      <TextareaInput label={t("noteLabel")} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("notePlaceholder")} />
+      {showNote || note ? (
+        <TextareaInput label={t("noteLabel")} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("notePlaceholder")} rows={2} autoFocus={showNote && !note} />
+      ) : (
+        <button type="button" onClick={() => setShowNote(true)} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          <Plus className="h-3.5 w-3.5" /> {t("addNote")}
+        </button>
+      )}
 
       {estimate && (
         <div className="space-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
@@ -199,6 +229,29 @@ export function BookingRequestWidget({ vehicle }) {
             </div>
           )}
           <div className="flex justify-between border-t pt-1 font-semibold"><span>{canTransfer && paymentMethod === "bank_transfer" ? t("totalBank") : t("totalCash")}</span><span>{format(estimate.total)}</span></div>
+          <PriceBreakdownDialog
+            format={format}
+            from={range.from}
+            to={range.to}
+            data={{
+              lines: estimate.lines,
+              rentalDays,
+              base: estimate.base,
+              dailyRate: Number(pricing.daily_rate) || 0,
+              hasDiscountRates: Number(pricing.weekly_rate) > 0 || Number(pricing.monthly_rate) > 0,
+              driver: estimate.driver,
+              driverRate: Number(pricing.driver_rate_per_day ?? 0),
+              delivery: estimate.delivery,
+              taxRate: pricing.tax_rate,
+              tax: estimate.tax,
+              deposit: estimate.deposit,
+              depositWaived: pricing.deposit_method === "waived",
+              total: estimate.total,
+              totalLabel: canTransfer && paymentMethod === "bank_transfer" ? t("totalBank") : t("totalCash"),
+              advance: canTransfer && paymentMethod === "bank_transfer" ? advance : null,
+              advancePct,
+            }}
+          />
         </div>
       )}
 

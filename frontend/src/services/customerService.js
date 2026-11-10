@@ -29,9 +29,9 @@ export const customerService = {
     getOne: (reference) => customerApi.get(`/bookings/${reference}`),
     summary: () => customerApi.get("/bookings/summary"),
     /** The rental agreement PDF — the shop's terms, signed at handover. */
-    agreement: (reference, download = false) => customerApi.get(`/bookings/${reference}/agreement`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    agreement: (reference, download = false, lang) => customerApi.get(`/bookings/${reference}/agreement`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     /** The booking voucher PDF to show the shop at pickup — fetched as a blob since it needs the customer's token. */
-    voucher: (reference, download = false) => customerApi.get(`/bookings/${reference}/voucher`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    voucher: (reference, download = false, lang) => customerApi.get(`/bookings/${reference}/voucher`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     create: (data) => customerApi.post("/bookings", data),
     cancel: (reference, reason) => customerApi.post(`/bookings/${reference}/cancel`, { reason }),
     /** FormData: amount, transfer_reference (optional), proof (PDF / image). */

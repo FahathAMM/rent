@@ -96,7 +96,6 @@ export default function SaleVehicleDetailPage() {
   const mileage = tc("km", { value: Number(vehicle.mileage_km ?? 0).toLocaleString() });
   // Phone-width spec tiles are too narrow for "Automatic" — use the short form when there is one.
   const shortGearbox = vehicle.transmission && enumLabel("transmissionShort", vehicle.transmission);
-  const subtitle = [vehicle.make, vehicle.model, vehicle.variant].filter(Boolean).join(" ") + (vehicle.year ? ` · ${vehicle.year}` : "");
 
   return (
     <div className="pb-24 lg:pb-16">
@@ -162,7 +161,6 @@ export default function SaleVehicleDetailPage() {
                   </div>
                 )}
                 <h1 className="text-xl font-bold leading-tight tracking-tight sm:text-3xl">{vehicle.title}</h1>
-                {subtitle.trim() && <p className="text-sm text-muted-foreground">{subtitle}</p>}
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
                   <span className="flex items-center gap-1.5 text-muted-foreground"><Sparkles className="h-4 w-4 text-primary" />{condition}</span>

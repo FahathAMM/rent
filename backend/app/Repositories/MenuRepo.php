@@ -29,11 +29,6 @@ class MenuRepo
             ->paginate(min($request->perPage ?? 50, 100));
     }
 
-    public function getFlat(): Collection
-    {
-        return $this->model->active()->orderBy('sort_order')->get();
-    }
-
     public function store(array $data): Menu
     {
         return DB::transaction(fn () => $this->model->create($data));

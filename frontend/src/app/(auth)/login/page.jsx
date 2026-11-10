@@ -1,5 +1,5 @@
 import LoginPageClient from "./LoginPageClient";
-import { getInitialBrand } from "../getInitialBrand";
+import { getInitialBrand } from "@/lib/getInitialBrand";
 
 export default async function LoginPage() {
   const initialBrand = await getInitialBrand();

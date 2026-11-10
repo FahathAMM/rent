@@ -9,5 +9,5 @@ class PublicVisit extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $fillable = ['path', 'ip', 'country', 'city', 'isp', 'timezone', 'user_agent'];
+    protected $fillable = ['path', 'customer_id', 'customer_name', 'ip', 'country', 'city', 'isp', 'timezone', 'user_agent'];
 }

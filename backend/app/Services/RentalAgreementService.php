@@ -6,7 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingInspection;
 use App\Models\RentalShop;
 use App\Models\ShopSettings;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\PdfDocument;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -89,8 +89,8 @@ class RentalAgreementService
         ], fn ($v) => $v !== null);
     }
 
-    /** The rental agreement PDF: booking, the shop's terms (as signed, or current if not yet signed) and the signature. */
-    public function pdf(Booking $booking)
+    /** The rental agreement PDF in $locale: booking, the shop's terms (as signed, or current if not yet signed) and the signature. */
+    public function pdf(Booking $booking, string $locale = 'en'): PdfDocument
     {
         $booking->loadMissing(['vehicle', 'shop', 'customer', 'pricing', 'pickupLocation', 'returnLocation']);
         $handover = BookingInspection::where('booking_id', $booking->id)->where('type', BookingInspection::TYPE_HANDOVER)->latest('id')->first();
@@ -102,7 +102,7 @@ class RentalAgreementService
 
         $handover?->loadMissing('conductedBy');
 
-        return Pdf::loadView('pdf.rental-agreement', [
+        return PdfDocument::make('pdf.rental-agreement', [
             'logo' => $this->logoDataUri($booking->shop),
             'booking' => $booking,
             'shop' => $booking->shop,
@@ -113,7 +113,7 @@ class RentalAgreementService
             'signature' => $signature,
             'signedAt' => $handover?->terms_accepted_at ?? ($signature ? $handover?->conducted_at : null),
             'handover' => $handover,
-        ])->setPaper('a4');
+        ], $locale);
     }
 
     /** Status for the booking pages. */

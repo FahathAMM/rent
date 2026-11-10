@@ -22,7 +22,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export function WhatsAppIcon({ className = "size-4" }) {
+function WhatsAppIcon({ className = "size-4" }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +38,7 @@ export function WhatsAppIcon({ className = "size-4" }) {
 /**
  * Extracts all image URLs from vehicle
  */
-export function getVehicleImages(vehicle) {
+function getVehicleImages(vehicle) {
   if (!vehicle) return [];
   const list = [];
   if (Array.isArray(vehicle.images)) {
@@ -77,7 +77,7 @@ const cleanLabel = (val) => {
 /**
  * Builds detailed, comprehensive formatted text for WhatsApp channel / status / group post
  */
-export function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
+function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
   if (!vehicle) return "";
 
   const title =
@@ -243,7 +243,7 @@ export function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
 /**
  * Modal dialog displaying the vehicle image and WhatsApp share options
  */
-export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
+function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
   const [copied, setCopied] = useState(false);
   const [copiedImage, setCopiedImage] = useState(false);
   const [templateMode, setTemplateMode] = useState("full"); // "full" | "short"

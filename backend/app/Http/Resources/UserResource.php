@@ -22,6 +22,9 @@ class UserResource extends JsonResource
             'shop'        => $this->whenLoaded('shop', fn () => $this->shop ? [
                 'shop_id'   => $this->shop_id,
                 'shop_name' => $this->shop->name,
+                'slug'      => $this->shop->slug,
+                'city'      => $this->shop->city,
+                'logo'      => $this->shop->logo_url,
                 'is_verified' => $this->shop->isVerified(),
                 'is_suspended' => $this->shop->status === RentalShop::STATUS_SUSPENDED,
                 'role'       => $this->shopRole(),

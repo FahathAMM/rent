@@ -59,7 +59,7 @@ class ShopReportService
     /** Rental income by pickup month (as on Earnings), sales by sold date, expenses by expense date. */
     private function profitLoss(Carbon $from, Carbon $to): array
     {
-        $income = DB::query()->fromSub(ShopEarningsQuery::rows($from->toDateString(), $to->toDateString())->toBase(), 'e')
+        $income = DB::query()->fromSub(ShopEarningsQuery::totals($from->toDateString(), $to->toDateString())->toBase(), 'e')
             ->selectRaw("DATE_FORMAT(pickup_at, '%Y-%m') as month, SUM(earnings_amount) as amount")
             ->groupBy('month')->pluck('amount', 'month');
 
@@ -110,7 +110,7 @@ class ShopReportService
     /** Includes a car that has since moved to sale if it earned in the period, so totals match Profit & Loss. */
     private function vehicles(Carbon $from, Carbon $to): array
     {
-        $earned = DB::query()->fromSub(ShopEarningsQuery::rows($from->toDateString(), $to->toDateString())->toBase(), 'e')
+        $earned = DB::query()->fromSub(ShopEarningsQuery::totals($from->toDateString(), $to->toDateString())->toBase(), 'e')
             ->selectRaw('vehicle_id, COUNT(*) as bookings, SUM(earnings_amount) as income')
             ->groupBy('vehicle_id')->get()->keyBy('vehicle_id');
 
@@ -259,8 +259,9 @@ class ShopReportService
     /** Everything owed today, so it ignores the date range: an old debt shouldn't vanish from a short period. */
     private function outstanding(): array
     {
-        $rows = ShopEarningsQuery::rows()->with(['vehicle:id,title', 'customer:id,name,phone'])->orderBy('bookings.pickup_at')->get()
-            ->filter(fn ($b) => (float) $b->earnings_amount > (float) $b->received_amount)
+        // Only bookings still owing, filtered in SQL (MySQL allows HAVING on select aliases).
+        $rows = ShopEarningsQuery::totals()->havingRaw('earnings_amount > received_amount')
+            ->with(['vehicle:id,title', 'customer:id,name,phone'])->orderBy('bookings.pickup_at')->orderBy('bookings.id')->get()
             ->map(fn ($b) => [
                 'reference' => $b->booking_reference,
                 'customer' => $b->customer?->name,

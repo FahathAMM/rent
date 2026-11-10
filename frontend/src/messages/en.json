@@ -417,7 +417,8 @@
     "moreOf": "More {category}",
     "vehicles": "vehicles",
     "viewAll": "View all",
-    "bookNow": "Book now"
+    "bookNow": "Book now",
+    "depositLabel": "Deposit"
   },
   "sale": {
     "loginToAsk": "Please log in to ask the shop",
@@ -458,7 +459,7 @@
     "addDelivery": "Delivery to my location (+{price})",
     "howPay": "How will you pay the shop?",
     "cash": "Cash at pickup",
-    "cashSub": "Pay everything when you collect",
+    "cashSub": "Pay in full on pickup",
     "bank": "Bank transfer",
     "bankFromAdvance": "From {amount} ({pct}% advance)",
     "bankFromPct": "From a {pct}% advance",
@@ -478,7 +479,23 @@
     "footBankAdvance": "any amount from the {pct}% advance up to the full total",
     "footBankAdvanceAmount": "any amount from the {pct}% advance ({amount}) up to the full total",
     "footBankFull": "the full amount",
-    "footCash": "Once the owner confirms, you pay the shop in cash at pickup."
+    "footCash": "Once the owner confirms, you pay the shop in cash at pickup.",
+    "breakdownLink": "See how this price is calculated",
+    "breakdownTitle": "Price breakdown",
+    "breakdownDates": "{from} → {to} · {count, plural, one {# day} other {# days}}",
+    "breakdownRental": "Rental",
+    "breakdownMonths": "{count, plural, one {# month} other {# months}} × {rate}",
+    "breakdownWeeks": "{count, plural, one {# week} other {# weeks}} × {rate}",
+    "breakdownDays": "{count, plural, one {# day} other {# days}} × {rate}",
+    "breakdownRule": "Every 30 days is charged at the monthly rate, every 7 days at the weekly rate, and any remaining days at the daily rate.",
+    "breakdownSaving": "You save {amount} compared with the daily rate ({daily}).",
+    "breakdownFlat": "One-time fee",
+    "breakdownSubtotal": "Subtotal",
+    "breakdownDepositNote": "Paid to the shop and returned when you bring the vehicle back.",
+    "breakdownDepositWaived": "Waived by the shop for this vehicle.",
+    "breakdownAdvance": "Advance to transfer ({pct}%)",
+    "breakdownAdvanceNote": "The minimum to transfer once the owner confirms. The rest is paid at pickup.",
+    "addNote": "Add a note to the owner"
   },
   "calendar": {
     "placeholder": "Choose your dates",
