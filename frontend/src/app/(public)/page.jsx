@@ -87,7 +87,7 @@ export default function HomePage() {
 
   return (
     <div>
-      <HeroSection featured={featured} saleTotal={forSale?.meta?.total} heroSlides={heroSlides} categories={categories} cities={cities} shopsTotal={shopsRes?.meta?.total} />
+      <HeroSection featured={featured} saleTotal={forSale?.meta?.total} heroSlides={heroSlides} categories={categories} allDistricts={allDistricts} shopsTotal={shopsRes?.meta?.total} />
 
       {categories?.length > 0 && (
         <ScrollReveal>
