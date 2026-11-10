@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { platformDetailService } from "@/services/platformDetailService";
 import { BrandLogo } from "@/components/auth/BrandLogo";
+import { Globe, Linkedin } from "lucide-react";
+import { visitService } from "@/services/visitService";
 
 export function PublicFooter() {
   const t = useTranslations("footer");
@@ -69,6 +71,7 @@ export function PublicFooter() {
         <div>
           <p className="text-sm font-semibold">{t("help")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <li><Link href="/guide" className="hover:text-foreground">{t("guide")}</Link></li>
             <li><Link href="/stay-safe" className="hover:text-foreground">{t("staySafe")}</Link></li>
             <li><Link href="/faq" className="hover:text-foreground">{t("faq")}</Link></li>
             <li><Link href="/contact" className="hover:text-foreground">{t("contact")}</Link></li>
@@ -79,8 +82,31 @@ export function PublicFooter() {
       </div>
 
       <div className="border-t">
-        <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-muted-foreground">
-          {t("rights", { year: new Date().getFullYear(), brand: brandName })}
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>{t("rights", { year: new Date().getFullYear(), brand: brandName })}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>Developed by AMM. Fahath</span>
+            <a
+              href="https://www.linkedin.com/in/fahath-mohamed-3ab47416b/"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => visitService.track("linkedin_click")}
+              className="flex items-center gap-1 hover:text-foreground"
+            >
+              <Linkedin className="size-3.5 shrink-0" />
+              LinkedIn
+            </a>
+            <a
+              href="https://fahathamm.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => visitService.track("website_click")}
+              className="flex items-center gap-1 hover:text-foreground"
+            >
+              <Globe className="size-3.5 shrink-0" />
+              Portfolio
+            </a>
+          </div>
         </div>
       </div>
     </footer>

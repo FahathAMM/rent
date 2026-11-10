@@ -12,7 +12,9 @@ import { cn, getInitials } from "@/lib/utils";
 import {
   Menu, X, Home, CarFront, MapPin, Building2, Sparkles, ChevronRight, Store, LogIn, UserPlus,
   LayoutDashboard, CalendarRange, Heart, Star, UserRound, LogOut, BadgeDollarSign, MessageCircle,
+  Linkedin, Globe,
 } from "lucide-react";
+import { visitService } from "@/services/visitService";
 
 const NAV = [
   { href: "/", key: "home", icon: Home },
@@ -216,13 +218,38 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex items-center justify-between border-t px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground">
-            <span>© {new Date().getFullYear()} {brandName}</span>
-            {isAuthenticated && (
-              <button type="button" onClick={() => { setOpen(false); onLogout(); }} className="flex items-center gap-1.5 font-medium text-destructive">
-                <LogOut className="h-3.5 w-3.5" /> {tHeader("logout")}
-              </button>
-            )}
+          <div className="space-y-2 border-t px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-xs text-muted-foreground">
+            <div className="flex items-center justify-between">
+              <span>© {new Date().getFullYear()} {brandName}</span>
+              {isAuthenticated && (
+                <button type="button" onClick={() => { setOpen(false); onLogout(); }} className="flex items-center gap-1.5 font-medium text-destructive">
+                  <LogOut className="h-3.5 w-3.5" /> {tHeader("logout")}
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>Developed by AMM. Fahath</span>
+              <a
+                href="https://www.linkedin.com/in/fahath-mohamed-3ab47416b/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => visitService.track("linkedin_click")}
+                className="flex items-center gap-1 hover:text-foreground"
+              >
+                <Linkedin className="size-3.5 shrink-0" />
+                LinkedIn
+              </a>
+              <a
+                href="https://fahathamm.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => visitService.track("website_click")}
+                className="flex items-center gap-1 hover:text-foreground"
+              >
+                <Globe className="size-3.5 shrink-0" />
+                Portfolio
+              </a>
+            </div>
           </div>
         </aside>
       </div>,
