@@ -13,13 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  Download,
-  Copy,
   ImageOff,
   Check,
   Store,
   FileText,
   ExternalLink,
+  ClipboardCopy,
 } from "lucide-react";
 
 function WhatsAppIcon({ className = "size-4" }) {
@@ -75,9 +74,9 @@ const cleanLabel = (val) => {
 };
 
 /**
- * Builds detailed, comprehensive formatted text for WhatsApp channel / status / group post
+ * Builds comprehensive formatted text for WhatsApp channel / status / group post with ALL vehicle details
  */
-function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
+export function buildDetailedVehicleWhatsAppText(vehicle) {
   if (!vehicle) return "";
 
   const title =
@@ -85,8 +84,10 @@ function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
   const categoryName = vehicle.category?.name || null;
   const brandName = vehicle.brand?.name || vehicle.make || null;
   const modelName = vehicle.vehicle_model?.name || vehicle.model || null;
+  const variantName = vehicle.vehicle_variant?.name || vehicle.variant || null;
   const year = vehicle.year || null;
   const colour = vehicle.vehicle_colour?.name || vehicle.colour || null;
+  const regNumber = vehicle.registration_number || null;
 
   // Shop details
   const shopName = vehicle.shop?.name || "Shop";
@@ -95,7 +96,7 @@ function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
   const contactPhone =
     vehicle.shop?.owner?.phone || vehicle.shop?.phone || "";
 
-  // Pricing
+  // Pricing & terms
   const pricing = vehicle.pricing || {};
   const dailyRate = formatCurrency(pricing.daily_rate);
   const weeklyRate = formatCurrency(pricing.weekly_rate);
@@ -108,22 +109,48 @@ function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
   const mileage = pricing.mileage_allowance_per_day_km
     ? `${pricing.mileage_allowance_per_day_km} km / day`
     : "Unlimited Mileage";
+  const excessMileage = pricing.excess_mileage_rate_per_km
+    ? `${formatCurrency(pricing.excess_mileage_rate_per_km)} / km`
+    : null;
   const minDays = pricing.min_rental_days ? `${pricing.min_rental_days} day(s)` : null;
-  const deliveryAvailable = pricing.delivery_available;
+  const maxDays = pricing.max_rental_days ? `${pricing.max_rental_days} days` : null;
+  const fuelPolicy = pricing.fuel_policy ? cleanLabel(pricing.fuel_policy) : null;
+  const cleaningFee = formatCurrency(pricing.cleaning_fee);
+  const lateReturnFee = pricing.late_return_fee_per_hour
+    ? `${formatCurrency(pricing.late_return_fee_per_hour)} / hr`
+    : null;
 
-  // Specs
+  // Delivery details
+  const deliveryAvailable = pricing.delivery_available;
+  let deliveryInfo = null;
+  if (deliveryAvailable) {
+    const parts = [];
+    if (pricing.delivery_free_radius_km) parts.push(`Free within ${pricing.delivery_free_radius_km} km`);
+    if (pricing.delivery_flat_fee) parts.push(`Flat fee ${formatCurrency(pricing.delivery_flat_fee)}`);
+    if (pricing.delivery_fee_per_km) parts.push(`${formatCurrency(pricing.delivery_fee_per_km)}/km`);
+    deliveryInfo = parts.length > 0 ? `Available (${parts.join(", ")})` : "Available to your location";
+  }
+
+  // Specifications
   const transmission = cleanLabel(vehicle.transmission);
   const fuelType = cleanLabel(vehicle.fuel_type);
   const seats = vehicle.seating_capacity ? `${vehicle.seating_capacity} Seats` : null;
   const luggage = vehicle.luggage_capacity ? `${vehicle.luggage_capacity} Luggage Bags` : null;
   const engine = vehicle.engine_capacity_cc ? `${vehicle.engine_capacity_cc} cc` : null;
-  const ac = vehicle.air_conditioned ? "Air Conditioned (A/C)" : null;
+  const ac = vehicle.air_conditioned ? "Air Conditioned (A/C)" : "Non-A/C";
   const doors = vehicle.doors ? `${vehicle.doors} Doors` : null;
 
-  // Features array
+  // Features list
   const featuresList = Array.isArray(vehicle.features) && vehicle.features.length > 0
-    ? vehicle.features.slice(0, 6).join(" · ")
-    : null;
+    ? vehicle.features
+    : [];
+
+  // Pickup locations
+  const pickupLocs = Array.isArray(vehicle.pickup_locations || vehicle.pickupLocations)
+    ? (vehicle.pickup_locations || vehicle.pickupLocations)
+        .map((p) => p.location?.name || p.location?.address || [p.location?.city, p.location?.district].filter(Boolean).join(", "))
+        .filter(Boolean)
+    : [];
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const isSale = vehicle.listing_type === "sale";
@@ -179,30 +206,17 @@ function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
     ].filter((line) => line !== null).join("\n");
   }
 
-  // Quick / Short mode
-  if (mode === "short") {
-    return [
-      `🚗 *${title}*`,
-      dailyRate ? `💰 *Rate:* ${dailyRate} / day` : null,
-      shopName ? `🏢 *Shop:* ${shopName}${location ? ` (${location})` : ""}` : null,
-      transmission || fuelType || seats ? `⚙️ *Specs:* ${[transmission, fuelType, seats, ac].filter(Boolean).join(" · ")}` : null,
-      contactPhone ? `📞 *Inquiries:* ${contactPhone}` : null,
-      ``,
-      `🔗 *Book Online:* ${publicUrl}`,
-    ].filter((line) => line !== null).join("\n");
-  }
-
-  // Full comprehensive mode
   const lines = [
     `✨ *NEW VEHICLE LISTED FOR RENT!* ✨`,
     ``,
     `🚘 *${title.toUpperCase()}*`,
-    [brandName, modelName, year].filter(Boolean).length > 0
-      ? `📌 *Model:* ${[brandName, modelName, year].filter(Boolean).join(" · ")}`
+    [brandName, modelName, variantName, year].filter(Boolean).length > 0
+      ? `📌 *Model:* ${[brandName, modelName, variantName, year].filter(Boolean).join(" · ")}`
       : null,
     categoryName || colour
       ? `🏷️ *Category:* ${[categoryName, colour ? `Colour: ${colour}` : null].filter(Boolean).join(" | ")}`
       : null,
+    regNumber ? `🔢 *Registration No:* ${regNumber}` : null,
     ``,
     `💰 *RENTAL RATES:*`,
     dailyRate ? `• Daily Rate: *${dailyRate}* / day` : null,
@@ -218,15 +232,26 @@ function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
     engine ? `• Engine: *${engine}*` : null,
     luggage || doors ? `• Capacity: *${[luggage, doors].filter(Boolean).join(" | ")}*` : null,
     ``,
-    featuresList ? `⭐ *KEY FEATURES:*\n• ${featuresList}` : null,
-    featuresList ? `` : null,
-    `📋 *RENTAL TERMS:*`,
+    `📋 *RENTAL TERMS & CONDITIONS:*`,
     `• Mileage: *${mileage}*`,
+    excessMileage ? `• Excess Mileage Rate: *${excessMileage}*` : null,
     driverRate ? `• Driver Option: *Available (${driverRate}) or Self-Drive*` : `• Driver Option: *Self-Drive*`,
+    fuelPolicy ? `• Fuel Policy: *${fuelPolicy}*` : null,
     minDays ? `• Minimum Rental: *${minDays}*` : null,
-    deliveryAvailable ? `• Delivery: *Available to your location*` : null,
+    maxDays ? `• Maximum Rental: *${maxDays}*` : null,
+    deliveryInfo ? `• Delivery: *${deliveryInfo}*` : null,
+    cleaningFee ? `• Cleaning Fee: *${cleaningFee}*` : null,
+    lateReturnFee ? `• Late Return Fee: *${lateReturnFee}*` : null,
     ``,
-    `🏢 *SHOP:*`,
+    featuresList.length > 0 ? `⭐ *KEY FEATURES:*\n${featuresList.map((f) => `• ${f}`).join("\n")}` : null,
+    featuresList.length > 0 ? `` : null,
+    vehicle.description ? `📝 *ABOUT THIS VEHICLE:*\n${vehicle.description}` : null,
+    vehicle.description ? `` : null,
+    vehicle.condition_notes ? `⚠️ *CONDITION NOTES:*\n${vehicle.condition_notes}` : null,
+    vehicle.condition_notes ? `` : null,
+    pickupLocs.length > 0 ? `📍 *PICKUP LOCATIONS:*\n• ${pickupLocs.join("\n• ")}` : null,
+    pickupLocs.length > 0 ? `` : null,
+    `🏢 *RENTAL COMPANY:*`,
     `• Shop: *${shopName}* ${isVerified ? "🛡️ (Verified Partner)" : ""}`,
     location ? `• Location: *${location}*` : null,
     contactPhone ? `• Inquiries / Call: *${contactPhone}*` : null,
@@ -241,44 +266,206 @@ function buildDetailedVehicleWhatsAppText(vehicle, mode = "full") {
 }
 
 /**
- * Modal dialog displaying the vehicle image and WhatsApp share options
+ * Converts image URL to PNG Blob and Data URL for universal clipboard compatibility
  */
-function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
-  const [copied, setCopied] = useState(false);
-  const [copiedImage, setCopiedImage] = useState(false);
-  const [templateMode, setTemplateMode] = useState("full"); // "full" | "short"
+async function getImagePngBlobAndDataUrl(imageUrl) {
+  if (!imageUrl) return { pngBlob: null, dataUrl: null };
+  try {
+    const res = await fetch(imageUrl);
+    const blob = await res.blob();
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const objectUrl = URL.createObjectURL(blob);
+    img.src = objectUrl;
+
+    await new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Image failed to load"));
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width || 800;
+    canvas.height = img.naturalHeight || img.height || 600;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(objectUrl);
+
+    const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    const dataUrl = canvas.toDataURL("image/png");
+    return { pngBlob, dataUrl };
+  } catch (err) {
+    console.warn("Could not convert image to PNG:", err);
+    return { pngBlob: null, dataUrl: imageUrl };
+  }
+}
+
+/**
+ * INCLUDED BOTH BUTTON ACTION: Copies BOTH image AND description together!
+ * Places image bitmap (CF_DIB) + plain text (CF_UNICODETEXT) + rich HTML onto clipboard
+ */
+export async function copyBothImageAndDescription(imageUrl, text) {
+  try {
+    if (!imageUrl) {
+      await navigator.clipboard.writeText(text);
+      return { success: true };
+    }
+
+    const { pngBlob, dataUrl } = await getImagePngBlobAndDataUrl(imageUrl);
+
+    // 1. Try modern Chromium multi-mime write if supported (writes PNG bitmap + HTML + plain text)
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write && pngBlob) {
+      try {
+        const safeTextHtml = text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br/>");
+        const htmlContent = `<div><img src="${dataUrl || imageUrl}" alt="Vehicle" style="max-width:750px;display:block;margin-bottom:12px;border-radius:8px;" /><br/><div style="font-family:sans-serif;white-space:pre-wrap;font-size:14px;line-height:1.5;">${safeTextHtml}</div></div>`;
+        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+        const textBlob = new Blob([text], { type: "text/plain" });
+
+        const item = new ClipboardItem({
+          "image/png": pngBlob,
+          "text/html": htmlBlob,
+          "text/plain": textBlob,
+        });
+        await navigator.clipboard.write([item]);
+        return { success: true };
+      } catch (e1) {
+        console.warn("Async multi-mime write not supported by browser, falling back to DOM selection copy:", e1);
+      }
+    }
+
+    // 2. High-Fidelity DOM Selection Copy (places CF_DIB image bitmap + CF_UNICODETEXT + HTML on Windows clipboard)
+    try {
+      const wrapper = document.createElement("div");
+      wrapper.contentEditable = "true";
+      wrapper.style.position = "fixed";
+      wrapper.style.top = "0";
+      wrapper.style.left = "0";
+      wrapper.style.width = "400px";
+      wrapper.style.height = "400px";
+      wrapper.style.opacity = "0.01";
+      wrapper.style.zIndex = "-9999";
+      wrapper.style.pointerEvents = "none";
+      wrapper.style.overflow = "hidden";
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = dataUrl || imageUrl;
+      img.style.display = "block";
+      img.style.maxWidth = "400px";
+      img.style.marginBottom = "10px";
+
+      // Wait for image decode so Chromium layout has the bitmap ready in memory
+      if (img.decode) {
+        await img.decode().catch(() => {});
+      } else {
+        await new Promise((res) => {
+          img.onload = res;
+          img.onerror = res;
+        });
+      }
+      wrapper.appendChild(img);
+
+      const textEl = document.createElement("div");
+      textEl.style.whiteSpace = "pre-wrap";
+      textEl.style.fontFamily = "sans-serif";
+      textEl.innerText = text;
+      wrapper.appendChild(textEl);
+
+      document.body.appendChild(wrapper);
+
+      const range = document.createRange();
+      range.selectNodeContents(wrapper);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      const ok = document.execCommand("copy");
+      sel.removeAllRanges();
+      document.body.removeChild(wrapper);
+
+      if (ok) return { success: true };
+    } catch (e2) {
+      console.warn("DOM copy failed:", e2);
+    }
+
+    // 3. Fallback: Write HTML + plain text
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      try {
+        const safeTextHtml = text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br/>");
+        const htmlContent = `<div><img src="${dataUrl || imageUrl}" alt="Vehicle" style="max-width:750px;display:block;margin-bottom:12px;border-radius:8px;" /><br/><div style="font-family:sans-serif;white-space:pre-wrap;font-size:14px;line-height:1.5;">${safeTextHtml}</div></div>`;
+        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+        const textBlob = new Blob([text], { type: "text/plain" });
+
+        const item = new ClipboardItem({
+          "text/html": htmlBlob,
+          "text/plain": textBlob,
+        });
+        await navigator.clipboard.write([item]);
+        return { success: true };
+      } catch (e3) {
+        console.warn("Async HTML copy fallback failed:", e3);
+      }
+    }
+
+    // 4. Final fallback: plain text
+    await navigator.clipboard.writeText(text);
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to copy both:", err);
+    try {
+      await navigator.clipboard.writeText(text);
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  }
+}
+
+/**
+ * Clean, user-friendly WhatsApp Share Dialog without duplicates or save buttons
+ */
+export function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
+  const [copiedBoth, setCopiedBoth] = useState(false);
+
   const images = getVehicleImages(vehicle);
   const [selectedImgIndex, setSelectedImgIndex] = useState(0);
   const activeImage = images[selectedImgIndex] || images[0] || null;
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => buildDetailedVehicleWhatsAppText(vehicle));
 
-  // Whenever vehicle or templateMode changes, generate fresh message
   useEffect(() => {
     if (vehicle) {
-      setMessage(buildDetailedVehicleWhatsAppText(vehicle, templateMode));
+      setMessage(buildDetailedVehicleWhatsAppText(vehicle));
     }
-  }, [vehicle, templateMode]);
+  }, [vehicle]);
 
-  const handleCopyText = async () => {
-    try {
-      await navigator.clipboard.writeText(message);
-      setCopied(true);
-      toast.success("Detailed post text copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy text");
+  /**
+   * INCLUDED BOTH BUTTON: Copies BOTH image & description together!
+   */
+  const handleCopyBoth = async () => {
+    const res = await copyBothImageAndDescription(activeImage, message);
+    if (res.success) {
+      setCopiedBoth(true);
+      toast.success(
+        "Both Image & Description copied! In WhatsApp: Ctrl+V attaches photo, then Ctrl+V in 'Add a caption' pastes description.",
+        { duration: 5500 }
+      );
+      setTimeout(() => setCopiedBoth(false), 3000);
+    } else {
+      toast.error("Failed to copy to clipboard");
     }
-  };
-
-  const handleOpenWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-    toast.success("Opening WhatsApp with full vehicle post...");
   };
 
   /**
-   * Helper to fetch an image and return a File / Blob object
+   * Helper to fetch active image as File
    */
   const getActiveImageFile = async () => {
     if (!activeImage) return null;
@@ -289,11 +476,17 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
   };
 
   /**
-   * Native Share with Image File + Text (Web Share API for Mobile / Supported Browsers)
+   * 1-Click Share All Details + Image directly to WhatsApp
    */
-  const handleShareWithImage = async () => {
+  const handleShareAllToWhatsApp = async () => {
+    // 1. Auto-copy both to clipboard in background so user has it ready
     try {
-      if (typeof navigator !== "undefined" && navigator.share && activeImage) {
+      copyBothImageAndDescription(activeImage, message);
+    } catch {}
+
+    // 2. Try native share with image file if supported (mobile / tablet / supported desktop)
+    if (typeof navigator !== "undefined" && navigator.share && activeImage) {
+      try {
         const file = await getActiveImageFile();
         if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -301,144 +494,44 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
             text: message,
             files: [file],
           });
-          toast.success("Shared image and details to WhatsApp!");
+          toast.success("Shared image & details to WhatsApp!");
           return;
         }
+      } catch (err) {
+        if (err.name === "AbortError") return;
       }
-    } catch (err) {
-      if (err.name === "AbortError") return;
     }
 
-    // Fallback: Copy full post text to clipboard, download the photo, then open WhatsApp!
-    try {
-      await navigator.clipboard.writeText(message);
-      await handleDownloadImage(false);
-      handleOpenWhatsApp();
-      toast.success("Photo saved & caption copied! Select your WhatsApp Channel and paste (Ctrl+V) the photo with caption.");
-    } catch {
-      handleOpenWhatsApp();
-    }
-  };
-
-  /**
-   * Copy actual Image to system Clipboard (so user can just Ctrl+V in WhatsApp Web)
-   */
-  const handleCopyImageToClipboard = async () => {
-    if (!activeImage) {
-      toast.error("No vehicle image available to copy");
-      return;
-    }
-    try {
-      // Browsers usually require image/png for clipboard.write
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = activeImage;
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          toast.error("Failed to process image");
-          return;
-        }
-        try {
-          await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob }),
-          ]);
-          setCopiedImage(true);
-          toast.success("Photo copied to clipboard! You can now paste (Ctrl+V) directly into WhatsApp.");
-          setTimeout(() => setCopiedImage(false), 2500);
-        } catch {
-          // If ClipboardItem fails, download image
-          handleDownloadImage(true);
-        }
-      }, "image/png");
-    } catch {
-      handleDownloadImage(true);
-    }
-  };
-
-  const handleDownloadImage = async (notify = true) => {
-    if (!activeImage) {
-      toast.error("No vehicle image available to download");
-      return;
-    }
-    try {
-      const response = await fetch(activeImage);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      const safeName = (vehicle?.title || "vehicle").toLowerCase().replace(/[^a-z0-9]/g, "-");
-      link.download = `${safeName}-photo.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-      if (notify) {
-        toast.success("Vehicle photo downloaded! You can now drag/attach it to your WhatsApp post.");
-      }
-    } catch {
-      window.open(activeImage, "_blank");
-    }
+    // 3. Fallback: Open WhatsApp with full pre-filled text & link
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.success("Opening WhatsApp with all vehicle details & photo link preview!", {
+      duration: 5000,
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl overflow-hidden p-0 sm:max-w-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b bg-emerald-700 px-5 py-4 text-white">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm">
-              <WhatsAppIcon className="size-6 fill-current" />
-            </div>
-            <div>
-              <DialogTitle className="text-base font-semibold text-white">
-                Share Vehicle with Photo to WhatsApp
-              </DialogTitle>
-              <DialogDescription className="text-xs text-emerald-100">
-                Post high-resolution photo with full specs, rates, and booking link to your Channel
-              </DialogDescription>
-            </div>
+        <div className="flex items-center gap-3 border-b bg-emerald-700 px-5 py-4 text-white">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm">
+            <WhatsAppIcon className="size-6 fill-current" />
           </div>
-
-          {/* Quick template mode toggle */}
-          <div className="hidden sm:flex items-center gap-1 rounded-lg bg-emerald-800/80 p-0.5 text-xs text-emerald-100">
-            <button
-              type="button"
-              onClick={() => setTemplateMode("full")}
-              className={cn(
-                "rounded px-2.5 py-1 font-medium transition",
-                templateMode === "full" ? "bg-white text-emerald-800 shadow-sm" : "hover:text-white"
-              )}
-            >
-              Full Details
-            </button>
-            <button
-              type="button"
-              onClick={() => setTemplateMode("short")}
-              className={cn(
-                "rounded px-2.5 py-1 font-medium transition",
-                templateMode === "short" ? "bg-white text-emerald-800 shadow-sm" : "hover:text-white"
-              )}
-            >
-              Short
-            </button>
+          <div>
+            <DialogTitle className="text-base font-semibold text-white">
+              Share Vehicle to WhatsApp Channel
+            </DialogTitle>
+            <DialogDescription className="text-xs text-emerald-100">
+              Copy both image & description, or share directly to your Channel in 1 click
+            </DialogDescription>
           </div>
         </div>
 
-        <div className="max-h-[76vh] space-y-4 overflow-y-auto p-5">
-          {/* ── Vehicle Photo Gallery Card ────────────────────────────── */}
-          <div className="overflow-hidden rounded-2xl border bg-muted/20 shadow-sm">
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-900">
+        <div className="max-h-[68vh] space-y-4 overflow-y-auto p-5">
+          {/* ── Vehicle Photo (Clean presentation, no save button) ───── */}
+          <div className="overflow-hidden rounded-2xl border bg-slate-900 shadow-sm">
+            <div className="relative aspect-[16/9] w-full overflow-hidden">
               {activeImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -453,10 +546,10 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
                 </div>
               )}
 
-              {/* Gradient overlay on bottom */}
+              {/* Gradient overlay */}
               <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
-              {/* Badges on top */}
+              {/* Badges */}
               <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
                 {vehicle?.pricing?.daily_rate != null && (
                   <span className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-md">
@@ -470,32 +563,7 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
                 )}
               </div>
 
-              {/* Top-Right Quick Image Actions */}
-              {activeImage && (
-                <div className="absolute right-3 top-3 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleCopyImageToClipboard}
-                    className="inline-flex items-center gap-1 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition hover:bg-black/80"
-                    title="Copy Photo to paste directly into WhatsApp"
-                  >
-                    {copiedImage ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
-                    <span>{copiedImage ? "Copied" : "Copy Photo"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadImage(true)}
-                    className="inline-flex items-center gap-1 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition hover:bg-black/80"
-                    title="Download Photo"
-                  >
-                    <Download className="size-3" />
-                    <span>Save</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Title & Shop Info at bottom of photo */}
+              {/* Vehicle Title & Shop Info at bottom */}
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 text-white">
                 <div>
                   <h3 className="text-base font-bold tracking-tight drop-shadow-md sm:text-lg">
@@ -520,18 +588,18 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
               </div>
             </div>
 
-            {/* Multiple Photos Thumbnails */}
+            {/* Thumbnail Selector (Clean, only when multiple images) */}
             {images.length > 1 && (
-              <div className="flex gap-2 border-t bg-muted/40 p-2 overflow-x-auto">
+              <div className="flex gap-2 border-t border-white/10 bg-black/40 p-2 overflow-x-auto">
                 {images.map((img, idx) => (
                   <button
                     key={img}
                     type="button"
                     onClick={() => setSelectedImgIndex(idx)}
                     className={cn(
-                      "relative h-14 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition",
+                      "relative h-12 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition",
                       idx === selectedImgIndex
-                        ? "border-emerald-600 ring-2 ring-emerald-600/30"
+                        ? "border-emerald-500 ring-2 ring-emerald-500/30"
                         : "border-transparent opacity-60 hover:opacity-100"
                     )}
                   >
@@ -543,32 +611,34 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
             )}
           </div>
 
-          {/* ── WhatsApp Message Box ──────────────────────────────────── */}
+          {/* ── WhatsApp Message Caption ─────────────────────────────── */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <FileText className="size-3.5 text-emerald-600" />
-                <span>WhatsApp Channel Post Caption (Editable)</span>
+                <span>All Vehicle Details & Post Caption (Editable)</span>
               </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyText}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+
+              {vehicle?.slug && (
+                <a
+                  href={`/vehicles/${vehicle.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
                 >
-                  {copied ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                  <span>{copied ? "Caption Copied!" : "Copy Caption"}</span>
-                </button>
-              </div>
+                  <span>Public Page</span>
+                  <ExternalLink className="size-3" />
+                </a>
+              )}
             </div>
 
-            {/* WhatsApp authentic bubble style */}
+            {/* Authentic WhatsApp Bubble */}
             <div className="rounded-2xl border border-emerald-200/60 bg-[#efeae2] p-3 text-sm dark:bg-muted/40">
               <div className="relative rounded-xl bg-[#d9fdd3] p-3 shadow-sm text-gray-900 dark:bg-emerald-950/70 dark:text-emerald-100">
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  rows={11}
+                  rows={10}
                   className="w-full resize-y border-none bg-transparent p-0 text-xs sm:text-sm font-sans focus-visible:ring-0 leading-relaxed shadow-none"
                   placeholder="Post text..."
                 />
@@ -576,73 +646,49 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground px-1">
-              <span>💡 Tip: Click <b>Share Image + Caption</b> to share the photo directly with text into WhatsApp!</span>
-              {vehicle?.slug && (
-                <a
-                  href={publicPath(vehicle)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
-                >
-                  <span>Open Public Page</span>
-                  <ExternalLink className="size-3" />
-                </a>
-              )}
+            {/* Quick guide for WhatsApp Web pasting */}
+            <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-2.5 text-xs text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <p className="font-semibold flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+                <span>💡</span>
+                <span>Pasting in WhatsApp Web:</span>
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
+                1. Press <strong>Ctrl + V</strong> in your WhatsApp chat to attach the photo.<br/>
+                2. Click inside WhatsApp&apos;s <em>&quot;Add a caption...&quot;</em> box and press <strong>Ctrl + V</strong> to paste the complete description!
+              </p>
             </div>
           </div>
         </div>
 
-        {/* ── Action Buttons ────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-5 py-3.5">
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleCopyImageToClipboard}
-              className="gap-1.5 text-xs"
-              title="Copy image to clipboard so you can paste (Ctrl+V) into WhatsApp Web"
-            >
-              {copiedImage ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              <span>{copiedImage ? "Photo Copied" : "Copy Photo"}</span>
-            </Button>
+        {/* ── CLEAN FOOTER: ONLY BOTH INCLUDE BUTTON & SHARE ALL ── */}
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 border-t bg-muted/20 px-5 py-3.5">
+          {/* INCLUDED BOTH BUTTON: Copy Image & Description */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCopyBoth}
+            className={cn(
+              "w-full sm:w-auto h-10 gap-2 border-emerald-300 font-semibold text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300 transition-all",
+              copiedBoth && "bg-emerald-100 border-emerald-500 text-emerald-900"
+            )}
+          >
+            {copiedBoth ? (
+              <Check className="size-4 text-emerald-600" />
+            ) : (
+              <ClipboardCopy className="size-4 text-emerald-700" />
+            )}
+            <span>{copiedBoth ? "Both Copied! (Ctrl+V)" : "Copy Image & Description"}</span>
+          </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleDownloadImage(true)}
-              className="gap-1.5 text-xs"
-            >
-              <Download className="size-3.5" />
-              <span>Save Photo</span>
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleCopyText}
-              className="gap-1.5 text-xs"
-            >
-              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-              <span>{copied ? "Copied" : "Copy Caption"}</span>
-            </Button>
-
-            {/* Main Action: Share Image + Caption to WhatsApp */}
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleShareWithImage}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md transition-transform active:scale-95"
-            >
-              <WhatsAppIcon className="size-4 fill-current" />
-              <span>Share Image & Post to WhatsApp</span>
-            </Button>
-          </div>
+          {/* SINGLE BUTTON: 1-Click Share All Details Directly to WhatsApp */}
+          <Button
+            type="button"
+            onClick={handleShareAllToWhatsApp}
+            className="w-full sm:w-auto h-10 gap-2 bg-emerald-600 hover:bg-emerald-700 font-semibold text-white shadow-md transition-all active:scale-95"
+          >
+            <WhatsAppIcon className="size-4 fill-current" />
+            <span>Share All to WhatsApp</span>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -650,7 +696,7 @@ function WhatsAppShareDialog({ vehicle, open, onOpenChange }) {
 }
 
 /**
- * Full button (used on listing detail page)
+ * Single clean button on the listing review page (NO DUPLICATES)
  */
 export function WhatsAppShareButton({ vehicle, className, size = "sm", variant = "default" }) {
   const [open, setOpen] = useState(false);
@@ -662,12 +708,12 @@ export function WhatsAppShareButton({ vehicle, className, size = "sm", variant =
         size={size}
         variant={variant}
         className={cn(
-          "gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors",
+          "gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-colors",
           className
         )}
         onClick={() => setOpen(true)}
       >
-        <WhatsAppIcon className="h-4 w-4 fill-current" />
+        <WhatsAppIcon className="size-4 fill-current" />
         <span>Share to WhatsApp Channel</span>
       </Button>
 
@@ -677,7 +723,7 @@ export function WhatsAppShareButton({ vehicle, className, size = "sm", variant =
 }
 
 /**
- * Compact icon action button (used in tables)
+ * Single compact icon action button in tables
  */
 export function WhatsAppTableActionButton({ vehicle, className }) {
   const [open, setOpen] = useState(false);
