@@ -47,7 +47,6 @@ export function BrandsSection({ brands }) {
           href="/rent"
           linkLabel="See all rentals"
         />
-
         <div className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
           {visible.map((b, i) => {
             const soon = !b.vehicles_count;
