@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customerService } from "@/services/customerService";
-import { VehicleCard } from "@/app/(public)/browse/components/VehicleCard";
+import { VehicleCard } from "@/app/(public)/rent/components/VehicleCard";
 import { AccountPageHeader } from "@/components/account/AccountPageHeader";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -39,7 +39,7 @@ export default function FavoritesPage() {
           <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10"><Heart className="h-7 w-7 text-primary" /></div>
           <p className="text-sm font-medium">No favorites yet</p>
           <p className="max-w-sm text-sm text-muted-foreground">Tap the heart on a vehicle to save it here.</p>
-          <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90"><Link href="/browse">Browse vehicles</Link></Button>
+          <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90"><Link href="/rent">Rent a vehicle</Link></Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

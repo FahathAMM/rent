@@ -25,7 +25,11 @@ export function DateRangePicker({ label, value, onChange, error, placeholder = "
     to: to && isValid(to) ? to : undefined,
   };
 
-  const handleSelect = (range) => {
+  const handleSelect = (nextRange, clickedDay) => {
+    // react-day-picker only nudges the nearest end of a complete range, so
+    // changing the start date was impossible. Once both ends are set, the
+    // next click starts a fresh range from the clicked day instead.
+    const range = selected.from && selected.to ? { from: clickedDay, to: undefined } : nextRange;
     onChange({
       from: range?.from ? format(range.from, "yyyy-MM-dd") : "",
       to: range?.to ? format(range.to, "yyyy-MM-dd") : "",
@@ -47,18 +51,19 @@ export function DateRangePicker({ label, value, onChange, error, placeholder = "
             type="button"
             variant="outline"
             disabled={disabled}
+            title={selected.from ? display : undefined}
             className={cn(
-              "h-8 w-full justify-start text-left font-normal",
+              "h-8 w-full min-w-0 justify-start overflow-hidden text-left text-xs font-normal",
               !selected.from && "text-muted-foreground",
               error && "border-destructive"
             )}
           >
             <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
-            {display}
+            <span className="min-w-0 truncate">{display}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="range" selected={selected} onSelect={handleSelect} numberOfMonths={2} autoFocus />
+          <Calendar mode="range" selected={selected} onSelect={handleSelect} defaultMonth={selected.from} numberOfMonths={2} autoFocus />
         </PopoverContent>
       </Popover>
     </FormField>

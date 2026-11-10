@@ -1,24 +1,30 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { publicService } from "@/services/publicService";
-import { LocationsSection } from "@/components/public/LocationsSection";
-import { Loader2, MapPin } from "lucide-react";
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { BadgeDollarSign, CarFront, Loader2, MapPin } from "lucide-react";
+import { BuyLocations } from "./components/BuyLocations";
+import { RentLocations } from "./components/RentLocations";
 
-/** All districts + the map — the same LocationsSection as the home page, given the whole page. */
+const VIEWS = [
+  { id: "rent", label: "Rent", icon: CarFront, intro: "Pick a district to see every vehicle currently available for rent there." },
+  { id: "buy", label: "Buy", icon: BadgeDollarSign, intro: "Pick a district to see every vehicle currently for sale there." },
+];
+
+/** All districts + the map, for renting or buying. ?type=buy opens the Buy side, so a view can be shared. */
 export default function LocationsPage() {
-  const { data: cities, isLoading: citiesLoading } = useQuery({
-    queryKey: ["public-locations"],
-    queryFn: () => publicService.locations().then((r) => r.data.data),
-  });
+  return (
+    <Suspense fallback={<div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+      <LocationsPageContent />
+    </Suspense>
+  );
+}
 
-  const { data: districts, isLoading: districtsLoading } = useQuery({
-    queryKey: ["public-districts"],
-    queryFn: () => publicService.districts().then((r) => r.data.data),
-    staleTime: Infinity,
-  });
-
-  const isLoading = citiesLoading || districtsLoading;
+function LocationsPageContent() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const view = VIEWS.find((v) => v.id === params.get("type")) ?? VIEWS[0];
 
   return (
     <div>
@@ -35,25 +41,28 @@ export default function LocationsPage() {
             Browse by{" "}
             <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">location</span>
           </h1>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground sm:text-base">
-            Pick a district to see every vehicle currently available for rent there.
-          </p>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground sm:text-base">{view.intro}</p>
+
+          <div className="mt-5 inline-flex gap-1 rounded-full border bg-card p-1 shadow-sm" role="group" aria-label="Rent or buy">
+            {VIEWS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => router.replace(id === "rent" ? "/locations" : `/locations?type=${id}`, { scroll: false })}
+                aria-pressed={view.id === id}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-medium transition-colors",
+                  view.id === id ? "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" /> {label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
-      {isLoading ? (
-        <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <LocationsSection
-          cities={cities}
-          districts={districts}
-          eyebrow="Districts"
-          title="Where you can rent"
-          subtitle="Ranked by vehicles available. Districts without vehicles yet are listed at the bottom."
-          href={null}
-          listClassName="max-h-[560px]"
-        />
-      )}
+      {view.id === "buy" ? <BuyLocations /> : <RentLocations />}
     </div>
   );
 }

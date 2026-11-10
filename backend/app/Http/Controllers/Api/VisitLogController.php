@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\PublicVisit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,10 +25,18 @@ class VisitLogController extends Controller
             ? $request->string('type')->toString()
             : 'public_visit';
 
-        $ip = $request->header('X-Real-IP') ?: $request->ip();
+        // X-Real-IP only counts when it was set by one of our own proxies — a visitor could send anything.
+        $ip = ($request->isFromTrustedProxy() ? $request->header('X-Real-IP') : null) ?: $request->ip();
+
+        // The route is public — a signed-in customer's token is read if sent,
+        // otherwise (guest, bad/expired token) both stay blank.
+        $customer = auth('customer')->user();
+        $customer = $customer instanceof Customer ? $customer : null;
 
         $fields = array_merge([
             'path' => mb_substr($request->string('path')->toString(), 0, 500) ?: null,
+            'customer_id' => $customer?->id,
+            'customer_name' => $customer?->name,
             'ip' => $ip,
         ], $this->geo($ip), [
             'user_agent' => $request->userAgent(),

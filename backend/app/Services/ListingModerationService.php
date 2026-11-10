@@ -28,7 +28,7 @@ class ListingModerationService
         AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, null, ['moderation_status' => 'approved', 'decided_by_admin_id' => $admin->id]);
 
         $vehicle->shop?->owner?->notify(new MarketplaceNotification(
-            'listing_approved', 'Listing approved', "Your listing \"{$vehicle->title}\" passed moderation — you can publish it now.", '/vendor/vehicles',
+            'listing_approved', 'Listing approved', "Your listing \"{$vehicle->title}\" passed moderation — you can publish it now.", $this->listingsUrl($vehicle),
         ));
 
         return $vehicle->fresh();
@@ -47,7 +47,7 @@ class ListingModerationService
         AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, null, ['moderation_status' => 'rejected', 'reason' => $reason, 'decided_by_admin_id' => $admin->id]);
 
         $vehicle->shop?->owner?->notify(new MarketplaceNotification(
-            'listing_rejected', 'Listing rejected', "Your listing \"{$vehicle->title}\" was rejected: {$reason}", '/vendor/vehicles',
+            'listing_rejected', 'Listing rejected', "Your listing \"{$vehicle->title}\" was rejected: {$reason}", $this->listingsUrl($vehicle),
         ));
 
         return $vehicle->fresh();
@@ -96,6 +96,9 @@ class ListingModerationService
         if ($vehicle->status !== Vehicle::STATUS_UNPUBLISHED) {
             throw ValidationException::withMessages(['status' => ['Only an unpublished listing can be republished.']]);
         }
+        if ($vehicle->saleDetail?->isSold()) {
+            throw ValidationException::withMessages(['status' => ['This car has been sold.']]);
+        }
         if (!$vehicle->shop?->isVerified() || $vehicle->shop->status === RentalShop::STATUS_SUSPENDED) {
             throw ValidationException::withMessages(['status' => ["The listing's shop must be verified and active before it can go live."]]);
         }
@@ -134,6 +137,11 @@ class ListingModerationService
         $this->history($admin, $vehicle, 'featured', 'not_featured', 'unfeatured');
 
         return $vehicle->fresh();
+    }
+
+    private function listingsUrl(Vehicle $vehicle): string
+    {
+        return $vehicle->isForSale() ? '/vendor/sales/listings' : '/vendor/vehicles';
     }
 
     private function history(SystemAdmin $admin, Vehicle $vehicle, ?string $from, string $to, string $action, ?string $reason = null): void

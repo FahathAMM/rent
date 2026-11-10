@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { publicService } from "@/services/publicService";
@@ -19,17 +20,10 @@ import {
 
 const PER_PAGE = 12;
 
-const SORT_OPTIONS = [
-  { value: "rating", label: "Top rated" },
-  { value: "reviews", label: "Most reviewed" },
-  { value: "bookings", label: "Most trips" },
-  { value: "fleet", label: "Largest fleet" },
-  { value: "newest", label: "Newest" },
-  { value: "name", label: "Name A–Z" },
-];
+// Labels come from the `shops.sort` messages.
+const SORT_OPTIONS = ["rating", "reviews", "bookings", "fleet", "newest", "name"];
 
 const RATING_OPTIONS = [
-  { value: "", label: "Any rating" },
   { value: "4", label: "4.0+" },
   { value: "4.5", label: "4.5+" },
 ];
@@ -81,13 +75,14 @@ function SkeletonGrid({ view }) {
 }
 
 function Pagination({ meta, onPage }) {
+  const t = useTranslations("browse");
   if (!meta || meta.last_page <= 1) return null;
   const { current_page: page, last_page: last } = meta;
   const pages = Array.from(new Set([1, page - 1, page, page + 1, last])).filter((p) => p >= 1 && p <= last).sort((a, b) => a - b);
 
   return (
-    <nav className="mt-10 flex items-center justify-center gap-1.5" aria-label="Pagination">
-      <Button variant="outline" size="icon" className="h-9 w-9" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page">
+    <nav className="mt-10 flex items-center justify-center gap-1.5" aria-label={t("pagination")}>
+      <Button variant="outline" size="icon" className="h-9 w-9" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label={t("previous")}>
         <ChevronLeft className="h-4 w-4" />
       </Button>
       {pages.map((p, i) => (
@@ -104,7 +99,7 @@ function Pagination({ meta, onPage }) {
           </Button>
         </span>
       ))}
-      <Button variant="outline" size="icon" className="h-9 w-9" disabled={page >= last} onClick={() => onPage(page + 1)} aria-label="Next page">
+      <Button variant="outline" size="icon" className="h-9 w-9" disabled={page >= last} onClick={() => onPage(page + 1)} aria-label={t("next")}>
         <ChevronRight className="h-4 w-4" />
       </Button>
     </nav>
@@ -114,6 +109,8 @@ function Pagination({ meta, onPage }) {
 function ShopsPageContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const t = useTranslations("shops");
+  const tb = useTranslations("browse");
   const [q, setQ] = useState(params.get("q") ?? "");
   const [view, setView] = useState("grid");
   const [showMore, setShowMore] = useState(false);
@@ -210,9 +207,9 @@ function ShopsPageContent() {
     params.get("district") && { key: "district", label: params.get("district") },
     params.get("city") && { key: "city", label: params.get("city") },
     categoryName && { key: "category_id", label: categoryName },
-    params.get("verified_only") && { key: "verified_only", label: "Verified only" },
-    params.get("delivery") && { key: "delivery", label: "Delivers to you" },
-    params.get("rating_min") && { key: "rating_min", label: `${params.get("rating_min")}+ stars` },
+    params.get("verified_only") && { key: "verified_only", label: t("verifiedOnly") },
+    params.get("delivery") && { key: "delivery", label: t("deliversToYou") },
+    params.get("rating_min") && { key: "rating_min", label: t("starsMin", { rating: params.get("rating_min") }) },
   ].filter(Boolean);
 
   const shops = data?.data ?? [];
@@ -231,15 +228,15 @@ function ShopsPageContent() {
         <div className="relative mx-auto max-w-6xl px-4 py-12 text-center sm:py-16">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            {data?.meta ? `${data.meta.total} rental companies` : "Trusted rental companies"} across Sri Lanka
+            {data?.meta ? t("badge", { count: data.meta.total }) : t("badgeUnknown")}
           </div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-            Find a{" "}
-            <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">rental company</span>
-            {" "}you can trust
+            {t.rich("title", {
+              accent: (chunks) => <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 bg-clip-text text-transparent">{chunks}</span>,
+            })}
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Compare registered rental shops by rating, fleet size and price. Every listing is reviewed before it goes live.
+            {t("subtitle")}
           </p>
 
           <form onSubmit={handleSearch} className="mx-auto mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl border bg-card/90 p-2 shadow-lg backdrop-blur-sm sm:flex-row">
@@ -248,29 +245,29 @@ function ShopsPageContent() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Company name, tagline or city..."
+                placeholder={t("searchPlaceholder")}
                 className="h-11 border-0 bg-transparent pl-10 shadow-none focus-visible:ring-0"
               />
             </div>
             <Select value={params.get("district") || "all"} onValueChange={(v) => setDistrict(v === "all" ? "" : v)}>
               <SelectTrigger className="h-11 w-full bg-muted/40 sm:w-44">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="District" />
+                <SelectValue placeholder={tb("district")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All districts</SelectItem>
+                <SelectItem value="all">{tb("allDistricts")}</SelectItem>
                 {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button type="submit" size="lg" className="h-11 shrink-0 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90">
-              Search
+              {tb("search")}
             </Button>
           </form>
 
           <div className="mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-600" />Verified businesses</span>
-            <span className="flex items-center gap-1.5"><Star className="h-4 w-4 fill-amber-400 text-amber-400" />Real customer reviews</span>
-            <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-primary" />{cities?.length ?? 0} cities covered</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-600" />{t("trustVerified")}</span>
+            <span className="flex items-center gap-1.5"><Star className="h-4 w-4 fill-amber-400 text-amber-400" />{t("trustReviews")}</span>
+            <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-primary" />{t("citiesCovered", { count: cities?.length ?? 0 })}</span>
           </div>
         </div>
       </section>
@@ -279,7 +276,7 @@ function ShopsPageContent() {
       {categories?.length > 0 && (
         <div className="border-b bg-muted/20">
           <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none]">
-            <Pill active={!params.get("category_id")} onClick={() => setParam("category_id", "")}>All vehicle types</Pill>
+            <Pill active={!params.get("category_id")} onClick={() => setParam("category_id", "")}>{t("allVehicleTypes")}</Pill>
             {categories.map((c) => (
               <Pill key={c.id} active={params.get("category_id") === String(c.id)} onClick={() => setParam("category_id", String(c.id))}>
                 {c.name}
@@ -294,30 +291,30 @@ function ShopsPageContent() {
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <Pill active={!!params.get("verified_only")} onClick={() => toggleParam("verified_only")}>
-              <ShieldCheck className="h-3.5 w-3.5" /> Verified only
+              <ShieldCheck className="h-3.5 w-3.5" /> {t("verifiedOnly")}
             </Pill>
             <Pill active={!!params.get("delivery")} onClick={() => toggleParam("delivery")}>
-              <Truck className="h-3.5 w-3.5" /> Offers delivery
+              <Truck className="h-3.5 w-3.5" /> {t("offersDelivery")}
             </Pill>
-            {RATING_OPTIONS.slice(1).map((r) => (
+            {RATING_OPTIONS.map((r) => (
               <Pill key={r.value} active={params.get("rating_min") === r.value} onClick={() => setParam("rating_min", params.get("rating_min") === r.value ? "" : r.value)}>
                 <Star className="h-3.5 w-3.5" /> {r.label}
               </Pill>
             ))}
             <Pill active={showMore || !!params.get("city")} onClick={() => setShowMore((s) => !s)}>
-              <SlidersHorizontal className="h-3.5 w-3.5" /> More
+              <SlidersHorizontal className="h-3.5 w-3.5" /> {t("more")}
             </Pill>
           </div>
 
           <div className="flex items-center gap-2">
             <Select value={params.get("sort") ?? "rating"} onValueChange={(v) => setParam("sort", v === "rating" ? "" : v)}>
-              <SelectTrigger className="h-9 w-40 rounded-lg bg-card text-sm sm:w-44"><SelectValue placeholder="Sort" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-40 rounded-lg bg-card text-sm sm:w-44"><SelectValue placeholder={tb("sort")} /></SelectTrigger>
               <SelectContent>
-                {SORT_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                {SORT_OPTIONS.map((s) => <SelectItem key={s} value={s}>{t(`sort.${s}`)}</SelectItem>)}
               </SelectContent>
             </Select>
             <div className="flex h-9 items-center gap-0.5 rounded-lg border bg-card p-0.5">
-              {[{ v: "grid", icon: LayoutGrid, label: "Grid view" }, { v: "list", icon: List, label: "List view" }].map(({ v, icon: Icon, label }) => (
+              {[{ v: "grid", icon: LayoutGrid, label: tb("gridView") }, { v: "list", icon: List, label: tb("listView") }].map(({ v, icon: Icon, label }) => (
                 <button
                   key={v}
                   type="button"
@@ -335,9 +332,9 @@ function ShopsPageContent() {
 
         {(showMore || params.get("city")) && (
           <div className="mb-4 rounded-2xl border bg-card p-4 shadow-sm">
-            <p className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold"><MapPin className="h-4 w-4 text-primary" />City{selectedDistrict && <span className="font-normal text-muted-foreground">in {selectedDistrict}</span>}</p>
+            <p className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold"><MapPin className="h-4 w-4 text-primary" />{tb("city")}{selectedDistrict && <span className="font-normal text-muted-foreground">{t("inDistrict", { district: selectedDistrict })}</span>}</p>
             <div className="flex flex-wrap gap-2">
-              <Pill active={!params.get("city")} onClick={() => setParam("city", "")}>All cities</Pill>
+              <Pill active={!params.get("city")} onClick={() => setParam("city", "")}>{tb("allCities")}</Pill>
               {visibleCities.map((c) => (
                 <Pill key={`${c.district}-${c.city}`} active={params.get("city") === c.city} onClick={() => setParam("city", c.city)}>
                   {c.city}
@@ -351,7 +348,7 @@ function ShopsPageContent() {
         {/* ── Result summary + active filters ─────────────────────────── */}
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <p className="mr-1 flex items-center gap-2 text-sm text-muted-foreground">
-            {isLoading ? "Searching..." : `${total} ${total === 1 ? "company" : "companies"} found`}
+            {isLoading ? tb("searching") : t("found", { count: total })}
             {isFetching && !isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           </p>
           {activeChips.map((chip) => (
@@ -366,7 +363,7 @@ function ShopsPageContent() {
           ))}
           {activeChips.length > 1 && (
             <button type="button" onClick={clearAll} className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-              Clear all
+              {tb("clearAll")}
             </button>
           )}
         </div>
@@ -388,9 +385,9 @@ function ShopsPageContent() {
             <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10">
               <Building2 className="h-7 w-7 text-primary" />
             </div>
-            <p className="font-medium">No rental companies match your search</p>
-            <p className="text-sm text-muted-foreground">Try another district, vehicle type or clear a filter.</p>
-            <Button variant="outline" onClick={clearAll}>Clear filters</Button>
+            <p className="font-medium">{t("emptyTitle")}</p>
+            <p className="text-sm text-muted-foreground">{t("emptyHint")}</p>
+            <Button variant="outline" onClick={clearAll}>{tb("clearFilters")}</Button>
           </div>
         )}
 
@@ -399,14 +396,14 @@ function ShopsPageContent() {
           <Building2 className="absolute -right-6 -top-6 h-40 w-40 rotate-12 text-white/10" aria-hidden="true" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-lg">
-              <h2 className="text-2xl font-semibold tracking-tight">Run a rental business?</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">{t("ctaTitle")}</h2>
               <p className="mt-1.5 text-sm text-white/85">
-                List your fleet, take bookings online and reach customers across Sri Lanka. Registration takes only a few minutes.
+                {t("ctaBody")}
               </p>
-              <p className="mt-3 flex items-center gap-1.5 text-xs text-white/80"><Clock className="h-3.5 w-3.5" />Listings are reviewed before they go live</p>
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-white/80"><Clock className="h-3.5 w-3.5" />{t("ctaNote")}</p>
             </div>
             <Button asChild size="lg" variant="secondary" className="shrink-0 gap-1.5 bg-white text-foreground hover:bg-white/90">
-              <Link href="/vendor/register">List your shop <ArrowRight className="h-4 w-4" /></Link>
+              <Link href="/vendor/register">{t("ctaButton")} <ArrowRight className="h-4 w-4" /></Link>
             </Button>
           </div>
         </section>

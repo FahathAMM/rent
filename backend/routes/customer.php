@@ -1,9 +1,12 @@
 <?php
 
-use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\Customer\AuthController as CustomerAuthController;
-use App\Http\Controllers\Api\FavoriteController;
-use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\Customer\BookingController;
+use App\Http\Controllers\Api\Customer\DisputeController as CustomerDisputeController;
+use App\Http\Controllers\Api\Customer\FavoriteController;
+use App\Http\Controllers\Api\Customer\NotificationController as CustomerNotificationController;
+use App\Http\Controllers\Api\Customer\ReviewController;
+use App\Http\Controllers\Api\Customer\SaleEnquiryController as CustomerSaleEnquiryController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Customer — entirely separate identity/guard from the vendor/owner/───────
@@ -11,8 +14,8 @@ use Illuminate\Support\Facades\Route;
 // same as routes/platform.php. A vendor/owner/staff token is rejected by
 // the `customer` guard, and vice versa (see config/auth.php).
 Route::prefix('customer')->group(function () {
-    Route::post('register', [CustomerAuthController::class, 'register']);
-    Route::post('login',    [CustomerAuthController::class, 'login']);
+    Route::post('register', [CustomerAuthController::class, 'register'])->middleware('throttle:auth');
+    Route::post('login',    [CustomerAuthController::class, 'login'])->middleware('throttle:auth');
 
     Route::middleware('customer.auth')->group(function () {
         Route::post('logout', [CustomerAuthController::class, 'logout']);
@@ -43,6 +46,26 @@ Route::middleware('customer.auth')->group(function () {
     // here the way there is for CustomerBookingQuery.
     Route::get('reviews', [ReviewController::class, 'index']);
     Route::post('reviews', [ReviewController::class, 'store']);
+
+    Route::prefix('customer')->group(function () {
+        Route::get('notifications', [CustomerNotificationController::class, 'index']);
+        Route::post('notifications/read-all', [CustomerNotificationController::class, 'markAllRead']);
+        Route::post('notifications/{id}/read', [CustomerNotificationController::class, 'markRead']);
+
+        Route::get('disputes', [CustomerDisputeController::class, 'index']);
+        Route::post('disputes', [CustomerDisputeController::class, 'store']);
+        Route::get('disputes/{reference}', [CustomerDisputeController::class, 'show']);
+        Route::post('disputes/{reference}/messages', [CustomerDisputeController::class, 'addMessage']);
+    });
+
+    // A buyer's enquiries about cars for sale — ownership by customer_id
+    // through CustomerSaleQuery. See app-doc/marketplace/13-vehicle-sales.md.
+    Route::get('sales/enquiries', [CustomerSaleEnquiryController::class, 'index']);
+    Route::post('sales/enquiries', [CustomerSaleEnquiryController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('sales/enquiries/{reference}', [CustomerSaleEnquiryController::class, 'show']);
+    Route::post('sales/enquiries/{reference}/messages', [CustomerSaleEnquiryController::class, 'reply'])->middleware('throttle:30,1');
+    Route::post('sales/enquiries/{reference}/close', [CustomerSaleEnquiryController::class, 'close']);
+    Route::get('sales/enquiries/{reference}/agreement', [CustomerSaleEnquiryController::class, 'agreement']);
 
     // Favorites — ownership by user_id, same reasoning as reviews. A
     // favorited vehicle may belong to any shop, so the lookup goes

@@ -6,11 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Review;
+use App\Models\SaleEnquiry;
 use App\Models\Vehicle;
 use App\Models\VehicleAvailability;
+use App\Models\VehicleSale;
+use App\Models\VehicleSaleDetail;
+use App\Queries\ShopEarningsQuery;
+use App\Services\AuthUser;
+use App\Services\SubscriptionService;
 use App\Support\VendorContext;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The owner dashboard tiles - see app-doc/marketplace/05-ui-and-api-map.md
@@ -27,27 +34,59 @@ class DashboardController extends Controller
 {
     use JsonResponseTrait;
 
+    public function __construct()
+    {
+        $this->middleware('can:vendor-dashboard-view');
+    }
+
     public function index(): JsonResponse
     {
         $shopId = VendorContext::shopId();
+        // The shop's money (revenue, income trend, sale value) only for those who may see earnings.
+        $seesMoney = AuthUser::can('vendor-finance-earnings-view');
+
+        $sales = $this->salesSummary($shopId);
+        if ($sales && !$seesMoney) {
+            $sales['sold_value_this_month'] = null;
+        }
 
         return $this->response('Dashboard retrieved', [
             'listings' => $this->listingCounts(),
+            'sales' => $sales,
             'bookings' => $this->bookingCounts(),
-            'revenue' => $this->revenue(),
+            'revenue' => $seesMoney ? $this->revenue() : null,
             'vehicle_utilisation' => $this->utilisation(),
             'listing_performance' => $this->listingPerformance(),
             'reviews' => $this->reviewSummary($shopId),
             'today' => $this->today(),
             'attention' => $this->attentionCounts(),
-            'income_trend' => $this->incomeTrend(),
+            'income_trend' => $seesMoney ? $this->incomeTrend() : [],
             'recent_bookings' => $this->recentBookings(),
+            'can_view_money' => $seesMoney,
         ]);
+    }
+
+    /** Null when the shop's plan has no sales, so the dashboard shows nothing about them. */
+    private function salesSummary(?int $shopId): ?array
+    {
+        if (!$shopId || !app(SubscriptionService::class)->hasFeature($shopId, 'sales')) {
+            return null;
+        }
+
+        $soldThisMonth = VehicleSale::where('sold_at', '>=', now()->startOfMonth());
+
+        return [
+            'for_sale' => Vehicle::forSale()->where('status', Vehicle::STATUS_PUBLISHED)
+                ->whereHas('saleDetail', fn ($q) => $q->where('sale_status', VehicleSaleDetail::STATUS_AVAILABLE))->count(),
+            'enquiries_waiting' => SaleEnquiry::where('status', SaleEnquiry::STATUS_NEW)->count(),
+            'sold_this_month' => (clone $soldThisMonth)->count(),
+            'sold_value_this_month' => (float) (clone $soldThisMonth)->sum('sale_price'),
+        ];
     }
 
     private function listingCounts(): array
     {
-        $byStatus = Vehicle::selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status');
+        $byStatus = Vehicle::forRent()->selectRaw('status, count(*) as count')->groupBy('status')->pluck('count', 'status');
 
         return [
             'total' => $byStatus->sum(),
@@ -66,7 +105,7 @@ class DashboardController extends Controller
     {
         $today = now();
 
-        return Vehicle::where('status', Vehicle::STATUS_PUBLISHED)
+        return Vehicle::forRent()->where('status', Vehicle::STATUS_PUBLISHED)
             ->whereDoesntHave('bookings', fn ($q) => $q
                 ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE])
                 ->where('pickup_at', '<=', $today)
@@ -115,23 +154,13 @@ class DashboardController extends Controller
      */
     private function revenue(): array
     {
-        $bookings = Booking::with(['pricing:id,booking_id,subtotal', 'payments' => fn ($q) => $q
-                ->where('status', Payment::STATUS_SUCCEEDED)
-                ->where(fn ($w) => $w
-                    ->where(fn ($m) => $m->whereNotNull('method')->where('type', '!=', Payment::TYPE_SECURITY_DEPOSIT))
-                    ->orWhere('type', Payment::TYPE_DAMAGE))])
-            ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED])
-            ->get(['id']);
-
-        $income = 0.0;
-        $received = 0.0;
-        foreach ($bookings as $booking) {
-            $damageKept = (float) $booking->payments->where('type', Payment::TYPE_DAMAGE)->sum('debit');
-            $bookingIncome = (float) ($booking->pricing?->subtotal ?? 0) + $damageKept;
-            $paid = (float) $booking->payments->whereNotNull('method')->sum(fn ($p) => (float) $p->credit - (float) $p->debit);
-            $income += $bookingIncome;
-            $received += min($bookingIncome, $paid + $damageKept);
-        }
+        // Added up in SQL by the Earnings page's own query, so the two can't disagree
+        // (loading every booking and payment into PHP took seconds on a busy shop).
+        $totals = DB::query()->fromSub(ShopEarningsQuery::totals()->toBase(), 'e')
+            ->selectRaw('COALESCE(SUM(earnings_amount), 0) as income, COALESCE(SUM(received_amount), 0) as received')
+            ->first();
+        $income = (float) $totals->income;
+        $received = (float) $totals->received;
 
         return [
             'rental_income' => round($income, 2),
@@ -145,7 +174,7 @@ class DashboardController extends Controller
     {
         $since = now()->subDays(30)->toDateString();
 
-        $rows = VehicleAvailability::whereIn('vehicle_id', Vehicle::pluck('id'))
+        $rows = VehicleAvailability::whereIn('vehicle_id', Vehicle::forRent()->pluck('id'))
             ->where('date', '>=', $since)
             ->selectRaw("status, count(*) as count")
             ->groupBy('status')
@@ -166,7 +195,7 @@ class DashboardController extends Controller
     /** Top 5 vehicles by booking_count, with the raw counters a conversion rate is built from. */
     private function listingPerformance(): array
     {
-        return Vehicle::orderByDesc('booking_count')
+        return Vehicle::forRent()->orderByDesc('booking_count')
             ->limit(5)
             ->get(['id', 'title', 'view_count', 'inquiry_count', 'booking_count'])
             ->map(fn ($v) => [
@@ -225,15 +254,18 @@ class DashboardController extends Controller
     {
         $start = now()->startOfMonth()->subMonths(5);
 
-        $totals = Booking::with('pricing:id,booking_id,subtotal')
-            ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED])
-            ->where('pickup_at', '>=', $start)
-            ->get(['id', 'pickup_at'])
-            ->groupBy(fn ($b) => $b->pickup_at->format('Y-m'))
-            ->map(fn ($group) => [
-                'income' => round((float) $group->sum(fn ($b) => $b->pricing?->subtotal ?? 0), 2),
-                'bookings' => $group->count(),
-            ]);
+        // pickup_at is stored in the app's timezone, so its YYYY-MM is the same month PHP would see.
+        $totals = Booking::query()
+            ->leftJoin('booking_pricing as bp', 'bp.booking_id', '=', 'bookings.id')
+            ->whereIn('bookings.status', [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED])
+            ->where('bookings.pickup_at', '>=', $start)
+            ->selectRaw("DATE_FORMAT(bookings.pickup_at, '%Y-%m') as ym, COALESCE(SUM(bp.subtotal), 0) as income, COUNT(*) as bookings")
+            ->groupBy('ym')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->ym => [
+                'income' => round((float) $row->income, 2),
+                'bookings' => (int) $row->bookings,
+            ]]);
 
         return collect(range(0, 5))->map(function ($i) use ($start, $totals) {
             $month = $start->copy()->addMonths($i);
@@ -251,6 +283,7 @@ class DashboardController extends Controller
     {
         return Booking::with(['customer:id,name', 'vehicle:id,title', 'pricing:id,booking_id,total_payable'])
             ->latest()
+            ->latest('id') // stable order when several bookings share a created_at
             ->limit(6)
             ->get()
             ->map(fn ($b) => [

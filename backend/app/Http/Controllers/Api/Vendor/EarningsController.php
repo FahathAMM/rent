@@ -3,97 +3,80 @@
 namespace App\Http\Controllers\Api\Vendor;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
-use App\Models\Payment;
+use App\Queries\ShopEarningsQuery;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-/**
- * The shop's earnings per booking, read-only and scoped by Booking's ShopScope.
- *
- * Customers pay the shop directly (cash / bank transfer), so earnings are
- * the rental subtotal plus any deposit kept for damage; "received" is what the
- * shop has recorded as paid - security-deposit payments excluded (that money
- * is handed back) but the kept damage included - capped at the earnings.
- */
+/** The shop's earnings per booking, read-only. The figures come from ShopEarningsQuery. */
 class EarningsController extends Controller
 {
     use JsonResponseTrait;
-
-    /** Statuses where the rental is (or was) actually going ahead. */
-    private const EARNING_STATUSES = [Booking::STATUS_CONFIRMED, Booking::STATUS_ACTIVE, Booking::STATUS_COMPLETED];
 
     public function __construct()
     {
         $this->middleware('can:vendor-finance-earnings-view');
     }
 
-    /** One row per booking with rental / earnings / received worked out in SQL. */
     private function rows(Request $request): Builder
     {
-        $directReceived = Payment::query()
-            ->selectRaw('COALESCE(SUM(credit - debit), 0)')
-            ->whereColumn('payments.booking_id', 'bookings.id')
-            ->whereNotNull('method') // money lines only - not the booking charge / adjustments
-            ->where('status', Payment::STATUS_SUCCEEDED)
-            ->where('type', '!=', 'security_deposit');
-
-        // Deposit kept for damage at return (a "damage" statement line) — income, and already in the shop's hands.
-        $damageKept = "(SELECT COALESCE(SUM(dp.debit), 0) FROM payments dp WHERE dp.booking_id = bookings.id"
-            . " AND dp.type = 'damage' AND dp.status = 'succeeded' AND dp.deleted_at IS NULL)";
-        $earnings = "(COALESCE(bp.subtotal, 0) + {$damageKept})";
-
-        return Booking::query()
-            ->leftJoin('booking_pricing as bp', 'bp.booking_id', '=', 'bookings.id')
-            ->whereIn('bookings.status', self::EARNING_STATUSES)
-            ->when($request->from, fn ($q) => $q->whereDate('bookings.pickup_at', '>=', $request->from))
-            ->when($request->to, fn ($q) => $q->whereDate('bookings.pickup_at', '<=', $request->to))
-            ->when($request->payment_method, fn ($q) => $q->where('bookings.payment_method', $request->payment_method))
-            ->when($request->search, fn ($q) => $q->where('bookings.booking_reference', 'like', "%{$request->search}%"))
-            ->select([
-                'bookings.id', 'bookings.booking_reference', 'bookings.status', 'bookings.payment_method',
-                'bookings.payment_status', 'bookings.pickup_at', 'bookings.return_at', 'bookings.created_at',
-                'bp.currency',
-                DB::raw('COALESCE(bp.subtotal, 0) as rental_amount'),
-                DB::raw("{$earnings} as earnings_amount"),
-            ])
-            ->selectRaw("LEAST(({$directReceived->toSql()}) + {$damageKept}, {$earnings}) as received_amount", $directReceived->getBindings());
+        return ShopEarningsQuery::rows($request->from, $request->to, $request->payment_method, $request->search);
     }
 
     public function index(Request $request): JsonResponse
     {
-        $summary = DB::query()->fromSub($this->rows($request)->toBase(), 'e')->selectRaw('
+        // One pass, grouped by payment method; the overall summary is the sum of the groups.
+        $groups = DB::query()
+            ->fromSub(ShopEarningsQuery::totals($request->from, $request->to, $request->payment_method, $request->search)->toBase(), 'e')
+            ->selectRaw('
+                payment_method,
                 COUNT(*) as bookings_count,
                 COALESCE(SUM(rental_amount), 0) as gross_rental_amount,
                 COALESCE(SUM(earnings_amount), 0) as earnings_amount,
-                COALESCE(SUM(received_amount), 0) as received_amount,
-                COALESCE(SUM(earnings_amount - received_amount), 0) as pending_amount
-            ')->first();
-
-        $byMethod = DB::query()->fromSub($this->rows($request)->toBase(), 'e')
-            ->selectRaw('payment_method, COUNT(*) as count, COALESCE(SUM(earnings_amount), 0) as amount')
+                COALESCE(SUM(received_amount), 0) as received_amount
+            ')
             ->groupBy('payment_method')
             ->get();
 
+        $sum = fn (string $field) => number_format((float) $groups->sum(fn ($g) => (float) $g->{$field}), 2, '.', '');
+
         return $this->response('Earnings summary retrieved', [
-            'summary' => $summary,
-            'by_method' => $byMethod,
+            'summary' => [
+                'bookings_count' => (int) $groups->sum('bookings_count'),
+                'gross_rental_amount' => $sum('gross_rental_amount'),
+                'earnings_amount' => $sum('earnings_amount'),
+                'received_amount' => $sum('received_amount'),
+                'pending_amount' => number_format((float) $groups->sum(fn ($g) => (float) $g->earnings_amount - (float) $g->received_amount), 2, '.', ''),
+            ],
+            'by_method' => $groups->map(fn ($g) => [
+                'payment_method' => $g->payment_method,
+                'count' => (int) $g->bookings_count,
+                'amount' => $g->earnings_amount,
+            ])->values(),
         ]);
     }
 
-    /** {record, message, status} — ServerDataTable's expected shape, same as Api\LocationController::index(). */
+    /** {record, message, status} — ServerDataTable's expected shape, same as LocationController::index(). */
     public function bookings(Request $request): JsonResponse
     {
         $sortable = ['pickup_at', 'rental_amount', 'earnings_amount', 'received_amount', 'created_at'];
         $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
         $dir = $request->sort_direction === 'desc' ? 'desc' : 'asc';
 
-        $rows = $this->rows($request)
+        // Sorting by a money column needs every booking's figures anyway, so use the
+        // one-pass shape for that; otherwise only the page's rows are worked out.
+        $byAmount = in_array($sort, ['rental_amount', 'earnings_amount', 'received_amount'], true);
+        $perPage = min((int) $request->get('perPage', 20), 100);
+        $query = ($byAmount
+                ? ShopEarningsQuery::totals($request->from, $request->to, $request->payment_method, $request->search)
+                : $this->rows($request))
             ->orderBy($sort, $dir)
-            ->paginate(min((int) $request->get('perPage', 20), 100));
+            ->orderBy('bookings.id', $dir); // stable pages when amounts tie
+
+        // The page count comes from the plain rows (no payment join), which always gives the same number.
+        $rows = $query->paginate($perPage, ['*'], 'page', null, fn () => $this->rows($request)->toBase()->getCountForPagination());
 
         return response()->json([
             'record' => $rows,

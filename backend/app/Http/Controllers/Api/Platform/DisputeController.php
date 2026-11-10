@@ -20,7 +20,7 @@ class DisputeController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $disputes = Dispute::with(['booking:id,booking_reference,shop_id', 'raisedBy:id,name', 'assignedTo:id,name'])
+        $disputes = Dispute::with(['booking:id,booking_reference,shop_id', 'raisedBy:id,name', 'raisedByCustomer:id,name', 'assignedTo:id,name'])
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->priority, fn ($q) => $q->where('priority', $request->priority))
             ->orderByDesc('created_at')
@@ -32,7 +32,7 @@ class DisputeController extends Controller
     public function show(string $reference): JsonResponse
     {
         $dispute = Dispute::where('dispute_reference', $reference)
-            ->with(['booking', 'raisedBy:id,name', 'assignedTo:id,name', 'resolvedBy:id,name'])
+            ->with(['booking', 'raisedBy:id,name', 'raisedByCustomer:id,name', 'assignedTo:id,name', 'resolvedBy:id,name'])
             ->first();
         abort_unless($dispute, 404);
 

@@ -34,6 +34,11 @@ class PlatformAuditLogResource extends JsonResource
                 'id'   => $this->systemAdmin->id,
                 'name' => $this->systemAdmin->name,
             ] : null),
+            'customer' => $this->whenLoaded('customer', fn () => $this->customer ? [
+                'id' => $this->customer->id,
+                'name' => $this->customer->name,
+                'email' => $this->customer->email,
+            ] : null),
         ];
     }
 }

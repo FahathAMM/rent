@@ -22,13 +22,13 @@ class CustomerAuthService
 
         if (!$customer || !Hash::check($credentials['password'], $customer->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => [__('The provided credentials are incorrect.')],
             ]);
         }
 
         if (!$customer->isActive()) {
             throw ValidationException::withMessages([
-                'email' => ['Your account is ' . $customer->status . '.'],
+                'email' => [__('Your account is :status.', ['status' => __($customer->status)])],
             ]);
         }
 
@@ -48,6 +48,7 @@ class CustomerAuthService
             'password'            => Hash::make($data['password']),
             'status'              => Customer::STATUS_ACTIVE,
             'registration_source' => 'web',
+            'terms_accepted_at'   => now(),
         ]);
 
         $token = $customer->createToken('customer-token', ['*'], now()->addDays(7))->plainTextToken;
@@ -84,10 +85,14 @@ class CustomerAuthService
     {
         if (!Hash::check($currentPassword, $customer->password)) {
             throw ValidationException::withMessages([
-                'current_password' => ['The current password is incorrect.'],
+                'current_password' => [__('The current password is incorrect.')],
             ]);
         }
 
         $customer->update(['password' => $newPassword]);
+
+        // Sign out every other session — whoever may have had the old password loses access now.
+        $current = $customer->currentAccessToken();
+        $customer->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->id))->delete();
     }
 }

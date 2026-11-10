@@ -42,8 +42,18 @@ class PublicVehicleRepo extends BaseRepository
         $this->model = $model;
     }
 
-    /** Publicly visible vehicles — the base every public read starts from. */
+    /**
+     * Publicly visible rental vehicles — the base every rental read starts
+     * from, so search, detail, booking and the shop and brand counts never
+     * see a car on sale. The Buy page has its own: PublicSaleRepo.
+     */
     public function base(): Builder
+    {
+        return $this->visible()->forRent();
+    }
+
+    /** Publicly visible vehicles of either type. */
+    public function visible(): Builder
     {
         return Vehicle::withoutGlobalScope(ShopScope::class)
             ->where('vehicles.status', Vehicle::STATUS_PUBLISHED)

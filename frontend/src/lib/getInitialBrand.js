@@ -1,0 +1,25 @@
+const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8001";
+
+/**
+ * Fetches platform branding server-side so the logo/name/tagline are already
+ * in the initial HTML of the login/register pages (customer and vendor) — the
+ * client query then just keeps it fresh. Public data, no token involved.
+ * Never throws: a slow/unreachable backend still renders the page with fallbacks.
+ *
+ * Returns undefined (not null) on any failure — passed straight through as
+ * React Query's `initialData`, where undefined means "none provided" (so
+ * the client still fetches normally) while null would count as real data
+ * and block a retry for the full staleTime.
+ */
+export async function getInitialBrand() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/platform-details`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return undefined;
+    const json = await res.json();
+    return json.data ?? undefined;
+  } catch {
+    return undefined;
+  }
+}

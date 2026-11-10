@@ -61,7 +61,7 @@ export default function AccountBookingsPage() {
         icon={CalendarCheck}
         title="My Bookings"
         description="Track your requests, payments and trips"
-        action={<SelectInput className="w-56" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />}
+        action={<SelectInput className="w-full sm:w-56" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />}
       >
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
@@ -102,7 +102,7 @@ export default function AccountBookingsPage() {
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed py-20 text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/10 via-pink-500/10 to-violet-500/10"><CalendarCheck className="h-7 w-7 text-primary" /></div>
           <p className="text-sm font-medium">No bookings yet</p>
-          <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90"><Link href="/browse">Browse vehicles</Link></Button>
+          <Button asChild className="bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 hover:opacity-90"><Link href="/rent">Rent a vehicle</Link></Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -110,14 +110,14 @@ export default function AccountBookingsPage() {
             const hint = paymentHint(b, format);
             return (
             <Link key={b.id} href={`/account/bookings/${b.booking_reference}`} className="group block">
-              <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 text-white">
                     <Car className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-semibold">{b.vehicle?.title}</p>
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="min-w-0 truncate font-semibold">{b.vehicle?.title}</p>
                       <StatusBadge status={b.status} />
                     </div>
                     <p className="text-sm text-muted-foreground">{b.booking_reference} · {b.shop?.name}</p>
@@ -125,11 +125,11 @@ export default function AccountBookingsPage() {
                     {hint && <p className={`text-xs ${HINT_TONE[hint.tone]}`}>{hint.text}</p>}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="text-right">
+                <div className="flex shrink-0 items-center justify-between gap-2 border-t pt-2 sm:justify-end sm:border-0 sm:pt-0">
+                  <div className="sm:text-right">
                     <p className="font-semibold">{format(b.pricing?.total_payable)}</p>
-                    {b.payment_method === "bank_transfer" && <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground"><Landmark className="h-3 w-3" /> Bank transfer</p>}
-                    {b.payment_method === "cash" && <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground"><Banknote className="h-3 w-3" /> Cash</p>}
+                    {b.payment_method === "bank_transfer" && <p className="flex items-center gap-1 text-xs sm:justify-end text-muted-foreground"><Landmark className="h-3 w-3" /> Bank transfer</p>}
+                    {b.payment_method === "cash" && <p className="flex items-center gap-1 text-xs sm:justify-end text-muted-foreground"><Banknote className="h-3 w-3" /> Cash</p>}
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </div>

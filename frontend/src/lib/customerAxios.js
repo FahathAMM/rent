@@ -1,6 +1,7 @@
 import axios from "axios";
 import { toast } from "sonner";
 import { useCustomerAuthStore } from "@/store/customerAuthStore";
+import { withLocaleHeader } from "@/i18n/requestLocale";
 
 /**
  * Dedicated axios instance for the customer identity — reads the
@@ -17,6 +18,9 @@ const customerApi = axios.create({
     Accept: "application/json",
   },
 });
+
+// Validation and error messages come back in the visitor's language.
+customerApi.interceptors.request.use(withLocaleHeader);
 
 customerApi.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {

@@ -15,24 +15,28 @@ class SubscriptionPlan extends Model
         'calendar' => 'Availability calendar',
         'expenses' => 'Expenses',
         'staff' => 'Staff & roles',
+        'sales' => 'Vehicle sales',
+        'reports' => 'Business reports',
     ];
 
     /** Limit name => column. */
     public const LIMITS = [
         'vehicles' => 'max_vehicles',
+        'sale_listings' => 'max_sale_listings',
         'staff' => 'max_staff',
         'locations' => 'max_locations',
     ];
 
     protected $fillable = [
         'code', 'name', 'description', 'price', 'period_days',
-        'max_vehicles', 'max_staff', 'max_locations', 'features', 'is_active', 'sort_order',
+        'max_vehicles', 'max_sale_listings', 'max_staff', 'max_locations', 'features', 'is_active', 'sort_order',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'period_days' => 'integer',
         'max_vehicles' => 'integer',
+        'max_sale_listings' => 'integer',
         'max_staff' => 'integer',
         'max_locations' => 'integer',
         'features' => 'array',
@@ -54,6 +58,6 @@ class SubscriptionPlan extends Model
     /** What an unpaid shop has: nothing — its vendor workspace is locked until it pays (EnsureSubscriptionActive). */
     public static function none(): self
     {
-        return new static(['code' => self::NONE, 'name' => 'No plan', 'price' => 0, 'period_days' => 30, 'max_vehicles' => 0, 'max_staff' => 0, 'max_locations' => 0, 'features' => []]);
+        return new static(['code' => self::NONE, 'name' => 'No plan', 'price' => 0, 'period_days' => 30, 'max_vehicles' => 0, 'max_sale_listings' => 0, 'max_staff' => 0, 'max_locations' => 0, 'features' => []]);
     }
 }

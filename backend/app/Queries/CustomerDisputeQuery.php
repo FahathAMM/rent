@@ -9,14 +9,10 @@ use App\Models\Scopes\ShopScope;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * A dispute can be raised by the customer OR by the shop side (owner /
- * staff) of the same booking - every account gets the customer role on
- * registration (see app-doc/marketplace/03-permissions-model.md), so
- * both sides reach a dispute through the same /disputes endpoints with
- * no shop context at all. Resolving the booking regardless of which
- * side the caller is on means ShopScope is the wrong question here,
- * exactly like CustomerBookingQuery. Sanctioned ShopScope bypass; see
- * tests/Feature/PublicScopeBoundaryTest.php.
+ * Resolves dispute booking relationships for the separate customer and
+ * marketplace-user guards. These cross-shop lookups intentionally bypass
+ * ShopScope and then constrain by the authenticated party's customer or
+ * shop id; see tests/Feature/PublicScopeBoundaryTest.php.
  */
 class CustomerDisputeQuery
 {
@@ -33,6 +29,23 @@ class CustomerDisputeQuery
         return Dispute::where('dispute_reference', $reference)
             ->with(['booking' => fn ($q) => $q->withoutGlobalScope(ShopScope::class), 'raisedBy:id,name'])
             ->first();
+    }
+
+    public static function findForCustomer(int $customerId, string $reference): ?Dispute
+    {
+        return Dispute::where('dispute_reference', $reference)
+            ->whereHas('booking', fn ($q) => $q->withoutGlobalScope(ShopScope::class)->where('customer_id', $customerId))
+            ->with([
+                'booking' => fn ($q) => $q->withoutGlobalScope(ShopScope::class)->with(['shop', 'vehicle' => fn ($v) => $v->withoutGlobalScope(ShopScope::class)]),
+                'raisedByCustomer:id,name',
+            ])
+            ->first();
+    }
+
+    public static function forCustomer(int $customerId): Builder
+    {
+        return Dispute::whereHas('booking', fn ($q) => $q->withoutGlobalScope(ShopScope::class)->where('customer_id', $customerId))
+            ->with(['booking' => fn ($q) => $q->withoutGlobalScope(ShopScope::class)->with('shop')]);
     }
 
     /**

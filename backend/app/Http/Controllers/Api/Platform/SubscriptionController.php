@@ -89,6 +89,7 @@ class SubscriptionController extends Controller
             'price' => ['required', 'numeric', 'min:0', 'max:99999999'],
             'period_days' => ['required', 'integer', 'min:1', 'max:3660'],
             'max_vehicles' => ['nullable', 'integer', 'min:0'],
+            'max_sale_listings' => ['nullable', 'integer', 'min:0'],
             'max_staff' => ['nullable', 'integer', 'min:0'],
             'max_locations' => ['nullable', 'integer', 'min:0'],
             'features' => ['array'],

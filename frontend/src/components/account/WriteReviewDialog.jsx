@@ -13,7 +13,7 @@ function StarPicker({ value, onChange }) {
   return (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" onClick={() => onChange(n)} className="transition-transform hover:scale-110">
+        <button key={n} type="button" onClick={() => onChange(n)} aria-label={`${n} star${n === 1 ? "" : "s"}`} aria-pressed={n <= value} className="transition-transform hover:scale-110">
           <Star className={cn("h-7 w-7", n <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
         </button>
       ))}

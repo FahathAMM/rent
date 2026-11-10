@@ -100,7 +100,7 @@ export default function VendorPromotionsPage() {
             tone="bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent"
             title="Feature a vehicle"
             text="Put one vehicle in front of every customer who searches for vehicles."
-            points={["First in vehicle search — in every sort", "Shown whenever it matches the customer's filters", "On the home page, with a Featured badge"]}
+            points={["First on the Rent or Buy page — in every sort", "Shown whenever it matches the customer's filters", "On the home page, with a Featured badge"]}
             from={cheapest("featured")}
             onClick={() => setPromoting("featured")}
             disabled={!data.vehicles.length}

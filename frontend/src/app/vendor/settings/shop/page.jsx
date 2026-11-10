@@ -108,6 +108,13 @@ const SECTIONS = [
     fields: ["operating_hours"],
   },
   {
+    id: "booking-times",
+    label: "Booking Times",
+    icon: Clock,
+    description: "Default pickup and return times applied to customer booking requests.",
+    fields: ["booking_pickup_time", "booking_return_time"],
+  },
+  {
     id: "policies",
     label: "Policies",
     icon: ScrollText,
@@ -134,6 +141,8 @@ function pickForm(shop) {
       shop[f] ?? (f === "operating_hours" ? null : ""),
     ]),
   );
+  form.booking_pickup_time = shop.booking_pickup_time?.slice(0, 5) ?? "10:00";
+  form.booking_return_time = shop.booking_return_time?.slice(0, 5) ?? "10:00";
   form.operating_hours = Object.fromEntries(
     DAYS.map(({ key }) => [
       key,
@@ -675,7 +684,7 @@ export default function ShopProfileSettingsPage() {
             <p className="hidden px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground lg:block">
               Shop settings
             </p>
-            <div className="flex gap-1.5 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
+            <div className="no-scrollbar flex gap-1.5 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
               {SECTIONS.map((s) => {
                 const Icon = s.icon;
                 const isActive = s.id === active;
@@ -759,7 +768,7 @@ export default function ShopProfileSettingsPage() {
                         onChange={fi("tagline")}
                         disabled={!canEdit}
                         error={err("tagline")}
-                        placeholder="e.g. Reliable rentals, fair prices"
+                        placeholder="e.g. Reliable vehicles, fair prices"
                       />
                     </div>
                     <TextareaInput
@@ -769,7 +778,7 @@ export default function ShopProfileSettingsPage() {
                       onChange={fi("description")}
                       disabled={!canEdit}
                       error={err("description")}
-                      placeholder="Tell customers about your shop, fleet and service..."
+                      placeholder="Tell customers about your shop, vehicles and service..."
                     />
                     <p className="text-right text-xs text-muted-foreground">
                       {form.description?.length ?? 0} / 5000
@@ -913,6 +922,32 @@ export default function ShopProfileSettingsPage() {
                     }
                     canEdit={canEdit}
                   />
+                )}
+
+                {section.id === "booking-times" && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      These times are used when a customer selects pickup and return dates. All booking times use Sri Lanka time.
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <TextInput
+                        label="Default pickup time"
+                        type="time"
+                        value={form.booking_pickup_time}
+                        onChange={fi("booking_pickup_time")}
+                        disabled={!canEdit}
+                        error={err("booking_pickup_time")}
+                      />
+                      <TextInput
+                        label="Default return time"
+                        type="time"
+                        value={form.booking_return_time}
+                        onChange={fi("booking_return_time")}
+                        disabled={!canEdit}
+                        error={err("booking_return_time")}
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {section.id === "policies" && (

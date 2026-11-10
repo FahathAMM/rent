@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { RichTextEditor } from "./components/RichTextEditor";
+import { RichTextEditor } from "@/components/shared/RichTextEditor";
 
 const SAMPLE = `<h2>Rental terms</h2><ol>
 <li><p>The renter must be at least <strong>21 years old</strong> and hold a valid driving licence.</p></li>

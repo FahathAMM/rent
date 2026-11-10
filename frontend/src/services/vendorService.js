@@ -22,9 +22,9 @@ export const vendorService = {
     /** FormData: method (cash | bank_transfer), amount, paid_at?, reference?, note?, proof? — money the shop received outside the app. */
     recordPayment: (reference, data) => api.post(`/vendor/bookings/${reference}/payments`, data, multipart),
     /** The booking voucher PDF (same one the customer gets) — a blob, since it needs the staff token. */
-    voucher: (reference, download = false) => api.get(`/vendor/bookings/${reference}/voucher`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    voucher: (reference, download = false, lang) => api.get(`/vendor/bookings/${reference}/voucher`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     /** The rental agreement PDF — the shop's terms with the customer's handover signature. */
-    agreement: (reference, download = false) => api.get(`/vendor/bookings/${reference}/agreement`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    agreement: (reference, download = false, lang) => api.get(`/vendor/bookings/${reference}/agreement`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     /** { pickup_at, return_at } as ISO strings — what changing the dates would cost; nothing is saved. */
     previewReschedule: (reference, data) => api.post(`/vendor/bookings/${reference}/reschedule/preview`, data),
     /** { pickup_at, return_at, reason? } — moves the booking's dates (confirmed bookings, before handover). */
@@ -98,6 +98,43 @@ export const vendorService = {
     /** FormData: plan_id, periods, bank_reference?, proof (image / PDF). */
     pay: (data) => api.post("/vendor/subscription/payments", data, multipart),
     proof: (paymentId) => api.get(`/vendor/subscription/payments/${paymentId}/proof`, { responseType: "blob" }),
+  },
+
+  /** Business reports, by the slug in ShopReportService::REPORTS. params are { from?, to? }. */
+  reports: {
+    get: (report, params) => api.get(`/vendor/reports/${report}`, { params }),
+    /** format is pdf or csv. */
+    export: (report, format, params) => api.get(`/vendor/reports/${report}/export`, { params: { ...params, format }, responseType: "blob" }),
+  },
+
+  /** Vehicle sales: listings, the enquiry inbox, sold cars and sale terms. Photos reuse vehicleService. */
+  sales: {
+    listings: {
+      getOne: (id) => api.get(`/vendor/sales/listings/${id}`),
+      create: (data) => api.post("/vendor/sales/listings", data),
+      update: (id, data) => api.put(`/vendor/sales/listings/${id}`, data),
+      delete: (id) => api.delete(`/vendor/sales/listings/${id}`),
+      publish: (id) => api.post(`/vendor/sales/listings/${id}/publish`),
+      withdraw: (id) => api.post(`/vendor/sales/listings/${id}/withdraw`),
+      moveToRent: (id) => api.post(`/vendor/sales/listings/${id}/move-to-rent`),
+    },
+    /** A rental vehicle becomes a sale listing. `data` is the sale fields. */
+    moveToSale: (vehicleId, data) => api.post(`/vendor/sales/vehicles/${vehicleId}/move-to-sale`, data),
+    /** { buyer_name, buyer_phone, buyer_nic, sale_price, payment_method, enquiry_reference?, customer_signature?, terms_accepted? } */
+    recordSale: (vehicleId, data) => api.post(`/vendor/sales/listings/${vehicleId}/sell`, data),
+    enquiries: {
+      getOne: (reference) => api.get(`/vendor/sales/enquiries/${reference}`),
+      reply: (reference, body) => api.post(`/vendor/sales/enquiries/${reference}/messages`, { body }),
+      close: (reference, reason) => api.post(`/vendor/sales/enquiries/${reference}/close`, { reason }),
+    },
+    sold: {
+      getOne: (reference) => api.get(`/vendor/sales/sold/${reference}`),
+      agreement: (reference) => api.get(`/vendor/sales/sold/${reference}/agreement`, { responseType: "blob" }),
+    },
+    terms: {
+      get: () => api.get("/vendor/sales/terms"),
+      update: (terms) => api.put("/vendor/sales/terms", { terms }),
+    },
   },
 
   /** The shop's own roles — shop owner only. See Vendor\ShopRoleController (backend). */

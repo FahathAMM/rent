@@ -20,7 +20,7 @@ class AuditLogController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = AuditLog::query()->with(['shop:id,name', 'user:id,name,email', 'systemAdmin:id,name']);
+        $query = AuditLog::query()->with(['shop:id,name', 'user:id,name,email', 'customer:id,name,email', 'systemAdmin:id,name']);
 
         if ($shopId = $request->get('shop_id')) {
             $query->where('shop_id', $shopId);
@@ -28,6 +28,10 @@ class AuditLogController extends Controller
 
         if ($userId = $request->get('user_id')) {
             $query->where('user_id', $userId);
+        }
+
+        if ($customerId = $request->get('customer_id')) {
+            $query->where('customer_id', $customerId);
         }
 
         if ($event = $request->get('event')) {
@@ -55,7 +59,8 @@ class AuditLogController extends Controller
                 $q->where('record', 'like', "%{$search}%")
                   ->orWhere('form', 'like', "%{$search}%")
                   ->orWhereHas('shop', fn ($s) => $s->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
+                  ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
             });
         }
 

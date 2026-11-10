@@ -10,11 +10,14 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { StatusBanner } from "@/components/shared/StatusBanner";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
 import { WriteReviewDialog } from "@/components/account/WriteReviewDialog";
+import { CreateDisputeDialog } from "@/components/account/CreateDisputeDialog";
 import { BankTransferCard } from "@/components/account/BankTransferCard";
 import { CustomerPaymentsList } from "@/components/account/CustomerPaymentsList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PdfMenu } from "@/components/shared/PdfMenu";
+import { BookingProgress } from "@/components/shared/BookingProgress";
+import { PriceBreakdownDialog, breakdownData } from "@/components/shared/PriceBreakdownDialog";
 import {
   ArrowLeft, Loader2, Phone, MapPin, Star, AlertTriangle, FileText, Car, CalendarRange, CalendarClock, Receipt, XCircle, Ban, Banknote, Landmark, ScrollText, Clock, Wallet,
 } from "lucide-react";
@@ -39,6 +42,7 @@ export default function BookingDetailPage() {
   const { format } = useCurrencyFormat();
   const [cancelling, setCancelling] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [disputing, setDisputing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(null); // "voucher" | "agreement" while the PDF is being fetched
 
   const { data: booking, isLoading } = useQuery({
@@ -102,17 +106,19 @@ export default function BookingDetailPage() {
   const originalDates = dateChanges[dateChanges.length - 1]?.from;
   // The voucher the customer shows the shop at pickup — once the shop has confirmed.
   const hasVoucher = ["confirmed", "active", "completed"].includes(booking.status);
+  const canDispute = hasVoucher && !booking.has_open_dispute;
 
-  // Voucher or agreement PDF: view in a new tab, or download as "<booking no>.pdf".
-  const openPdf = (kind, download) => {
+  // Voucher or agreement PDF in English or Tamil: view in a new tab, or download as "<booking no>.pdf"
+  // ("<booking no>-ta.pdf" for Tamil).
+  const openPdf = (kind, download, lang) => {
     // View opens /documents/... in a new tab, which loads the PDF itself.
     if (!download) {
-      window.open(`/documents/customer/${reference}/${kind}`, "_blank");
+      window.open(`/documents/customer/${reference}/${kind}?lang=${lang}`, "_blank");
       return;
     }
     setPdfBusy(kind);
-    customerService.bookings[kind](reference, true)
-      .then((res) => downloadBlob(res.data, `${reference}.pdf`))
+    customerService.bookings[kind](reference, true, lang)
+      .then((res) => downloadBlob(res.data, `${reference}${lang === "en" ? "" : `-${lang}`}.pdf`))
       .catch(() => { toast.error(kind === "voucher" ? "Could not load the booking voucher" : "Could not load the rental agreement"); })
       .finally(() => setPdfBusy(null));
   };
@@ -139,15 +145,15 @@ export default function BookingDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           {hasVoucher && (
             <>
-              <PdfMenu label="Voucher" icon={FileText} loading={pdfBusy === "voucher"} onView={() => openPdf("voucher", false)} onDownload={() => openPdf("voucher", true)} />
+              <PdfMenu label="Voucher" icon={FileText} loading={pdfBusy === "voucher"} onView={(lang) => openPdf("voucher", false, lang)} onDownload={(lang) => openPdf("voucher", true, lang)} />
               {(agreement.signed || agreement.has_terms) && (
                 <PdfMenu
                   label={agreement.signed ? "Signed agreement" : "Shop terms"}
                   icon={ScrollText}
                   title={agreement.signed ? "You signed this at pickup" : "You'll sign this at pickup"}
                   loading={pdfBusy === "agreement"}
-                  onView={() => openPdf("agreement", false)}
-                  onDownload={() => openPdf("agreement", true)}
+                  onView={(lang) => openPdf("agreement", false, lang)}
+                  onDownload={(lang) => openPdf("agreement", true, lang)}
                 />
               )}
             </>
@@ -192,12 +198,13 @@ export default function BookingDetailPage() {
         <StatusBanner icon={Ban} tone="info" title="Cancelled" body={booking.cancellation_reason} />
       )}
       {booking.has_open_dispute && (
-        <StatusBanner
-          icon={AlertTriangle}
-          tone="warning"
-          title="A dispute is open on this booking"
-        />
+        <div className="space-y-2">
+          <StatusBanner icon={AlertTriangle} tone="warning" title="A dispute is open on this booking" />
+          <p className="text-right"><Button asChild variant="outline" size="sm"><Link href="/account/disputes">View your disputes</Link></Button></p>
+        </div>
       )}
+
+      <BookingProgress booking={booking} />
 
       <Card className="rounded-2xl shadow-sm">
         <SectionHeader icon={CalendarRange} title="Rental Details" />
@@ -244,6 +251,18 @@ export default function BookingDetailPage() {
               <div className="flex justify-between text-emerald-600"><span>Paid</span><span>− {format(booking.amount_paid)}</span></div>
               <div className="flex justify-between font-semibold"><span>Balance</span><span>{format(booking.balance_due)}</span></div>
             </>
+          )}
+          {pricing.breakdown && (
+            <PriceBreakdownDialog
+              format={format}
+              from={booking.pickup_at}
+              to={booking.return_at}
+              data={breakdownData(pricing.breakdown, booking.rental_days, isCash ? "Pay in cash at pickup" : "Total payable")}
+              extraRows={paidToShop && Number(booking.amount_paid) > 0 ? [
+                { label: "Paid", amount: booking.amount_paid },
+                { label: "Balance", amount: booking.balance_due, strong: true },
+              ] : []}
+            />
           )}
           {paidToShop && <p className="pt-1 text-xs text-muted-foreground">Paid directly to the shop — any security deposit is refundable on return.</p>}
         </CardContent>
@@ -295,7 +314,7 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {(canCancel || canReview) && (
+      {(canCancel || canReview || canDispute) && (
         <div className="flex flex-wrap justify-end gap-2">
           {canCancel && (
             <Button variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setCancelling(true)}>
@@ -305,6 +324,11 @@ export default function BookingDetailPage() {
           {canReview && (
             <Button variant="outline" className="gap-1.5" onClick={() => setReviewing(true)}>
               <Star className="h-4 w-4" /> Write a Review
+            </Button>
+          )}
+          {canDispute && (
+            <Button variant="outline" className="gap-1.5" onClick={() => setDisputing(true)}>
+              <AlertTriangle className="h-4 w-4" /> Open a Dispute
             </Button>
           )}
         </div>
@@ -326,6 +350,8 @@ export default function BookingDetailPage() {
         onSubmit={handleReviewSubmit}
         loading={submitReview.isPending}
       />
+
+      {disputing && <CreateDisputeDialog booking={booking} onClose={() => setDisputing(false)} />}
     </div>
   );
 }

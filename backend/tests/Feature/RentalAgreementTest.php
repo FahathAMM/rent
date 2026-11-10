@@ -134,6 +134,28 @@ class RentalAgreementTest extends TestCase
             ->assertOk()->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_the_agreement_and_voucher_can_be_printed_in_tamil(): void
+    {
+        ShopSettings::where('shop_id', $this->shop->id)->update(['agreement_terms' => '1. No smoking.']);
+        $this->handover(['terms_accepted' => true, 'customer_signature' => self::SIGNATURE])->assertOk();
+        $ref = $this->booking->booking_reference;
+
+        // The shop's English panel asks for a Tamil copy with ?lang=ta.
+        foreach (['agreement', 'voucher'] as $doc) {
+            $response = $this->asOwner()->get("/api/vendor/bookings/{$ref}/{$doc}?lang=ta&download=1")->assertOk();
+            $this->assertStringStartsWith('%PDF', $response->getContent());
+            $this->assertStringContainsString("attachment; filename={$ref}-ta.pdf", $response->headers->get('Content-Disposition'));
+        }
+
+        // A customer browsing in Tamil (X-Locale) gets Tamil by default.
+        $this->app['auth']->forgetGuards();
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->customer->createToken('c')->plainTextToken,
+            'X-Locale' => 'ta',
+        ])->get("/api/bookings/{$ref}/agreement?download=1")->assertOk();
+        $this->assertStringContainsString("filename={$ref}-ta.pdf", $response->headers->get('Content-Disposition'));
+    }
+
     public function test_without_terms_no_signature_is_needed(): void
     {
         $this->handover()->assertOk()->assertJsonPath('data.agreement.signed', false)->assertJsonPath('data.agreement.has_terms', false);

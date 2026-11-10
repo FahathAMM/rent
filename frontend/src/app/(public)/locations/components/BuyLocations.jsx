@@ -1,0 +1,161 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { publicService } from "@/services/publicService";
+import { LocationsMap } from "./LocationsMap";
+import { SectionHeader } from "@/components/public/SectionHeader";
+import { cn } from "@/lib/utils";
+import { MapPin, Layers, CarFront, TrendingUp, ArrowRight, Loader2 } from "lucide-react";
+
+/**
+ * Every Sri Lankan district (from /public/districts), each with the cars its
+ * shops have for sale (summed from /public/buy/filters' per-city counts).
+ * Districts with none yet are still listed — greyed, at the bottom.
+ */
+export function BuyLocations() {
+  const [active, setActive] = useState(null);
+
+  const { data: cities, isLoading: citiesLoading } = useQuery({
+    queryKey: ["public-sale-filters", null],
+    queryFn: () => publicService.saleFilters().then((r) => r.data.data),
+    select: (options) => options.locations,
+  });
+
+  const { data: districts, isLoading: districtsLoading } = useQuery({
+    queryKey: ["public-districts"],
+    queryFn: () => publicService.districts().then((r) => r.data.data),
+    staleTime: Infinity,
+  });
+
+  const byDistrict = new Map();
+  (districts ?? []).forEach((d) => byDistrict.set(d.name, { district: d.name, vehicle_count: 0, cities: [] }));
+  (cities ?? []).forEach((c) => {
+    const name = c.district || c.city;
+    if (!byDistrict.has(name)) byDistrict.set(name, { district: name, vehicle_count: 0, cities: [] });
+    const row = byDistrict.get(name);
+    row.vehicle_count += c.vehicle_count;
+    row.cities.push(c.city);
+  });
+  const sorted = [...byDistrict.values()].sort((a, b) => b.vehicle_count - a.vehicle_count || a.district.localeCompare(b.district));
+
+  // The top card only shows a district that has cars, so with none at all every district stays in the list.
+  const top = sorted[0]?.vehicle_count > 0 ? sorted[0] : null;
+  const rest = top ? sorted.slice(1) : sorted;
+  const max = top?.vehicle_count || 1;
+  const totalVehicles = sorted.reduce((sum, d) => sum + d.vehicle_count, 0);
+  const activeCount = sorted.filter((d) => d.vehicle_count > 0).length;
+  const href = (d) => `/buy?district=${encodeURIComponent(d.district)}`;
+  const hover = (d) => ({ onMouseEnter: () => setActive(d.district), onMouseLeave: () => setActive(null), onFocus: () => setActive(d.district), onBlur: () => setActive(null) });
+  // LocationsMap pins by `city` (falling back to `district`) — one pin per district's main town here.
+  const mapPoints = sorted.map((d) => ({ city: d.district, district: d.district, vehicle_count: d.vehicle_count }));
+
+  if (citiesLoading || districtsLoading) {
+    return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  return (
+    <section className="relative isolate overflow-hidden bg-muted/30 py-6 sm:py-10">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-50">
+        <div className="aurora-blob aurora-blob-3" />
+      </div>
+      <div className="mx-auto max-w-6xl px-4">
+        <SectionHeader eyebrow="Districts" title="Where you can buy" subtitle="Ranked by vehicles for sale. Districts without any yet are listed at the bottom." href={null}>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            {[
+              { icon: MapPin, label: `${sorted.length} districts` },
+              { icon: Layers, label: `${activeCount} with cars for sale` },
+              { icon: CarFront, label: `${totalVehicles} for sale` },
+            ].map(({ icon: Icon, label }) => (
+              <span key={label} className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium shadow-sm">
+                <Icon className="h-3.5 w-3.5 text-primary" /> {label}
+              </span>
+            ))}
+          </div>
+        </SectionHeader>
+
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_1.15fr]">
+          {/* Ranked list */}
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
+            {top && (
+              <Link
+                href={href(top)}
+                {...hover(top)}
+                className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-pink-500 to-violet-600 p-5 text-white sm:p-6 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
+              >
+                <div className="absolute inset-0 opacity-[0.08] [background-image:repeating-linear-gradient(135deg,#fff_0_1px,transparent_1px_14px)]" aria-hidden="true" />
+                <MapPin className="absolute -bottom-6 -right-4 h-36 w-36 text-white/15 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" aria-hidden="true" />
+                <span className="relative inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-sm">
+                  <TrendingUp className="h-3 w-3" /> #1 most for sale
+                </span>
+                <p className="relative mt-2.5 text-2xl font-semibold tracking-tight sm:mt-3 sm:text-3xl">{top.district}</p>
+                <p className="relative line-clamp-1 text-sm text-white/80">{top.cities.length ? top.cities.join(" · ") : "District"}</p>
+                <div className="relative mt-4 flex items-end justify-between gap-3 sm:mt-5">
+                  <p><span className="text-3xl font-bold sm:text-4xl">{top.vehicle_count}</span> <span className="text-sm text-white/80">for sale</span></p>
+                  <span className="flex items-center gap-1 rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-foreground shadow-md transition-transform group-hover:translate-x-0.5">
+                    Explore <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+              </Link>
+            )}
+
+            {rest.length > 0 && (
+              <div className="overflow-hidden rounded-3xl border bg-card shadow-sm">
+                <ul className="thin-scrollbar max-h-[560px] overflow-y-auto">
+                  {rest.map((d, i) => {
+                    const empty = d.vehicle_count === 0;
+                    return (
+                      <li key={d.district} className="border-b last:border-0">
+                        <Link
+                          href={href(d)}
+                          {...hover(d)}
+                          className={cn(
+                            "group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/60 sm:gap-4 sm:px-5 sm:py-3",
+                            active === d.district && "bg-muted/60",
+                            empty && "opacity-60 hover:opacity-100"
+                          )}
+                        >
+                          <span className="w-7 shrink-0 text-sm font-bold text-muted-foreground/60">{empty ? "—" : `#${i + (top ? 2 : 1)}`}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <p className="truncate font-medium group-hover:text-primary">{d.district}</p>
+                              <p className="shrink-0 text-xs text-muted-foreground">
+                                {empty ? "None yet" : <><span className="font-semibold text-foreground">{d.vehicle_count}</span> for sale</>}
+                              </p>
+                            </div>
+                            {!empty && (
+                              <div className="mt-1.5 flex items-center gap-3">
+                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                                  <div className="h-full rounded-full bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500" style={{ width: `${Math.max(6, (d.vehicle_count / max) * 100)}%` }} />
+                                </div>
+                                {d.cities.length > 0 && <span className="max-w-[45%] shrink-0 truncate text-[11px] text-muted-foreground">{d.cities.join(", ")}</span>}
+                              </div>
+                            )}
+                          </div>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Map — on phones the island fills the box, so the hint sits above it instead of on it */}
+          <p className="-mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:hidden">
+            <span className="h-2 w-2 rounded-full bg-gradient-to-br from-orange-500 to-violet-500" /> Cars for sale per district — tap a pin to browse
+          </p>
+          <div className="relative min-h-[460px] overflow-hidden rounded-3xl border bg-card shadow-sm lg:min-h-[520px]">
+            <LocationsMap cities={mapPoints} activeCity={active} hrefFor={(p) => `/buy?district=${encodeURIComponent(p.district)}`} className="absolute inset-0" />
+            {/* left-14 clears Leaflet's +/- zoom buttons in the top-left corner */}
+            <div className="pointer-events-none absolute left-14 top-3 z-[500] hidden items-center gap-1.5 rounded-full bg-background/90 px-3 py-1 text-xs font-medium shadow-sm backdrop-blur-sm sm:flex">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-br from-orange-500 to-violet-500" /> Cars for sale per district — tap a pin to browse
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

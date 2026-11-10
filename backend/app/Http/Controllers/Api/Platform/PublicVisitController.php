@@ -30,7 +30,7 @@ class PublicVisitController extends Controller
         ]]);
     }
 
-    /** {record, message, status} — ServerDataTable's shape. Filters: search (path/ip/country/city), date_from, date_to. */
+    /** {record, message, status} — ServerDataTable's shape. Filters: search (path/ip/country/city/customer name), date_from, date_to. */
     public function index(Request $request): JsonResponse
     {
         $query = PublicVisit::query()
@@ -38,7 +38,8 @@ class PublicVisitController extends Controller
                 ->where('path', 'like', "%{$search}%")
                 ->orWhere('ip', 'like', "%{$search}%")
                 ->orWhere('country', 'like', "%{$search}%")
-                ->orWhere('city', 'like', "%{$search}%")))
+                ->orWhere('city', 'like', "%{$search}%")
+                ->orWhere('customer_name', 'like', "%{$search}%")))
             ->when($request->get('date_from'), fn ($q, $from) => $q->where('created_at', '>=', $this->localDay($from)))
             ->when($request->get('date_to'), fn ($q, $to) => $q->where('created_at', '<', $this->localDay($to)->addDay()));
 

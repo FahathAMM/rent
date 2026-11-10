@@ -14,10 +14,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Every account - customer or shop owner/staff - raises and reads
- * disputes through these same routes (every user gets the customer
- * role on registration), so a booking's shop side is resolved via
- * CustomerDisputeQuery rather than a shop-scoped Booking::find().
+ * Shop owners and staff raise and read disputes through the marketplace
+ * user guard. Customer identities use the separate customer-guard
+ * controller; both paths share the dispute service and ownership query.
  */
 class DisputeController extends Controller
 {

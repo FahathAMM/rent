@@ -22,7 +22,7 @@ class Dispute extends Model
     public const STATUS_ESCALATED = 'escalated';
 
     protected $fillable = [
-        'dispute_reference', 'booking_id', 'raised_by_user_id', 'raised_by_side', 'against_side',
+        'dispute_reference', 'booking_id', 'raised_by_user_id', 'raised_by_customer_id', 'raised_by_side', 'against_side',
         'category', 'subject', 'description', 'claimed_amount',
         'status', 'priority', 'assigned_to', 'resolution', 'resolution_amount',
         'resolution_in_favour_of', 'resolved_by', 'resolved_at', 'closed_at',
@@ -43,6 +43,11 @@ class Dispute extends Model
     public function raisedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'raised_by_user_id');
+    }
+
+    public function raisedByCustomer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'raised_by_customer_id');
     }
 
     public function assignedTo(): BelongsTo

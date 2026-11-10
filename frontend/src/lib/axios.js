@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "@/store/authStore";
+import { withLocaleHeader } from "@/i18n/requestLocale";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "/api",
@@ -8,6 +9,9 @@ const api = axios.create({
     Accept: "application/json",
   },
 });
+
+// Public pages ask for the visitor's language; vendor/platform pages stay English.
+api.interceptors.request.use(withLocaleHeader);
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { TextInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
+import { TranslationFields, appendTranslations, translationsForm } from "@/components/forms/TranslationFields";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
@@ -18,7 +19,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const emptyForm = { title: "", subtitle: "", link_url: "", link_label: "", is_active: true };
+const TRANSLATED = ["title", "subtitle", "link_label"];
+const emptyForm = { title: "", subtitle: "", link_url: "", link_label: "", is_active: true, translations: translationsForm(null, TRANSLATED) };
 
 /** Hero preview: the slide image under the same dark overlay the home page uses, with the headline on top. */
 function SlidePreview({ image, title, subtitle, linkLabel, className }) {
@@ -68,6 +70,7 @@ export default function PlatformHeroSlidesPage() {
     fd.append("link_url", values.link_url ?? "");
     fd.append("link_label", values.link_label ?? "");
     fd.append("is_active", values.is_active ? "1" : "0");
+    appendTranslations(fd, values.translations);
     if (file) fd.append("image", file);
     return fd;
   };
@@ -108,7 +111,7 @@ export default function PlatformHeroSlidesPage() {
   const openCreate = () => { setEditing(null); setForm(emptyForm); setImageFile(null); setErrors({}); setOpen(true); };
   const openEdit = (s) => {
     setEditing(s);
-    setForm({ title: s.title, subtitle: s.subtitle ?? "", link_url: s.link_url ?? "", link_label: s.link_label ?? "", is_active: !!s.is_active });
+    setForm({ title: s.title, subtitle: s.subtitle ?? "", link_url: s.link_url ?? "", link_label: s.link_label ?? "", is_active: !!s.is_active, translations: translationsForm(s.translations, TRANSLATED) });
     setImageFile(null);
     setErrors({});
     setOpen(true);
@@ -213,9 +216,20 @@ export default function PlatformHeroSlidesPage() {
             <TextInput label="Headline" required maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} error={errors.title?.[0]} placeholder="e.g. Rent any vehicle, anywhere in Sri Lanka" />
             <TextareaInput label="Subtitle (optional)" rows={2} maxLength={255} value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} error={errors.subtitle?.[0]} />
             <div className="grid gap-3 sm:grid-cols-2">
-              <TextInput label="Button link (optional)" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} error={errors.link_url?.[0]} placeholder="/browse?category_id=3" />
+              <TextInput label="Button link (optional)" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} error={errors.link_url?.[0]} placeholder="/rent?category_id=3" />
               <TextInput label="Button text" maxLength={40} value={form.link_label} onChange={(e) => setForm({ ...form, link_label: e.target.value })} error={errors.link_label?.[0]} placeholder="See SUVs" disabled={!form.link_url} />
             </div>
+            <TranslationFields
+              value={form.translations}
+              onChange={(translations) => setForm({ ...form, translations })}
+              fields={[
+                { key: "title", label: "Headline" },
+                { key: "subtitle", label: "Subtitle", multiline: true, rows: 2 },
+                { key: "link_label", label: "Button text" },
+              ]}
+              english={{ title: form.title, subtitle: form.subtitle, link_label: form.link_label }}
+              errors={errors}
+            />
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} />
               Show on the home page

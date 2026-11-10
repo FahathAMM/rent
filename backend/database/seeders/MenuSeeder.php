@@ -13,18 +13,23 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Seeds the marketplace's two data-driven navigation trees (customer and
- * vendor - see app-doc/marketplace/03-permissions-model.md "The navigation
- * menu becomes three trees") plus the three marketplace roles. The platform
+ * vendor) plus the marketplace roles. The platform
  * admin app's nav is NOT data-driven here - platform admins authorize via
  * SystemAdmin::admin_role, never spatie permissions, so there is no
  * 'platform' audience content to seed yet.
  *
- * This is a lean Phase 1 scaffold, not the full page set from
- * app-doc/marketplace/05-ui-and-api-map.md - it covers only what exists so
- * far, and is expected to grow as later phases add real pages.
+ * A page gets all four CRUD permissions unless it sets 'actions' - list only
+ * what the page really does, so the Roles & Permissions grid offers nothing
+ * that has no effect. A module may set 'slug' to keep its permission names
+ * when it moves under a different parent.
  */
 class MenuSeeder extends Seeder
 {
+    private const ACTIONS = ['view', 'create', 'edit', 'delete'];
+
+    /** @var array<string, array<int, string>> "{audience}-{slug}" => the permission actions that page has. */
+    private array $menuActions = [];
+
     /** @var array<int, array> Customer-facing account app. */
     private array $customerModules = [
         [
@@ -79,74 +84,118 @@ class MenuSeeder extends Seeder
             'route_name' => '/vendor/dashboard',
             'icon' => 'LayoutDashboard',
             'sort_order' => 1,
+            'actions' => ['view'],
         ],
         [
-            'key' => 'vehicles',
-            'name' => 'Vehicles',
-            'icon' => 'Car',
+            // Rental pages began under a "Vehicles" section, so they keep their "vendor-vehicles-*" permissions.
+            'key' => 'rental',
+            'name' => 'Rental',
+            'icon' => 'CalendarCheck',
             'sort_order' => 2,
             'children' => [
-                ['key' => 'list', 'name' => 'My Vehicles', 'route_name' => '/vendor/vehicles', 'icon' => 'Car', 'sort_order' => 1],
-                ['key' => 'calendar', 'name' => 'Calendar', 'route_name' => '/vendor/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2],
-                ['key' => 'categories', 'name' => 'Categories', 'route_name' => '/vendor/vehicles/categories', 'icon' => 'Tag', 'sort_order' => 3],
-                ['key' => 'bookings', 'name' => 'Bookings', 'route_name' => '/vendor/bookings', 'icon' => 'CalendarCheck', 'sort_order' => 4],
-                ['key' => 'reviews', 'name' => 'Reviews', 'route_name' => '/vendor/reviews', 'icon' => 'Star', 'sort_order' => 5],
-                ['key' => 'inquiries', 'name' => 'Inquiries', 'route_name' => '/vendor/inquiries', 'icon' => 'MessageCircle', 'sort_order' => 6],
+                ['key' => 'list', 'slug' => 'vehicles-list', 'name' => 'My Vehicles', 'route_name' => '/vendor/vehicles', 'icon' => 'CarFront', 'sort_order' => 1],
+                ['key' => 'calendar', 'slug' => 'vehicles-calendar', 'name' => 'Calendar', 'route_name' => '/vendor/calendar', 'icon' => 'CalendarRange', 'sort_order' => 2, 'actions' => ['view', 'edit']],
+                ['key' => 'bookings', 'slug' => 'vehicles-bookings', 'name' => 'Bookings', 'route_name' => '/vendor/bookings', 'icon' => 'ClipboardList', 'sort_order' => 3, 'actions' => ['view', 'edit']],
+                ['key' => 'reviews', 'slug' => 'vehicles-reviews', 'name' => 'Reviews', 'route_name' => '/vendor/reviews', 'icon' => 'Star', 'sort_order' => 4, 'actions' => ['view', 'edit']],
+                ['key' => 'inquiries', 'slug' => 'vehicles-inquiries', 'name' => 'Inquiries', 'route_name' => '/vendor/inquiries', 'icon' => 'MessageCircle', 'sort_order' => 5, 'actions' => ['view', 'edit']],
+            ],
+        ],
+        [
+            'key' => 'vehicle',
+            'name' => 'Vehicle',
+            'icon' => 'Car',
+            'sort_order' => 3,
+            'children' => [
+                // Buying visibility — featured vehicles, category / city sponsorship. Shop owner only (Role::OWNER_ONLY_PREFIXES).
+                ['key' => 'promotions', 'slug' => 'promotions', 'name' => 'Promotions', 'route_name' => '/vendor/promotions', 'icon' => 'Megaphone', 'sort_order' => 1, 'actions' => ['view', 'create']],
+                // Read-only: the marketplace's categories are managed by the platform.
+                ['key' => 'categories', 'slug' => 'vehicles-categories', 'name' => 'Categories', 'route_name' => '/vendor/vehicles/categories', 'icon' => 'Tag', 'sort_order' => 2, 'actions' => ['view']],
+            ],
+        ],
+        [
+            // Selling vehicles — a plan feature (`sales`). See app-doc/marketplace/13-vehicle-sales.md.
+            'key' => 'sales',
+            'name' => 'Sales',
+            'icon' => 'BadgeDollarSign',
+            'sort_order' => 4,
+            'children' => [
+                ['key' => 'listings', 'name' => 'My Vehicles', 'route_name' => '/vendor/sales/listings', 'icon' => 'LayoutList', 'sort_order' => 1],
+                ['key' => 'enquiries', 'name' => 'Enquiries', 'route_name' => '/vendor/sales/enquiries', 'icon' => 'MessageCircle', 'sort_order' => 2, 'actions' => ['view', 'edit']],
+                ['key' => 'sold', 'name' => 'Sold', 'route_name' => '/vendor/sales/sold', 'icon' => 'Handshake', 'sort_order' => 3, 'actions' => ['view', 'create']],
+                ['key' => 'terms', 'name' => 'Sale Terms', 'route_name' => '/vendor/sales/terms', 'icon' => 'FileText', 'sort_order' => 4, 'actions' => ['view', 'edit']],
             ],
         ],
         [
             'key' => 'finance',
             'name' => 'Finance',
             'icon' => 'Wallet',
-            'sort_order' => 3,
+            'sort_order' => 5,
             'children' => [
-                ['key' => 'earnings', 'name' => 'Earnings', 'route_name' => '/vendor/finance/earnings', 'icon' => 'TrendingUp', 'sort_order' => 1],
-                ['key' => 'bank_details', 'name' => 'Bank Details', 'route_name' => '/vendor/finance/bank-details', 'icon' => 'Landmark', 'sort_order' => 2],
+                ['key' => 'earnings', 'name' => 'Earnings', 'route_name' => '/vendor/finance/earnings', 'icon' => 'TrendingUp', 'sort_order' => 1, 'actions' => ['view']],
+                ['key' => 'bank_details', 'name' => 'Bank Details', 'route_name' => '/vendor/finance/bank-details', 'icon' => 'Landmark', 'sort_order' => 2, 'actions' => ['view', 'edit']],
             ],
         ],
         [
             'key' => 'expense',
             'name' => 'Expenses',
             'icon' => 'Receipt',
-            'sort_order' => 4,
+            'sort_order' => 6,
             'children' => [
                 ['key' => 'expenses', 'name' => 'Expenses', 'route_name' => '/vendor/expenses', 'icon' => 'Receipt', 'sort_order' => 1],
                 ['key' => 'categories', 'name' => 'Categories', 'route_name' => '/vendor/expense-categories', 'icon' => 'Tag', 'sort_order' => 2],
             ],
         ],
         [
-            // Buying visibility — featured vehicles, category / city sponsorship. Shop owner only (Role::OWNER_ONLY_PREFIXES).
-            'key' => 'promotions',
-            'name' => 'Promotions',
-            'route_name' => '/vendor/promotions',
-            'icon' => 'Megaphone',
-            'sort_order' => 5,
+            // Business reports. Only the owner sees them until a role is given vendor-reports-*.
+            'key' => 'reports',
+            'name' => 'Reports',
+            'icon' => 'BarChart2',
+            'sort_order' => 7,
+            'children' => [
+                ['key' => 'profit-loss', 'name' => 'Profit & Loss', 'route_name' => '/vendor/reports/profit-loss', 'icon' => 'TrendingUp', 'sort_order' => 1, 'actions' => ['view']],
+                ['key' => 'vehicles', 'name' => 'Vehicle Performance', 'route_name' => '/vendor/reports/vehicles', 'icon' => 'Car', 'sort_order' => 2, 'actions' => ['view']],
+                ['key' => 'sales', 'name' => 'Vehicle Sales', 'route_name' => '/vendor/reports/sales', 'icon' => 'Handshake', 'sort_order' => 3, 'actions' => ['view']],
+                ['key' => 'bookings', 'name' => 'Bookings', 'route_name' => '/vendor/reports/bookings', 'icon' => 'CalendarCheck', 'sort_order' => 4, 'actions' => ['view']],
+                ['key' => 'outstanding', 'name' => 'Outstanding Balances', 'route_name' => '/vendor/reports/outstanding', 'icon' => 'Wallet', 'sort_order' => 5, 'actions' => ['view']],
+                ['key' => 'payments', 'name' => 'Payments Received', 'route_name' => '/vendor/reports/payments', 'icon' => 'Banknote', 'sort_order' => 6, 'actions' => ['view']],
+                ['key' => 'deposits', 'name' => 'Security Deposits', 'route_name' => '/vendor/reports/deposits', 'icon' => 'ShieldCheck', 'sort_order' => 7, 'actions' => ['view']],
+                ['key' => 'expenses', 'name' => 'Expenses', 'route_name' => '/vendor/reports/expenses', 'icon' => 'Receipt', 'sort_order' => 8, 'actions' => ['view']],
+                ['key' => 'cancellations', 'name' => 'Cancellations', 'route_name' => '/vendor/reports/cancellations', 'icon' => 'AlertTriangle', 'sort_order' => 9, 'actions' => ['view']],
+                ['key' => 'schedule', 'name' => 'Upcoming Schedule', 'route_name' => '/vendor/reports/schedule', 'icon' => 'CalendarRange', 'sort_order' => 10, 'actions' => ['view']],
+                ['key' => 'damage', 'name' => 'Damage', 'route_name' => '/vendor/reports/damage', 'icon' => 'Wrench', 'sort_order' => 11, 'actions' => ['view']],
+                ['key' => 'customers', 'name' => 'Customers', 'route_name' => '/vendor/reports/customers', 'icon' => 'Users', 'sort_order' => 12, 'actions' => ['view']],
+                ['key' => 'enquiries', 'name' => 'Enquiry Conversion', 'route_name' => '/vendor/reports/enquiries', 'icon' => 'MessageCircle', 'sort_order' => 13, 'actions' => ['view']],
+                ['key' => 'unsold', 'name' => 'Unsold Stock', 'route_name' => '/vendor/reports/unsold', 'icon' => 'Layers', 'sort_order' => 14, 'actions' => ['view']],
+                ['key' => 'views', 'name' => 'Listing Views', 'route_name' => '/vendor/reports/views', 'icon' => 'Eye', 'sort_order' => 15, 'actions' => ['view']],
+                ['key' => 'promotions', 'name' => 'Promotions', 'route_name' => '/vendor/reports/promotions', 'icon' => 'Megaphone', 'sort_order' => 16, 'actions' => ['view']],
+                ['key' => 'reviews', 'name' => 'Reviews', 'route_name' => '/vendor/reports/reviews', 'icon' => 'Star', 'sort_order' => 17, 'actions' => ['view']],
+                ['key' => 'response', 'name' => 'Response Time', 'route_name' => '/vendor/reports/response', 'icon' => 'Activity', 'sort_order' => 18, 'actions' => ['view']],
+            ],
         ],
         [
             'key' => 'settings',
             'name' => 'Settings',
             'icon' => 'Settings2',
-            'sort_order' => 6,
+            'sort_order' => 8,
             'children' => [
-                ['key' => 'shop', 'name' => 'Shop Profile', 'route_name' => '/vendor/settings/shop', 'icon' => 'Building2', 'sort_order' => 1],
+                ['key' => 'shop', 'name' => 'Shop Profile', 'route_name' => '/vendor/settings/shop', 'icon' => 'Building2', 'sort_order' => 1, 'actions' => ['view', 'edit']],
                 ['key' => 'locations', 'name' => 'Locations', 'route_name' => '/vendor/settings/locations', 'icon' => 'MapPin', 'sort_order' => 2],
                 // The shop's own terms & conditions — the customer signs them at handover.
-                ['key' => 'terms', 'name' => 'Terms & Conditions', 'route_name' => '/vendor/settings/terms', 'icon' => 'FileText', 'sort_order' => 3],
+                ['key' => 'terms', 'name' => 'Terms & Conditions', 'route_name' => '/vendor/settings/terms', 'icon' => 'FileText', 'sort_order' => 3, 'actions' => ['view', 'edit']],
                 // Staff and roles sit under Settings in the nav but keep their own slugs, so their
                 // permissions stay "vendor-staff-*" / "vendor-roles-*" (StaffController, Role::OWNER_ONLY_PREFIXES).
                 ['key' => 'staff', 'slug' => 'staff', 'name' => 'Staff', 'route_name' => '/vendor/staff', 'icon' => 'Users', 'sort_order' => 4],
                 // The shop's own roles — shop owner only (its permissions come only with the owner role).
-                ['key' => 'roles', 'slug' => 'roles', 'name' => 'Roles & Permissions', 'route_name' => '/vendor/roles', 'icon' => 'KeyRound', 'sort_order' => 5],
+                ['key' => 'roles', 'slug' => 'roles', 'name' => 'Roles & Permissions', 'route_name' => '/vendor/roles', 'icon' => 'KeyRound', 'sort_order' => 5, 'actions' => ['view', 'edit']],
                 // The shop's plan & paying for it — shop owner only (Role::OWNER_ONLY_PREFIXES).
-                ['key' => 'subscription', 'slug' => 'subscription', 'name' => 'Subscription', 'route_name' => '/vendor/settings/subscription', 'icon' => 'Crown', 'sort_order' => 6],
+                ['key' => 'subscription', 'slug' => 'subscription', 'name' => 'Subscription', 'route_name' => '/vendor/settings/subscription', 'icon' => 'Crown', 'sort_order' => 6, 'actions' => ['view', 'create']],
             ],
         ],
     ];
 
     /**
      * Which "{slug}-{action}" permissions each marketplace role gets. The
-     * single source of truth for "what can role X see in the nav" - see
-     * app-doc/marketplace/03-permissions-model.md "Layer 1 — Roles".
+     * single source of truth for "what can role X see in the nav".
      * Only platform roles live here (just `customer`). Each shop's roles
      * belong to that shop: shop-owner (created on registration, full access)
      * and any the owner creates.
@@ -242,6 +291,7 @@ class MenuSeeder extends Seeder
             }
         } else {
             Log::info("Seeding menu item: {$slug} ({$module['name']}) [{$audience}]");
+            $this->menuActions["{$audience}-{$slug}"] = $module['actions'] ?? self::ACTIONS;
             $this->upsert($audience, $slug, [
                 'name'       => $module['name'],
                 'route_name' => $module['route_name'],
@@ -268,8 +318,8 @@ class MenuSeeder extends Seeder
     }
 
     /**
-     * For every navigable menu (has a route), create its 4 CRUD
-     * permissions named "{audience}-{slug}-{action}". Qualified by
+     * For every navigable menu (has a route), create its permissions
+     * (see the class docblock) named "{audience}-{slug}-{action}". Qualified by
      * audience on purpose: the customer and vendor trees both legitimately
      * have a "dashboard"/"bookings" slug (see the menus table migration),
      * and without the audience prefix those would collapse into the same
@@ -283,7 +333,7 @@ class MenuSeeder extends Seeder
         $names = [];
 
         foreach ($menus as $menu) {
-            foreach (['view', 'create', 'edit', 'delete'] as $action) {
+            foreach ($this->menuActions["{$menu->audience}-{$menu->slug}"] as $action) {
                 $names[] = $name = "{$menu->audience}-{$menu->slug}-{$action}";
                 Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
             }

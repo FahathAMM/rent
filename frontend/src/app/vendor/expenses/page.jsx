@@ -19,6 +19,7 @@ import { AttachmentPanel } from "@/components/shared/AttachmentPanel";
 import { toast } from "sonner";
 import { Pencil, Trash2, Home } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { appDateKey } from "@/lib/utils";
 
 const PAYMENT_METHODS = [
   { value: "", label: "Not specified" },
@@ -31,7 +32,7 @@ const PAYMENT_METHODS = [
 
 const defaultForm = {
   expense_category_id: "",
-  expense_date: new Date().toISOString().slice(0, 10),
+  expense_date: appDateKey(),
   vendor_name: "",
   description: "",
   subtotal: "",

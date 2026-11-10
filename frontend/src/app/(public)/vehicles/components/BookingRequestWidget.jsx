@@ -3,14 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { customerService } from "@/services/customerService";
 import { useCustomerAuthStore } from "@/store/customerAuthStore";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import { Button } from "@/components/ui/button";
 import { BookingDateRange } from "./BookingDateRange";
+import { PriceBreakdownDialog } from "@/components/shared/PriceBreakdownDialog";
 import { CheckboxInput, TextareaInput, ValidationError } from "@/components/forms/FormField";
-import { Banknote, Landmark, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Banknote, Landmark, Loader2, Plus } from "lucide-react";
+import { APP_TIMEZONE_OFFSET, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // What a signed-out customer had filled in when they hit "Log in to book",
@@ -41,21 +43,41 @@ function daysBetween(from, to) {
   return Math.max(1, Math.round(ms / 86400000));
 }
 
+// Must match BookingPricingCalculator::rateBreakdown(): 30-day months, then
+// 7-day weeks, then leftover days; a missing weekly/monthly rate falls back to daily.
+function rentalLines(pricing, days) {
+  const daily = Number(pricing.daily_rate) || 0;
+  const weekly = Number(pricing.weekly_rate) || 0;
+  const monthly = Number(pricing.monthly_rate) || 0;
+  let remaining = days;
+  const lines = [];
+  if (monthly > 0 && remaining >= 30) {
+    lines.push({ plan: "monthly", units: Math.floor(remaining / 30), rate: monthly });
+    remaining %= 30;
+  }
+  if (weekly > 0 && remaining >= 7) {
+    lines.push({ plan: "weekly", units: Math.floor(remaining / 7), rate: weekly });
+    remaining %= 7;
+  }
+  if (remaining > 0) lines.push({ plan: "daily", units: remaining, rate: daily });
+  return lines;
+}
+
 /**
- * Submits -> pending (see app-doc/marketplace/04-lifecycles.md). Fixed
- * 10:00 pickup/return time rather than a separate time picker — matches
- * MarketplaceDemoSeeder's convention and keeps the first version of this
- * widget simple; a time picker is a small, isolated follow-up, not a
- * structural change.
+ * Submits -> pending (see app-doc/marketplace/04-lifecycles.md). The shop
+ * chooses default pickup and return times in its profile settings.
  */
 export function BookingRequestWidget({ vehicle }) {
   const router = useRouter();
   const { isAuthenticated } = useCustomerAuthStore();
   const { format } = useCurrencyFormat();
+  const t = useTranslations("booking");
   const [range, setRange] = useState({ from: "", to: "" });
   const [withDriver, setWithDriver] = useState(false);
   const [deliveryRequested, setDeliveryRequested] = useState(false);
   const [note, setNote] = useState("");
+  // The note box stays tucked away until asked for, so the booking button fits without scrolling.
+  const [showNote, setShowNote] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [errors, setErrors] = useState({});
   const containerRef = useRef(null);
@@ -76,7 +98,7 @@ export function BookingRequestWidget({ vehicle }) {
     if (isAuthenticated) {
       writeDraft(vehicle.id, null);
       containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      toast.info("Welcome back — your booking details are filled in. Review them and send your request.");
+      toast.info(t("welcomeBack"));
     }
   }, [vehicle.id, isAuthenticated]);
 
@@ -84,31 +106,34 @@ export function BookingRequestWidget({ vehicle }) {
     mutationFn: customerService.bookings.create,
     onSuccess: (res) => {
       writeDraft(vehicle.id, null);
-      toast.success("Booking request sent — the owner will respond soon");
+      toast.success(t("requestSent"));
       router.push(`/account/bookings/${res.data.data.booking_reference}`);
     },
     onError: (err) => {
       const apiErrors = err.response?.data?.errors ?? {};
       setErrors(apiErrors);
       if (!Object.keys(apiErrors).length) {
-        toast.error(err.response?.data?.message ?? "Could not submit request");
+        toast.error(err.response?.data?.message ?? t("submitError"));
       }
     },
   });
 
   const rentalDays = daysBetween(range.from, range.to);
   const pricing = vehicle.pricing;
+  const pickupTime = vehicle.shop?.booking_pickup_time?.slice(0, 5) || "10:00";
+  const returnTime = vehicle.shop?.booking_return_time?.slice(0, 5) || "10:00";
 
   const estimate = useMemo(() => {
     if (!rentalDays || !pricing) return null;
-    const base = Number(pricing.daily_rate) * rentalDays;
+    const lines = rentalLines(pricing, rentalDays);
+    const base = lines.reduce((sum, l) => sum + l.units * l.rate, 0);
     const driver = withDriver ? Number(pricing.driver_rate_per_day ?? 0) * rentalDays : 0;
     const delivery = deliveryRequested && pricing.delivery_available ? Number(pricing.delivery_flat_fee ?? 0) : 0;
     const tax = Math.round((base + driver + delivery) * Number(pricing.tax_rate ?? 0)) / 100;
     const deposit = Number(pricing.security_deposit ?? 0);
     // Must match BookingPricingCalculator: everything the shop collects, deposit included unless waived.
     return {
-      base, driver, delivery, tax, deposit,
+      lines, base, driver, delivery, tax, deposit,
       total: base + driver + delivery + tax + (pricing.deposit_method !== "waived" ? deposit : 0),
     };
   }, [rentalDays, pricing, withDriver, deliveryRequested]);
@@ -125,14 +150,14 @@ export function BookingRequestWidget({ vehicle }) {
     }
 
     if (!range.from || !range.to) {
-      setErrors({ return_at: ["Pick your pickup and return dates."] });
+      setErrors({ return_at: [t("pickDates")] });
       return;
     }
 
     create.mutate({
       vehicle_id: vehicle.id,
-      pickup_at: `${range.from}T10:00:00`,
-      return_at: `${range.to}T10:00:00`,
+      pickup_at: `${range.from}T${pickupTime}:00${APP_TIMEZONE_OFFSET}`,
+      return_at: `${range.to}T${returnTime}:00${APP_TIMEZONE_OFFSET}`,
       with_driver: withDriver,
       delivery_requested: deliveryRequested,
       customer_note: note || undefined,
@@ -144,22 +169,25 @@ export function BookingRequestWidget({ vehicle }) {
     <div ref={containerRef} className="space-y-3 scroll-mt-24">
       <ValidationError errors={errors} />
 
-      <BookingDateRange vehicle={vehicle} label="Pickup & return dates" value={range} onChange={setRange} placeholder="Choose your dates" />
+      <BookingDateRange vehicle={vehicle} label={t("datesLabel")} value={range} onChange={setRange} placeholder={t("datesPlaceholder")} />
+      <p className="text-xs text-muted-foreground">
+        {t("times", { pickup: pickupTime, return: returnTime })}
+      </p>
 
       {pricing?.driver_rate_per_day > 0 && (
-        <CheckboxInput label={`Add a driver (+${format(pricing.driver_rate_per_day)}/day)`} checked={withDriver} onChange={setWithDriver} />
+        <CheckboxInput label={t("addDriver", { price: format(pricing.driver_rate_per_day) })} checked={withDriver} onChange={setWithDriver} className="pt-0" />
       )}
       {pricing?.delivery_available && (
-        <CheckboxInput label={`Delivery to my location (+${format(pricing.delivery_flat_fee ?? 0)})`} checked={deliveryRequested} onChange={setDeliveryRequested} />
+        <CheckboxInput label={t("addDelivery", { price: format(pricing.delivery_flat_fee ?? 0) })} checked={deliveryRequested} onChange={setDeliveryRequested} className="pt-0" />
       )}
 
       {canTransfer && (
         <div className="space-y-1.5">
-          <p className="text-sm font-medium">How will you pay the shop?</p>
+          <p className="text-sm font-medium">{t("howPay")}</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { value: "cash", icon: Banknote, title: "Cash at pickup", sub: "Pay everything when you collect" },
-              { value: "bank_transfer", icon: Landmark, title: "Bank transfer", sub: advancePct ? (advance ? `From ${format(advance)} (${advancePct}% advance)` : `From a ${advancePct}% advance`) : "Transfer the full amount" },
+              { value: "cash", icon: Banknote, title: t("cash"), sub: t("cashSub") },
+              { value: "bank_transfer", icon: Landmark, title: t("bank"), sub: advancePct ? (advance ? t("bankFromAdvance", { amount: format(advance), pct: advancePct }) : t("bankFromPct", { pct: advancePct })) : t("bankFull") },
             ].map((o) => (
               <button
                 key={o.value}
@@ -172,7 +200,7 @@ export function BookingRequestWidget({ vehicle }) {
                 )}
               >
                 <span className="flex items-center gap-1.5 font-medium"><o.icon className="h-4 w-4" /> {o.title}</span>
-                <span className="text-xs text-muted-foreground">{o.sub}</span>
+                <span className="max-w-full truncate text-xs text-muted-foreground" title={o.sub}>{o.sub}</span>
               </button>
             ))}
           </div>
@@ -180,32 +208,65 @@ export function BookingRequestWidget({ vehicle }) {
         </div>
       )}
 
-      <TextareaInput label="Note to owner (optional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. arriving by flight, need it for a wedding..." />
+      {showNote || note ? (
+        <TextareaInput label={t("noteLabel")} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("notePlaceholder")} rows={2} autoFocus={showNote && !note} />
+      ) : (
+        <button type="button" onClick={() => setShowNote(true)} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          <Plus className="h-3.5 w-3.5" /> {t("addNote")}
+        </button>
+      )}
 
       {estimate && (
         <div className="space-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Rental ({rentalDays} day{rentalDays > 1 ? "s" : ""})</span><span>{format(estimate.base)}</span></div>
-          {estimate.driver > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Driver</span><span>{format(estimate.driver)}</span></div>}
-          {estimate.delivery > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>{format(estimate.delivery)}</span></div>}
-          {estimate.tax > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax ({Number(pricing.tax_rate)}%)</span><span>{format(estimate.tax)}</span></div>}
+          <div className="flex justify-between"><span className="text-muted-foreground">{t("rental", { count: rentalDays })}</span><span>{format(estimate.base)}</span></div>
+          {estimate.driver > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("driver")}</span><span>{format(estimate.driver)}</span></div>}
+          {estimate.delivery > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("delivery")}</span><span>{format(estimate.delivery)}</span></div>}
+          {estimate.tax > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("tax", { rate: Number(pricing.tax_rate) })}</span><span>{format(estimate.tax)}</span></div>}
           {estimate.deposit > 0 && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Security deposit (refundable)</span>
+              <span className="text-muted-foreground">{t("deposit")}</span>
               <span>{format(estimate.deposit)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t pt-1 font-semibold"><span>{canTransfer && paymentMethod === "bank_transfer" ? "Total (by bank transfer)" : "Pay at pickup (cash)"}</span><span>{format(estimate.total)}</span></div>
+          <div className="flex justify-between border-t pt-1 font-semibold"><span>{canTransfer && paymentMethod === "bank_transfer" ? t("totalBank") : t("totalCash")}</span><span>{format(estimate.total)}</span></div>
+          <PriceBreakdownDialog
+            format={format}
+            from={range.from}
+            to={range.to}
+            data={{
+              lines: estimate.lines,
+              rentalDays,
+              base: estimate.base,
+              dailyRate: Number(pricing.daily_rate) || 0,
+              hasDiscountRates: Number(pricing.weekly_rate) > 0 || Number(pricing.monthly_rate) > 0,
+              driver: estimate.driver,
+              driverRate: Number(pricing.driver_rate_per_day ?? 0),
+              delivery: estimate.delivery,
+              taxRate: pricing.tax_rate,
+              tax: estimate.tax,
+              deposit: estimate.deposit,
+              depositWaived: pricing.deposit_method === "waived",
+              total: estimate.total,
+              totalLabel: canTransfer && paymentMethod === "bank_transfer" ? t("totalBank") : t("totalCash"),
+              advance: canTransfer && paymentMethod === "bank_transfer" ? advance : null,
+              advancePct,
+            }}
+          />
         </div>
       )}
 
       <Button className="w-full" size="lg" onClick={handleSubmit} disabled={create.isPending}>
         {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {isAuthenticated ? "Request to book" : "Log in to book"}
+        {isAuthenticated ? t("request") : t("loginToBook")}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
         {canTransfer && paymentMethod === "bank_transfer"
-            ? <>Once the owner confirms, you&apos;ll see their bank details — transfer {advancePct ? `any amount from the ${advancePct}% advance${advance ? ` (${format(advance)})` : ""} up to the full total` : "the full amount"} and upload the receipt. Any balance is paid at pickup.</>
-            : <>Once the owner confirms, you pay the shop in cash at pickup.</>}
+            ? t("footBank", {
+                amount: advancePct
+                  ? (advance ? t("footBankAdvanceAmount", { pct: advancePct, amount: format(advance) }) : t("footBankAdvance", { pct: advancePct }))
+                  : t("footBankFull"),
+              })
+            : t("footCash")}
       </p>
     </div>
   );

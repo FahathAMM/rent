@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
@@ -22,7 +21,7 @@ import {
   ClipboardCopy,
 } from "lucide-react";
 
-export function WhatsAppIcon({ className = "size-4" }) {
+function WhatsAppIcon({ className = "size-4" }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -38,7 +37,7 @@ export function WhatsAppIcon({ className = "size-4" }) {
 /**
  * Extracts all image URLs from vehicle
  */
-export function getVehicleImages(vehicle) {
+function getVehicleImages(vehicle) {
   if (!vehicle) return [];
   const list = [];
   if (Array.isArray(vehicle.images)) {
@@ -64,6 +63,9 @@ const formatCurrency = (amount) => {
   return `LKR ${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 };
 
+/** A sale car's public page is under /buy, a rental's under /vehicles. */
+const publicPath = (vehicle) => (vehicle.listing_type === "sale" ? `/buy/${vehicle.slug}` : `/vehicles/${vehicle.slug}`);
+
 const cleanLabel = (val) => {
   if (!val) return null;
   return String(val)
@@ -88,7 +90,7 @@ export function buildDetailedVehicleWhatsAppText(vehicle) {
   const regNumber = vehicle.registration_number || null;
 
   // Shop details
-  const shopName = vehicle.shop?.name || "Rental Shop";
+  const shopName = vehicle.shop?.name || "Shop";
   const location = [vehicle.shop?.city, vehicle.shop?.district].filter(Boolean).join(", ");
   const isVerified = vehicle.shop?.verification_status === "verified" || vehicle.shop?.is_verified;
   const contactPhone =
@@ -151,7 +153,58 @@ export function buildDetailedVehicleWhatsAppText(vehicle) {
     : [];
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const publicUrl = vehicle.slug ? `${origin}/vehicles/${vehicle.slug}` : `${origin}/browse`;
+  const isSale = vehicle.listing_type === "sale";
+  const publicUrl = vehicle.slug ? `${origin}${publicPath(vehicle)}` : `${origin}/${isSale ? "buy" : "rent"}`;
+
+  // A car for sale has no rental rates or terms, so it gets its own message.
+  if (isSale) {
+    const sale = vehicle.sale_detail ?? {};
+    const price = formatCurrency(sale.price);
+    const specs = [transmission, fuelType, seats].filter(Boolean).join(" · ");
+    const shop = `${shopName}${location ? ` (${location})` : ""}`;
+
+    if (mode === "short") {
+      return [
+        `🚗 *${title}*`,
+        price ? `💰 *Price:* ${price}${sale.is_negotiable ? " (negotiable)" : ""}` : null,
+        `🏢 *Shop:* ${shop}`,
+        specs ? `⚙️ *Specs:* ${specs}` : null,
+        contactPhone ? `📞 *Inquiries:* ${contactPhone}` : null,
+        ``,
+        `🔗 *View:* ${publicUrl}`,
+      ].filter((line) => line !== null).join("\n");
+    }
+
+    return [
+      `✨ *VEHICLE FOR SALE!* ✨`,
+      ``,
+      `🚘 *${title.toUpperCase()}*`,
+      [brandName, modelName, year].filter(Boolean).length > 0 ? `📌 *Model:* ${[brandName, modelName, year].filter(Boolean).join(" · ")}` : null,
+      categoryName || colour ? `🏷️ *Category:* ${[categoryName, colour ? `Colour: ${colour}` : null].filter(Boolean).join(" | ")}` : null,
+      ``,
+      `💰 *PRICE:*`,
+      price ? `• *${price}*${sale.is_negotiable ? " (negotiable)" : ""}` : null,
+      sale.condition ? `• Condition: *${cleanLabel(sale.condition)}*` : null,
+      sale.mileage_km != null ? `• Mileage: *${Number(sale.mileage_km).toLocaleString()} km*` : null,
+      sale.warranty_months ? `• Warranty: *${sale.warranty_months} months*` : null,
+      ``,
+      `⚙️ *SPECIFICATIONS:*`,
+      transmission ? `• Transmission: *${transmission}*` : null,
+      fuelType ? `• Fuel Type: *${fuelType}*` : null,
+      seats ? `• Seating Capacity: *${seats}*` : null,
+      engine ? `• Engine: *${engine}*` : null,
+      ``,
+      featuresList ? `⭐ *KEY FEATURES:*\n• ${featuresList}` : null,
+      featuresList ? `` : null,
+      `🏢 *SHOP:*`,
+      `• Shop: *${shopName}* ${isVerified ? "🛡️ (Verified Partner)" : ""}`,
+      location ? `• Location: *${location}*` : null,
+      contactPhone ? `• Inquiries / Call: *${contactPhone}*` : null,
+      ``,
+      `🔗 *VIEW PHOTOS & ASK THE SHOP:*`,
+      publicUrl,
+    ].filter((line) => line !== null).join("\n");
+  }
 
   const lines = [
     `✨ *NEW VEHICLE LISTED FOR RENT!* ✨`,

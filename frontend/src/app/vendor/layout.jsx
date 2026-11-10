@@ -11,10 +11,12 @@ import { platformDetailService } from "@/services/platformDetailService";
 import { useNavigationMenu } from "@/hooks/useMenus";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { HeaderClock } from "@/components/layout/HeaderClock";
+import { DashboardFooter } from "@/components/layout/DashboardFooter";
 import { PlanBanner } from "./settings/subscription/components/PlanBanner";
 import { SubscriptionLock, useIsShopOwner } from "./settings/subscription/components/SubscriptionLock";
 import { useSubscription } from "./settings/subscription/components/useSubscription";
-import { Building2, Loader2, ShieldOff, Store } from "lucide-react";
+import { BadgeCheck, Loader2, MapPin, ShieldOff, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -46,13 +48,61 @@ function NoShopView() {
       <div>
         <h2 className="text-xl font-semibold">No shop yet</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          You don&apos;t own or staff any rental shop yet. Register a rental shop to get started.
+          You don&apos;t own or staff any shop yet. Register a shop to get started.
         </p>
       </div>
       <Button asChild size="sm">
-        <Link href="/vendor/shops/new">Register a rental shop</Link>
+        <Link href="/vendor/shops/new">Register a shop</Link>
       </Button>
     </div>
+  );
+}
+
+/** The current shop in the header: logo (or a shop icon), name, verified tick, city and the user's role. */
+function ShopCard({ shop }) {
+  const name = shop.shop_name ?? `Shop #${shop.shop_id}`;
+  const meta = [shop.city, shop.role_label].filter(Boolean);
+
+  const body = (
+    <>
+      {shop.logo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={shop.logo} alt={name} className="h-9 w-9 shrink-0 rounded-lg bg-white object-cover ring-1 ring-border" />
+      ) : (
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
+          <Store className="h-5 w-5" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <p className="truncate text-sm font-semibold">{name}</p>
+          {shop.is_verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" aria-label="Verified shop" />}
+        </div>
+        {meta.length > 0 && (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+            {shop.city && <MapPin className="h-3 w-3 shrink-0" />}
+            <span className="truncate">{meta.join(" · ")}</span>
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  // Same footprint as the header clock it replaced: fixed height, shown from xl up.
+  const cardClass = "hidden h-[50px] w-56 shrink-0 items-center gap-2.5 rounded-xl border bg-card px-2.5 shadow-sm xl:flex";
+
+  return shop.slug ? (
+    <Link
+      href={`/shops/${shop.slug}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View your public shop page"
+      className={`${cardClass} transition-colors hover:bg-muted/50`}
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className={cardClass}>{body}</div>
   );
 }
 
@@ -89,12 +139,46 @@ const OPEN_WHILE_LOCKED = ["/vendor/settings/subscription", "/vendor/profile"];
 
 // Personal account pages every authenticated vendor can reach regardless of
 // their menu/permission access — they aren't module nav items.
-const ALWAYS_ACCESSIBLE_ROUTES = ["/vendor/profile", "/vendor/audit-logs"];
+const ALWAYS_ACCESSIBLE_ROUTES = ["/vendor/profile"];
+
+// Pages outside the menu that only the shop owner can open.
+const OWNER_ONLY_ROUTES = ["/vendor/audit-logs"];
+
+// Pages nested under another menu item's route. Access to the parent doesn't
+// cover these, so each one states the permission it needs.
+const NESTED_ROUTE_PERMISSIONS = [
+  [/^\/vendor\/vehicles\/categories(\/|$)/, "vendor-vehicles-categories-view"],
+  [/^\/vendor\/vehicles\/new(\/|$)/, "vendor-vehicles-list-create"],
+  [/^\/vendor\/vehicles\/[^/]+\/edit(\/|$)/, "vendor-vehicles-list-edit"],
+  [/^\/vendor\/sales\/listings\/new(\/|$)/, "vendor-sales-listings-create"],
+  [/^\/vendor\/sales\/listings\/[^/]+\/edit(\/|$)/, "vendor-sales-listings-edit"],
+];
+
+// Menu pages that need a plan feature (SubscriptionPlan::FEATURES); the menu marks them when the plan lacks it.
+const PLAN_FEATURE_ROUTES = {
+  "/vendor/calendar": "calendar",
+  "/vendor/expenses": "expenses",
+  "/vendor/expense-categories": "expenses",
+  "/vendor/staff": "staff",
+  "/vendor/roles": "staff",
+  "/vendor/sales/listings": "sales",
+  "/vendor/sales/enquiries": "sales",
+  "/vendor/sales/sold": "sales",
+  "/vendor/sales/terms": "sales",
+  ...Object.fromEntries(["profit-loss", "vehicles", "sales", "bookings", "outstanding", "payments", "deposits", "expenses"].map((r) => [`/vendor/reports/${r}`, "reports"])),
+};
 
 // A freshly vendor-registered account has no shop and no nav yet — these
 // onboarding routes must still require auth, but skip the shop-count gate
 // and the module-tile chrome entirely (there's nothing to show tiles for).
 const ONBOARDING_ROUTES = ["/vendor/shops/new"];
+
+const SIDEBAR_COLLAPSED_KEY = "vendor-sidebar-collapsed";
+
+/** True when pathname is this route or a page beneath it — never a sibling that merely shares a prefix. */
+function matchesRoute(pathname, route) {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
 
 /** Flatten a nested menu tree into a flat array of route_name strings. */
 function flattenRoutes(menus) {
@@ -114,7 +198,7 @@ function getTitleFromNav(menus, pathname) {
   let best = null;
   const walk = (items) => {
     items?.forEach((item) => {
-      if (item.route_name && pathname.startsWith(item.route_name)) {
+      if (item.route_name && matchesRoute(pathname, item.route_name)) {
         if (!best || item.route_name.length > best.route_name.length) best = item;
       }
       if (item.children?.length) walk(item.children);
@@ -125,7 +209,7 @@ function getTitleFromNav(menus, pathname) {
 }
 
 export default function VendorLayout({ children }) {
-  const { isAuthenticated, _hasHydrated, updateUser } = useAuthStore();
+  const { isAuthenticated, _hasHydrated, updateUser, can } = useAuthStore();
   const { logout } = useAuth();
   const { shop, setShop } = useShopStore();
   const router = useRouter();
@@ -133,7 +217,23 @@ export default function VendorLayout({ children }) {
   const { data: navigation, isLoading: navLoading } = useNavigationMenu("vendor");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeModuleId, setActiveModuleId] = useState(null);
+  // Desktop hide/show — remembered per browser.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isOwner = useIsShopOwner();
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {}
+  }, []);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
 
   const isAuthRoute = pathname === "/vendor/login" || pathname === "/vendor/register";
   const isOnboardingRoute = ONBOARDING_ROUTES.some((route) => pathname.startsWith(route));
@@ -173,9 +273,17 @@ export default function VendorLayout({ children }) {
   // showing the last module.
   useEffect(() => {
     if (!navigation) return;
-    const matched = navigation.find(
-      (item) => !item.route_name && item.children?.some((c) => c.route_name && pathname.startsWith(c.route_name))
-    );
+    // Longest route wins: /vendor/vehicles/categories belongs to Vehicle, not to Rental's /vendor/vehicles.
+    let matched = null;
+    let matchedLength = 0;
+    navigation.filter((item) => !item.route_name).forEach((item) => {
+      item.children?.forEach((c) => {
+        if (c.route_name && matchesRoute(pathname, c.route_name) && c.route_name.length > matchedLength) {
+          matched = item;
+          matchedLength = c.route_name.length;
+        }
+      });
+    });
     if (matched) {
       setActiveModuleId(matched.id);
       return;
@@ -204,6 +312,10 @@ export default function VendorLayout({ children }) {
   // Only ask once the workspace is open to the shop (verified, not suspended); the endpoint itself is never locked.
   const { data: subscription } = useSubscription({ enabled: !!shop && !shop.is_suspended && shop.is_verified !== false && !isAuthRoute && !isOnboardingRoute });
   const locked = !!subscription?.locked && !OPEN_WHILE_LOCKED.some((route) => pathname.startsWith(route));
+  const planLockedRoutes = useMemo(() => {
+    if (!subscription?.features) return [];
+    return Object.keys(PLAN_FEATURE_ROUTES).filter((route) => !subscription.features.includes(PLAN_FEATURE_ROUTES[route]));
+  }, [subscription]);
 
   if (isAuthRoute) return children;
 
@@ -219,10 +331,10 @@ export default function VendorLayout({ children }) {
 
   if (awaitingVerification) return loading;
 
-  const hasPageAccess = !accessibleRoutes.length
-    ? true
-    : ALWAYS_ACCESSIBLE_ROUTES.some((route) => pathname.startsWith(route))
-      || accessibleRoutes.some((route) => pathname.startsWith(route));
+  const nestedPermission = NESTED_ROUTE_PERMISSIONS.find(([pattern]) => pattern.test(pathname))?.[1];
+  const hasPageAccess = ALWAYS_ACCESSIBLE_ROUTES.some((route) => matchesRoute(pathname, route))
+    || (isOwner && OWNER_ONLY_ROUTES.some((route) => matchesRoute(pathname, route)))
+    || (accessibleRoutes.some((route) => matchesRoute(pathname, route)) && (!nestedPermission || can(nestedPermission)));
 
   const title = getTitleFromNav(navigation, pathname);
   const activeModule = navigation?.find((item) => item.id === activeModuleId) ?? null;
@@ -232,28 +344,33 @@ export default function VendorLayout({ children }) {
       <Sidebar
         activeModule={activeModule}
         navigation={navigation}
+        planLockedRoutes={planLockedRoutes}
         open={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebarCollapsed}
         onClose={() => setSidebarOpen(false)}
-        topSlot={
-          <div className="flex items-center gap-2 px-6 pt-4 pb-2 text-sm text-muted-foreground">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">{shop.shop_name ?? `Shop #${shop.shop_id}`}</span>
-          </div>
-        }
+        topSlot={<HeaderClock variant="sidebar" />}
       />
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
+      <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-200 ease-out ${sidebarCollapsed ? "lg:ml-0" : "lg:ml-56"}`}>
         <Header
           navigation={navigation}
           activeModuleId={activeModuleId}
-          title={title}
+          planLockedRoutes={planLockedRoutes}
           onMenuClick={() => setSidebarOpen(true)}
+          sidebarCollapsed={sidebarCollapsed}
+          onShowSidebar={toggleSidebarCollapsed}
+          leftSlot={<ShopCard shop={shop} />}
         />
         <PlanBanner />
-        <main className="flex-1 overflow-auto bg-muted/10 p-1 pb-20 lg:pb-1">
+        <main className="flex-1 overflow-auto bg-muted/10 p-1">
           {locked
             ? <SubscriptionLock shopName={shop.shop_name} isOwner={isOwner} />
             : hasPageAccess ? children : <UnauthorizedView title={title} />}
         </main>
+        {/* Below lg the header is docked to the bottom, so leave room for it under the footer. */}
+        <div className="pb-20 lg:pb-0">
+          <DashboardFooter />
+        </div>
       </div>
     </div>
   );

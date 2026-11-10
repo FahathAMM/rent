@@ -4,8 +4,9 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingInspection;
+use App\Models\RentalShop;
 use App\Models\ShopSettings;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\PdfDocument;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -88,8 +89,8 @@ class RentalAgreementService
         ], fn ($v) => $v !== null);
     }
 
-    /** The rental agreement PDF: booking, the shop's terms (as signed, or current if not yet signed) and the signature. */
-    public function pdf(Booking $booking)
+    /** The rental agreement PDF in $locale: booking, the shop's terms (as signed, or current if not yet signed) and the signature. */
+    public function pdf(Booking $booking, string $locale = 'en'): PdfDocument
     {
         $booking->loadMissing(['vehicle', 'shop', 'customer', 'pricing', 'pickupLocation', 'returnLocation']);
         $handover = BookingInspection::where('booking_id', $booking->id)->where('type', BookingInspection::TYPE_HANDOVER)->latest('id')->first();
@@ -101,18 +102,8 @@ class RentalAgreementService
 
         $handover?->loadMissing('conductedBy');
 
-        // The shop logo, embedded so DomPDF never fetches a URL.
-        $logo = null;
-        $logoPath = $booking->shop?->logo;
-        if ($logoPath && !str_starts_with($logoPath, 'http') && Storage::disk('public')->exists($logoPath)) {
-            $mime = Storage::disk('public')->mimeType($logoPath);
-            if (in_array($mime, ['image/png', 'image/jpeg', 'image/gif'], true)) {
-                $logo = "data:{$mime};base64," . base64_encode(Storage::disk('public')->get($logoPath));
-            }
-        }
-
-        return Pdf::loadView('pdf.rental-agreement', [
-            'logo' => $logo,
+        return PdfDocument::make('pdf.rental-agreement', [
+            'logo' => $this->logoDataUri($booking->shop),
             'booking' => $booking,
             'shop' => $booking->shop,
             'customer' => $booking->customer,
@@ -122,7 +113,7 @@ class RentalAgreementService
             'signature' => $signature,
             'signedAt' => $handover?->terms_accepted_at ?? ($signature ? $handover?->conducted_at : null),
             'handover' => $handover,
-        ])->setPaper('a4');
+        ], $locale);
     }
 
     /** Status for the booking pages. */
@@ -141,7 +132,22 @@ class RentalAgreementService
         ];
     }
 
-    private function decodePng(string $dataUrl): string
+    /** The shop logo, embedded so DomPDF never fetches a URL. */
+    public function logoDataUri(?RentalShop $shop): ?string
+    {
+        $logoPath = $shop?->logo;
+        if (!$logoPath || str_starts_with($logoPath, 'http') || !Storage::disk('public')->exists($logoPath)) {
+            return null;
+        }
+
+        $mime = Storage::disk('public')->mimeType($logoPath);
+
+        return in_array($mime, ['image/png', 'image/jpeg', 'image/gif'], true)
+            ? "data:{$mime};base64," . base64_encode(Storage::disk('public')->get($logoPath))
+            : null;
+    }
+
+    public function decodePng(string $dataUrl): string
     {
         if (!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#', $dataUrl, $m)) {
             throw ValidationException::withMessages(['customer_signature' => ['The signature must be a PNG image.']]);

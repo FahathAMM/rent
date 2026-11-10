@@ -39,7 +39,7 @@ class AuthService
         // (ResolveShopContext refuses every request), so don't let them in.
         if ($user->shop?->status === RentalShop::STATUS_SUSPENDED) {
             throw ValidationException::withMessages([
-                'email' => ['Your rental shop has been suspended. Please contact the ' . (PlatformDetail::current()?->name ?: 'LankaLane') . ' admin.'],
+                'email' => ['Your shop has been suspended. Please contact the ' . (PlatformDetail::current()?->name ?: 'LankaLane') . ' admin.'],
             ]);
         }
 
@@ -59,6 +59,7 @@ class AuthService
             'password'            => Hash::make($data['password']),
             'status'              => User::STATUS_ACTIVE,
             'registration_source' => 'web',
+            'terms_accepted_at'   => now(),
         ]);
 
         $user->assignRole('customer');
@@ -102,5 +103,9 @@ class AuthService
         }
 
         $user->update(['password' => $newPassword]);
+
+        // Sign out every other session — whoever may have had the old password loses access now.
+        $current = $user->currentAccessToken();
+        $user->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->id))->delete();
     }
 }

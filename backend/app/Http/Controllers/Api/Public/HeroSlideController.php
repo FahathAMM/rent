@@ -14,11 +14,11 @@ class HeroSlideController extends Controller
         $slides = HeroSlide::where('is_active', true)->ordered()->get()
             ->map(fn (HeroSlide $s) => [
                 'id' => $s->id,
-                'title' => $s->title,
-                'subtitle' => $s->subtitle,
+                'title' => $s->translate('title'),
+                'subtitle' => $s->translate('subtitle'),
                 'image_url' => $s->image_url,
                 'link_url' => $s->link_url,
-                'link_label' => $s->link_label,
+                'link_label' => $s->translate('link_label'),
             ]);
 
         return response()->json(['data' => $slides]);

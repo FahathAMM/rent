@@ -7,11 +7,14 @@ import { cn, getInitials } from "@/lib/utils";
 import { usePlatformAuth } from "@/hooks/usePlatformAuth";
 import { useQuery } from "@tanstack/react-query";
 import { platformDetailService } from "@/services/platformDetailService";
+import { platformService } from "@/services/platformService";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 import {
   LayoutDashboard, Building2, Users, ScrollText,
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
   CreditCard, MapPin, GalleryHorizontal, ChevronDown, KeyRound, Activity, Crown, Megaphone, ListTree,
+  CircleHelp, Phone, Lock,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -52,6 +55,16 @@ const NAV_GROUPS = [
   {
     id: "website", label: "Website",
     items: [{ href: "/platform/hero-slides", label: "Hero Slides", icon: GalleryHorizontal }],
+  },
+  {
+    id: "help", label: "Help & Support",
+    items: [
+      { href: "/platform/help/stay-safe", label: "Stay Safe", icon: ShieldCheck },
+      { href: "/platform/help/faq", label: "FAQ", icon: CircleHelp },
+      { href: "/platform/help/contact", label: "Contact Details", icon: Phone },
+      { href: "/platform/help/terms", label: "Terms & Conditions", icon: ScrollText },
+      { href: "/platform/help/privacy", label: "Privacy Policy", icon: Lock },
+    ],
   },
   {
     id: "finance", label: "Finance",
@@ -136,9 +149,10 @@ export function PlatformSidebar({ open = false, onClose }) {
 
       <aside
         className={cn(
-          "w-72 min-h-screen bg-slate-950 text-slate-200 flex flex-col border-r border-slate-800",
+          // Always one screen tall: the menu scrolls inside it (nav is flex-1 overflow-y-auto) while the page scrolls on its own.
+          "w-72 h-dvh bg-slate-950 text-slate-200 flex flex-col border-r border-slate-800",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out",
-          "lg:static lg:translate-x-0 lg:w-64",
+          "lg:sticky lg:top-0 lg:z-30 lg:shrink-0 lg:translate-x-0 lg:w-64",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -165,7 +179,17 @@ export function PlatformSidebar({ open = false, onClose }) {
             </div>
             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
           </a>
-          <button type="button" onClick={onClose} className="lg:hidden rounded-md p-1.5 hover:bg-slate-800">
+          {/* Desktop only: on phones the bell sits in the layout's top bar. */}
+          <div className="hidden lg:block">
+            <NotificationBell
+              service={platformService.notifications}
+              queryKey="platform-notifications"
+              side="right"
+              align="start"
+              className="h-9 w-9 rounded-lg border-slate-800 bg-slate-900 text-slate-300 shadow-none hover:bg-slate-800 hover:text-white"
+            />
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close menu" className="lg:hidden rounded-md p-1.5 hover:bg-slate-800">
             <X className="h-5 w-5" />
           </button>
         </div>

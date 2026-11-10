@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { FileWarning, Loader2 } from "lucide-react";
 import { vendorService } from "@/services/vendorService";
 import { customerService } from "@/services/customerService";
+import { isLocale } from "@/i18n/config";
 
 // Who is looking → which signed-in API client fetches the PDF.
 const SERVICES = { vendor: vendorService, customer: customerService };
@@ -13,10 +14,12 @@ const DOCUMENTS = { voucher: "booking voucher", agreement: "rental agreement" };
 /**
  * A booking PDF (voucher or rental agreement) shown full-screen in its own tab, titled with the booking number.
  * The booking pages open this page for "View": the tab fetches the PDF itself, because Chrome shows a blank
- * page for a blob: URL that the opening tab created.
+ * page for a blob: URL that the opening tab created. ?lang=en|ta picks the PDF's language.
  */
 export default function BookingDocumentPage() {
   const { audience, reference, document: kind } = useParams();
+  const langParam = useSearchParams().get("lang");
+  const lang = isLocale(langParam) ? langParam : undefined;
   const [url, setUrl] = useState(null);
   const [error, setError] = useState(null);
 
@@ -29,7 +32,7 @@ export default function BookingDocumentPage() {
 
     let objectUrl = null;
     let cancelled = false;
-    service.bookings[kind](reference, false)
+    service.bookings[kind](reference, false, lang)
       .then((res) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(res.data);
@@ -46,7 +49,7 @@ export default function BookingDocumentPage() {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [audience, reference, kind]);
+  }, [audience, reference, kind, lang]);
 
   // React puts <title> in the document head — the tab shows the booking number.
   if (url) {

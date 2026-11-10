@@ -30,26 +30,6 @@ final class AuthUser
         return Auth::check();
     }
 
-    public static function guest(): bool
-    {
-        return Auth::guest();
-    }
-
-    public static function name(): ?string
-    {
-        return static::user()?->name;
-    }
-
-    public static function email(): ?string
-    {
-        return static::user()?->email;
-    }
-
-    public static function hasRole(array|string $role): bool
-    {
-        return (bool) static::user()?->hasRole($role);
-    }
-
     public static function can(string $permission, mixed $model = null): bool
     {
         return (bool) static::user()?->can($permission, $model);

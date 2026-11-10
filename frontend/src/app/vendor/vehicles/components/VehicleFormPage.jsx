@@ -5,6 +5,13 @@ import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ArrowLeft, Home, Car, ClipboardList, Images, DollarSign, UploadCloud, ShieldCheck } from "lucide-react";
 
+const SALE_STEPS = [
+  { icon: ClipboardList, title: "Vehicle details", body: "Identity, specs and a short description buyers will read." },
+  { icon: DollarSign, title: "Sale details", body: "Asking price, mileage and condition." },
+  { icon: Images, title: "Add photos", body: "Buyers look at photos first. The first one is the cover." },
+  { icon: UploadCloud, title: "Publish", body: "Publish when ready: it goes on the Buy page once our team approves it." },
+];
+
 const STEPS = [
   { icon: ClipboardList, title: "Vehicle details", body: "Identity, specs and a short description customers will read." },
   { icon: DollarSign, title: "Set pricing", body: "Optional here — but a daily rate is required before the vehicle can be booked." },
@@ -13,10 +20,12 @@ const STEPS = [
 ];
 
 /** Page chrome shared by /vendor/vehicles/new and /vendor/vehicles/[id]/edit - header, form card and a next-steps panel. */
-export function VehicleFormPage({ title, subtitle, vehicle, children }) {
+export function VehicleFormPage({ title, subtitle, vehicle, listingType = "rent", children }) {
+  const isSale = listingType === "sale";
+  const listHref = isSale ? "/vendor/sales/listings" : "/vendor/vehicles";
   const breadcrumbItems = [
     { label: "Home", href: "/vendor/dashboard", icon: <Home className="size-4" /> },
-    { label: "Vehicles", href: "/vendor/vehicles" },
+    { label: isSale ? "Sale listings" : "Vehicles", href: listHref },
     { label: title },
   ];
 
@@ -30,8 +39,8 @@ export function VehicleFormPage({ title, subtitle, vehicle, children }) {
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           </div>
         </div>
-        <Link href="/vendor/vehicles" className="flex items-center gap-1.5 self-start text-sm font-medium text-muted-foreground hover:text-foreground sm:self-auto">
-          <ArrowLeft className="h-4 w-4" /> Back to vehicles
+        <Link href={listHref} className="flex items-center gap-1.5 self-start text-sm font-medium text-muted-foreground hover:text-foreground sm:self-auto">
+          <ArrowLeft className="h-4 w-4" /> {isSale ? "Back to listings" : "Back to vehicles"}
         </Link>
       </div>
 
@@ -45,7 +54,7 @@ export function VehicleFormPage({ title, subtitle, vehicle, children }) {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between"><span className="text-muted-foreground">Status</span><StatusBadge status={vehicle.status} /></div>
                 <div className="flex items-center justify-between"><span className="text-muted-foreground">Moderation</span><StatusBadge status={vehicle.moderation_status} /></div>
-                <div className="flex items-center justify-between"><span className="text-muted-foreground">Bookings</span><span className="font-medium">{vehicle.booking_count ?? 0}</span></div>
+                {!isSale && <div className="flex items-center justify-between"><span className="text-muted-foreground">Bookings</span><span className="font-medium">{vehicle.booking_count ?? 0}</span></div>}
               </div>
             </div>
           )}
@@ -53,7 +62,7 @@ export function VehicleFormPage({ title, subtitle, vehicle, children }) {
           <div className="rounded-xl border bg-card p-4 shadow-sm">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Getting a listing live</p>
             <ol className="space-y-3">
-              {STEPS.map(({ icon: Icon, title: stepTitle, body }, i) => (
+              {(isSale ? SALE_STEPS : STEPS).map(({ icon: Icon, title: stepTitle, body }, i) => (
                 <li key={stepTitle} className="flex gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-3.5 w-3.5" /></span>
                   <div>

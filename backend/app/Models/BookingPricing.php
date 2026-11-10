@@ -48,4 +48,38 @@ class BookingPricing extends Model
     {
         return $this->belongsTo(Booking::class);
     }
+
+    /**
+     * Line-by-line price for the breakdown popup (month / week / day lines,
+     * extras, tax, deposit, the quoted rates). Takes a booking_pricing row as
+     * an array, or a BookingPricingCalculator quote's 'pricing'.
+     */
+    public static function breakdownFrom(array $p): array
+    {
+        $snapshot = $p['pricing_snapshot'] ?? [];
+        $rate = fn (string $key) => isset($snapshot[$key]) ? (float) $snapshot[$key] : null;
+
+        return [
+            'rate_plan' => $p['rate_plan'] ?? 'daily',
+            'rate_breakdown' => $p['rate_breakdown'] ?? [],
+            'base_amount' => (float) ($p['base_amount'] ?? 0),
+            'driver_amount' => (float) ($p['driver_amount'] ?? 0),
+            'delivery_amount' => (float) ($p['delivery_amount'] ?? 0),
+            'subtotal' => (float) ($p['subtotal'] ?? 0),
+            'tax_rate' => (float) ($p['tax_rate'] ?? 0),
+            'tax_amount' => (float) ($p['tax_amount'] ?? 0),
+            'security_deposit' => (float) ($p['security_deposit'] ?? 0),
+            'total_payable' => (float) ($p['total_payable'] ?? 0),
+            'deposit_method' => $snapshot['deposit_method'] ?? null,
+            'daily_rate' => (float) ($rate('daily_rate') ?? 0),
+            'weekly_rate' => $rate('weekly_rate'),
+            'monthly_rate' => $rate('monthly_rate'),
+            'driver_rate_per_day' => (float) ($rate('driver_rate_per_day') ?? 0),
+        ];
+    }
+
+    public function breakdown(): array
+    {
+        return self::breakdownFrom($this->toArray());
+    }
 }

@@ -33,13 +33,13 @@ class BankDetailController extends Controller
         abort_unless(VendorContext::member()?->isShopOwner(), 403, 'Only the shop owner can manage bank details.');
     }
 
-    /** {record, message, status} — ServerDataTable's expected shape, same as Api\LocationController::index(). */
+    /** {record, message, status} — ServerDataTable's expected shape, same as LocationController::index(). */
     public function index(Request $request): JsonResponse
     {
         $details = OwnerBankDetail::where('shop_id', VendorContext::shopId())
-            ->when($request->search, fn ($q) => $q
+            ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
                 ->where('bank_name', 'like', "%{$request->search}%")
-                ->orWhere('account_holder_name', 'like', "%{$request->search}%"))
+                ->orWhere('account_holder_name', 'like', "%{$request->search}%")))
             ->orderByDesc('is_primary')
             ->paginate(min((int) $request->get('perPage', 20), 100));
 

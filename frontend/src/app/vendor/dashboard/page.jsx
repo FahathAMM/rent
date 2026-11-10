@@ -11,25 +11,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate, APP_TIMEZONE } from "@/lib/utils";
 import {
-  Car, CheckCircle2, Clock, CalendarCheck, Star, Gauge, Eye, Home, Plus,
+  Car, CheckCircle2, Clock, CalendarCheck, Star, Gauge, Eye, Plus,
   TrendingUp, ArrowRight, ArrowUpRight, ArrowDownLeft, BellRing, Wallet, AlertTriangle, Landmark,
+  BadgeDollarSign, Handshake, MessageCircle,
 } from "lucide-react";
 
 const timeOf = (d) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: APP_TIMEZONE });
 
 function StatTile({ label, value, sub, icon: Icon, tone, href }) {
   const body = (
-    <Card className="group relative h-full overflow-hidden rounded-xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <div className="absolute inset-x-0 top-0 h-1 bg-primary/70" />
-      <CardContent className="flex h-full items-center justify-between gap-4 p-5 pt-6">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className="mt-2 truncate text-3xl font-bold leading-none tracking-tight">{value}</p>
-          {sub && <p className="mt-2 text-xs text-muted-foreground">{sub}</p>}
-        </div>
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${tone}`}>
+    <Card className="group h-full rounded-xl border bg-card shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md">
+      <CardContent className="flex h-full items-center gap-3 p-3">
+        <div className={`flex size-12 shrink-0 items-center justify-center rounded-lg ${tone}`}>
           <Icon className="h-5 w-5" />
         </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="truncate text-xl font-bold leading-tight tracking-tight">{value}</p>
+          {sub && <p className="truncate text-[11px] text-muted-foreground">{sub}</p>}
+        </div>
+        {href && <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />}
       </CardContent>
     </Card>
   );
@@ -136,8 +137,11 @@ export default function VendorDashboardPage() {
   });
 
   const listings = data?.listings ?? {};
+  const sales = data?.sales ?? null; // null when the plan has no sales
   const bookings = data?.bookings ?? {};
   const revenue = data?.revenue ?? {};
+  // Older API responses have no flag — keep showing money then; a false flag hides it.
+  const seesMoney = isLoading || data?.can_view_money !== false;
   const utilisation = data?.vehicle_utilisation ?? {};
   const performance = data?.listing_performance ?? [];
   const reviews = data?.reviews ?? {};
@@ -154,8 +158,6 @@ export default function VendorDashboardPage() {
   const change = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
   const maxBookings = Math.max(...performance.map((p) => p.booking_count), 1);
 
-  const breadcrumbItems = [{ label: "Home", href: "/vendor/dashboard", icon: <Home className="size-4" /> }];
-
   return (
     <HomePageWrapper className="p-4 sm:p-6 lg:p-8">
       <div className="space-y-6">
@@ -163,12 +165,9 @@ export default function VendorDashboardPage() {
           <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-24 -z-10 h-64 w-64 rounded-full bg-blue-300/30 blur-3xl dark:bg-blue-500/15" />
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="inline-flex items-center rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 dark:border-white/20 dark:bg-white/10 dark:text-blue-100">
-                {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", timeZone: APP_TIMEZONE })}
-              </p>
-              <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-200">Vendor workspace</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-200">Vendor workspace</p>
               <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">Good to see you, {user?.name?.split(" ")[0]}</h1>
-              <p className="mt-1.5 max-w-xl text-sm text-slate-600 dark:text-slate-300">Your fleet, bookings, and earnings in one place.</p>
+              <p className="mt-1.5 max-w-xl text-sm text-slate-600 dark:text-slate-300">Your vehicles, bookings, sales and earnings in one place.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" size="sm" className="rounded-lg border-blue-200 bg-white/80 text-slate-700 hover:bg-white dark:border-white/25 dark:bg-white/5 dark:text-white dark:hover:bg-white/15"><Link href="/vendor/bookings"><CalendarCheck className="mr-1.5 h-4 w-4" /> Bookings</Link></Button>
@@ -209,12 +208,23 @@ export default function VendorDashboardPage() {
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatTile label="Total Listings" value={v(listings.total)} sub={isLoading ? undefined : `${listings.available_now ?? 0} available now`} icon={Car} tone="bg-blue-100 text-blue-700" href="/vendor/vehicles" />
+          <StatTile label="Rental Listings" value={v(listings.total)} sub={isLoading ? undefined : `${listings.available_now ?? 0} available now`} icon={Car} tone="bg-blue-100 text-blue-700" href="/vendor/vehicles" />
           <StatTile label="Pending Requests" value={v(bookings.pending)} sub={isLoading ? undefined : "waiting for your answer"} icon={Clock} tone="bg-amber-100 text-amber-700" href="/vendor/bookings" />
           <StatTile label="Active Rentals" value={v(bookings.active)} sub={isLoading ? undefined : `${bookings.confirmed_upcoming ?? 0} confirmed upcoming`} icon={CalendarCheck} tone="bg-sky-100 text-sky-700" href="/vendor/bookings" />
           <StatTile label="Completed Rentals" value={v(bookings.completed)} sub={isLoading ? undefined : `${bookings.no_show ?? 0} no-show`} icon={CheckCircle2} tone="bg-emerald-100 text-emerald-700" href="/vendor/bookings" />
         </div>
 
+        {sales && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatTile label="Vehicles For Sale" value={sales.for_sale} sub="live on the Buy page" icon={BadgeDollarSign} tone="bg-emerald-100 text-emerald-700" href="/vendor/sales/listings" />
+            <StatTile label="Enquiries Waiting" value={sales.enquiries_waiting} sub="waiting for your reply" icon={MessageCircle} tone="bg-amber-100 text-amber-700" href="/vendor/sales/enquiries" />
+            <StatTile label="Sold This Month" value={sales.sold_this_month} sub="recorded by your shop" icon={Handshake} tone="bg-sky-100 text-sky-700" href="/vendor/sales/sold" />
+            {seesMoney && <StatTile label="Sales This Month" value={format(sales.sold_value_this_month)} sub="total sale value" icon={TrendingUp} tone="bg-violet-100 text-violet-700" href="/vendor/sales/sold" />}
+          </div>
+        )}
+
+        {/* Income and money — only for those allowed to see the shop's earnings. */}
+        {seesMoney && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
           <SectionCard
             title="Rental Income"
@@ -261,6 +271,7 @@ export default function VendorDashboardPage() {
             </div>
           </SectionCard>
         </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
           <SectionCard title="Today" icon={CalendarCheck}>
@@ -306,7 +317,7 @@ export default function VendorDashboardPage() {
             )}
           </SectionCard>
 
-          <SectionCard title="Fleet" icon={Gauge} action={<ViewAll href="/vendor/vehicles" />}>
+          <SectionCard title="Rental Vehicles" icon={Gauge} action={<ViewAll href="/vendor/vehicles" />}>
             {isLoading ? <Empty>Loading...</Empty> : (
               <>
                 <div className="mb-4 flex items-center gap-4">

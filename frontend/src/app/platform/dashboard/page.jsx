@@ -58,13 +58,14 @@ export default function PlatformDashboardPage() {
   const gmv = data?.gmv ?? {};
   const bookings = data?.bookings ?? {};
   const queues = data?.queues ?? {};
+  const sales = data?.sales ?? {};
 
   const breadcrumbItems = [{ label: "Dashboard", icon: <Home className="size-4" /> }];
 
   return (
     <div>
       <PageWrapper breadcrumb={breadcrumbItems}>
-        <PageHeader title="Platform Dashboard" description="Booked value, bookings and review queues across the marketplace." />
+        <PageHeader title="Platform Dashboard" description="Bookings, vehicle sales and review queues across the marketplace." />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard
@@ -95,6 +96,23 @@ export default function PlatformDashboardPage() {
             ].map(([label, value]) => (
               <Card key={label}><CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold">{isLoading ? "—" : (value ?? 0)}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </CardContent></Card>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Vehicle Sales</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["For sale now", sales.for_sale ?? 0],
+              ["Open enquiries", sales.open_enquiries ?? 0],
+              ["Sold", sales.sold ?? 0],
+              ["Value recorded by shops", format(sales.sold_value ?? 0)],
+            ].map(([label, value]) => (
+              <Card key={label}><CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold">{isLoading ? "—" : value}</p>
                 <p className="text-xs text-muted-foreground">{label}</p>
               </CardContent></Card>
             ))}

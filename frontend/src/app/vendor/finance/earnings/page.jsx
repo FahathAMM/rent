@@ -11,19 +11,19 @@ import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import { Wallet, Banknote, Clock, Home } from "lucide-react";
 
 function StatTile({ label, value, icon: Icon, tone }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}>
+    <Card className="rounded-xl border bg-card shadow-sm">
+      <CardContent className="flex items-center gap-3 p-3">
+        <div className={`flex size-12 shrink-0 items-center justify-center rounded-lg ${tone}`}>
           <Icon className="h-5 w-5" />
         </div>
-        <div className="min-w-0">
-          <p className="text-2xl font-bold leading-tight">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="truncate text-xl font-bold leading-tight tracking-tight">{value}</p>
         </div>
       </CardContent>
     </Card>
@@ -41,8 +41,8 @@ function receiptStatus(row) {
 
 export default function EarningsPage() {
   const { format } = useCurrencyFormat();
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  const { from, to } = dateRange;
 
   const { data, isLoading } = useQuery({
     queryKey: ["vendor-earnings", from, to],
@@ -76,18 +76,8 @@ export default function EarningsPage() {
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
-      <div className="mb-4 flex flex-wrap items-end gap-2">
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Pickup from</label>
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-40" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Pickup to</label>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-40" />
-        </div>
-      </div>
-
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* HomePageWrapper has no side padding (tables bring their own), so the tiles line up with the table here. */}
+      <div className="grid grid-cols-1 gap-3 px-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile label={`Your Earnings · ${summary.bookings_count ?? 0} bookings`} value={isLoading ? "—" : format(summary.earnings_amount ?? 0)} icon={Wallet} tone="bg-blue-100 text-blue-700" />
         <StatTile label="Received" value={isLoading ? "—" : format(summary.received_amount ?? 0)} icon={Banknote} tone="bg-emerald-100 text-emerald-700" />
         <StatTile label="Still to Receive" value={isLoading ? "—" : format(summary.pending_amount ?? 0)} icon={Clock} tone="bg-amber-100 text-amber-700" />
@@ -100,7 +90,9 @@ export default function EarningsPage() {
         defualtSortField="created_at"
         defaultSortOrder="desc"
         filters={{ from: from || undefined, to: to || undefined }}
-      />
+      >
+        <DateRangePicker placeholder="Pickup date range" className="w-full sm:w-60" value={dateRange} onChange={setDateRange} />
+      </ServerDataTable>
     </HomePageWrapper>
   );
 }

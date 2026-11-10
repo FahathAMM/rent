@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { platformDetailService } from "@/services/platformDetailService";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 
 export function PublicFooter() {
+  const t = useTranslations("footer");
+  const tNav = useTranslations("nav");
+  const tHeader = useTranslations("header");
+  const tCommon = useTranslations("common");
   const { data: brand } = useQuery({
     queryKey: ["platform-details"],
     queryFn: () => platformDetailService.get().then((r) => r.data.data),
@@ -14,11 +19,11 @@ export function PublicFooter() {
 
   const brandName = brand?.name || "LankaLane";
   const logoUrl = brand?.logo || null;
-  const tagline = brand?.tagline || "Rent any vehicle, anywhere in Sri Lanka.";
+  const tagline = brand?.tagline || tCommon("defaultTagline");
 
   return (
     <footer className="border-t bg-muted/30">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="sm:col-span-2 lg:col-span-1">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <BrandLogo
@@ -34,36 +39,48 @@ export function PublicFooter() {
         </div>
 
         <div>
-          <p className="text-sm font-semibold">Explore</p>
+          <p className="text-sm font-semibold">{t("explore")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/" className="hover:text-foreground">Home</Link></li>
-            <li><Link href="/browse" className="hover:text-foreground">Browse vehicles</Link></li>
-            <li><Link href="/locations" className="hover:text-foreground">Browse by location</Link></li>
-            <li><Link href="/shops" className="hover:text-foreground">Rental companies</Link></li>
-            <li><Link href="/how-it-works" className="hover:text-foreground">How it works</Link></li>
+            <li><Link href="/" className="hover:text-foreground">{t("home")}</Link></li>
+            <li><Link href="/rent" className="hover:text-foreground">{tNav("rent")}</Link></li>
+            <li><Link href="/buy" className="hover:text-foreground">{tNav("buy")}</Link></li>
+            <li><Link href="/locations" className="hover:text-foreground">{tNav("location")}</Link></li>
+            <li><Link href="/shops" className="hover:text-foreground">{tNav("shops")}</Link></li>
+            <li><Link href="/how-it-works" className="hover:text-foreground">{t("howItWorks")}</Link></li>
           </ul>
         </div>
 
         <div>
-          <p className="text-sm font-semibold">For owners</p>
+          <p className="text-sm font-semibold">{t("forOwners")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/vendor/register" className="hover:text-foreground">List your vehicle</Link></li>
-            <li><Link href="/vendor/register" className="hover:text-foreground">Register a rental business</Link></li>
+            <li><Link href="/vendor/register" className="hover:text-foreground">{t("listVehicle")}</Link></li>
+            <li><Link href="/vendor/register" className="hover:text-foreground">{t("registerBusiness")}</Link></li>
           </ul>
         </div>
 
         <div>
-          <p className="text-sm font-semibold">Account</p>
+          <p className="text-sm font-semibold">{t("account")}</p>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/login" className="hover:text-foreground">Sign in</Link></li>
-            <li><Link href="/register" className="hover:text-foreground">Create an account</Link></li>
+            <li><Link href="/login" className="hover:text-foreground">{tHeader("signIn")}</Link></li>
+            <li><Link href="/register" className="hover:text-foreground">{t("createAccount")}</Link></li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold">{t("help")}</p>
+          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <li><Link href="/stay-safe" className="hover:text-foreground">{t("staySafe")}</Link></li>
+            <li><Link href="/faq" className="hover:text-foreground">{t("faq")}</Link></li>
+            <li><Link href="/contact" className="hover:text-foreground">{t("contact")}</Link></li>
+            <li><Link href="/terms" className="hover:text-foreground">{t("terms")}</Link></li>
+            <li><Link href="/privacy" className="hover:text-foreground">{t("privacy")}</Link></li>
           </ul>
         </div>
       </div>
 
       <div className="border-t">
         <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} {brandName}. All rights reserved.
+          {t("rights", { year: new Date().getFullYear(), brand: brandName })}
         </div>
       </div>
     </footer>

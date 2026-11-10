@@ -104,7 +104,7 @@ export default function PlatformDisputeDetailPage() {
     <PageWrapper breadcrumb={breadcrumbItems}>
       <PageHeader
         title={dispute.subject}
-        description={`${dispute.dispute_reference} · Booking ${dispute.booking?.booking_reference} · Raised by ${dispute.raised_by?.name} (${dispute.raised_by_side})`}
+        description={`${dispute.dispute_reference} · Booking ${dispute.booking?.booking_reference} · Raised by ${dispute.raised_by?.name ?? dispute.raised_by_customer?.name ?? "Customer"} (${dispute.raised_by_side})`}
         action={
           canAct && (
             <div className="flex gap-2">

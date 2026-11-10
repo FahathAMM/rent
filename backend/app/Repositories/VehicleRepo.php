@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Http\Requests\Vehicle\StoreVehicleRequest;
 use App\Http\Requests\Vehicle\UpdateVehicleRequest;
 use App\Models\ListingModerationHistory;
+use App\Models\PlatformSetting;
 use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleColour;
@@ -25,14 +26,15 @@ class VehicleRepo
         $this->model = $model;
     }
 
-    public function getData(Request $request): LengthAwarePaginator
+    public function getData(Request $request, string $listingType = Vehicle::LISTING_RENT): LengthAwarePaginator
     {
         $sortable = ['title', 'status', 'booking_count', 'rating_avg', 'created_at'];
         $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
         $dir  = $request->sort_direction === 'asc' ? 'asc' : 'desc';
 
         return $this->model
-            ->with('category', 'pricing', 'images.attachment')
+            ->where('listing_type', $listingType)
+            ->with('category', 'pricing', 'saleDetail', 'images.attachment')
             ->when($request->search, fn ($q) => $q->where(function ($qq) use ($request) {
                 $qq->where('title', 'like', "%{$request->search}%")
                     ->orWhere('registration_number', 'like', "%{$request->search}%");
@@ -42,10 +44,11 @@ class VehicleRepo
             ->paginate(min($request->perPage ?? 20, 100));
     }
 
-    public function store(StoreVehicleRequest $request): Vehicle
+    public function store(StoreVehicleRequest $request, string $listingType = Vehicle::LISTING_RENT): Vehicle
     {
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $listingType) {
             $data = $request->validated();
+            $data['listing_type'] = $listingType;
             $data['slug'] = $this->uniqueSlug($data['title']);
             $data['created_by'] = AuthUser::id();
             $data['status'] = Vehicle::STATUS_DRAFT;
@@ -85,6 +88,22 @@ class VehicleRepo
         $vehicle->delete();
     }
 
+    /** What must hold before a shop can put a listing live, rental or sale. */
+    public function assertCanPublish(Vehicle $vehicle): void
+    {
+        abort_unless(
+            $vehicle->shop?->isVerified() || PlatformSetting::get('allow_unapproved_owner_publishing', false),
+            403,
+            'Your shop must be verified before you can publish listings.'
+        );
+
+        abort_if($vehicle->moderation_status === Vehicle::MODERATION_FLAGGED, 422,
+            'This listing was taken offline by the platform' . ($vehicle->moderation_note ? ": {$vehicle->moderation_note}" : '') . '. Please contact the platform admin to have it republished.');
+
+        abort_unless($vehicle->moderation_status === Vehicle::MODERATION_APPROVED, 422,
+            'This vehicle must pass moderation before it can be published.');
+    }
+
     public function publish(Vehicle $vehicle): Vehicle
     {
         $from = $vehicle->status;
@@ -94,11 +113,11 @@ class VehicleRepo
         return $vehicle->fresh();
     }
 
-    public function unpublish(Vehicle $vehicle): Vehicle
+    public function unpublish(Vehicle $vehicle, ?string $reason = null): Vehicle
     {
         $from = $vehicle->status;
         $vehicle->update(['status' => Vehicle::STATUS_UNPUBLISHED]);
-        $this->history($vehicle, $from, Vehicle::STATUS_UNPUBLISHED, 'unpublished');
+        $this->history($vehicle, $from, Vehicle::STATUS_UNPUBLISHED, 'unpublished', $reason);
 
         return $vehicle->fresh();
     }
@@ -136,7 +155,7 @@ class VehicleRepo
         return $data;
     }
 
-    private function history(Vehicle $vehicle, ?string $from, string $to, string $action): void
+    private function history(Vehicle $vehicle, ?string $from, string $to, string $action, ?string $reason = null): void
     {
         ListingModerationHistory::create([
             'vehicle_id' => $vehicle->id,
@@ -145,6 +164,7 @@ class VehicleRepo
             'action' => $action,
             'actor_type' => 'owner',
             'actor_id' => AuthUser::id(),
+            'reason' => $reason,
         ]);
     }
 

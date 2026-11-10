@@ -34,16 +34,16 @@ export default function VendorBookingDetailPage() {
   const [pdfBusy, setPdfBusy] = useState(null); // 'voucher' | 'agreement' while the PDF loads
   const [rescheduling, setRescheduling] = useState(false);
 
-  // Voucher or agreement PDF: view opens /documents/... in a new tab (it loads the PDF itself);
-  // download saves it as "<booking no>.pdf".
-  const openPdf = (kind, download) => {
+  // Voucher or agreement PDF in English or Tamil (for the customer): view opens /documents/... in a
+  // new tab (it loads the PDF itself); download saves it as "<booking no>.pdf" ("-ta.pdf" for Tamil).
+  const openPdf = (kind, download, lang) => {
     if (!download) {
-      window.open(`/documents/vendor/${reference}/${kind}`, "_blank");
+      window.open(`/documents/vendor/${reference}/${kind}?lang=${lang}`, "_blank");
       return;
     }
     setPdfBusy(kind);
-    vendorService.bookings[kind](reference, true)
-      .then((res) => downloadBlob(res.data, `${reference}.pdf`))
+    vendorService.bookings[kind](reference, true, lang)
+      .then((res) => downloadBlob(res.data, `${reference}${lang === "en" ? "" : `-${lang}`}.pdf`))
       .catch(() => {
         toast.error(
           kind === "voucher"
@@ -153,6 +153,14 @@ export default function VendorBookingDetailPage() {
     cashDeposit && deposit.status === "held"
       ? Number(deposit.amount_collected)
       : null;
+  // Return dialog reminder: the price only changes through Change return date, and not once the return is recorded.
+  const msToReturn = booking ? Date.parse(booking.return_at) - Date.now() : 0;
+  const returnNotice =
+    msToReturn < 0
+      ? "The return time has passed. To charge for the extra time, close this and use Change return date first."
+      : msToReturn >= 24 * 60 * 60 * 1000
+        ? "This is at least a day early. To refund the unused days, close this and use Change return date first. To keep the full price, just continue."
+        : null;
   const danger =
     "gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10";
   const actions = booking && (
@@ -215,6 +223,16 @@ export default function VendorBookingDetailPage() {
       {status === "active" && (
         <Button
           size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => setRescheduling(true)}
+        >
+          <CalendarClock className="h-3.5 w-3.5" /> Change return date
+        </Button>
+      )}
+      {status === "active" && (
+        <Button
+          size="sm"
           className="gap-1.5"
           onClick={() => setInspectionAction("return")}
         >
@@ -227,8 +245,8 @@ export default function VendorBookingDetailPage() {
             label="Voucher"
             icon={FileText}
             loading={pdfBusy === "voucher"}
-            onView={() => openPdf("voucher", false)}
-            onDownload={() => openPdf("voucher", true)}
+            onView={(lang) => openPdf("voucher", false, lang)}
+            onDownload={(lang) => openPdf("voucher", true, lang)}
           />
           <PdfMenu
             label={`Agreement${booking?.agreement?.signed ? " ✓" : ""}`}
@@ -239,8 +257,8 @@ export default function VendorBookingDetailPage() {
                 : "Not signed yet"
             }
             loading={pdfBusy === "agreement"}
-            onView={() => openPdf("agreement", false)}
-            onDownload={() => openPdf("agreement", true)}
+            onView={(lang) => openPdf("agreement", false, lang)}
+            onDownload={(lang) => openPdf("agreement", true, lang)}
           />
         </>
       )}
@@ -313,6 +331,8 @@ export default function VendorBookingDetailPage() {
         title="Record Return"
         allowDamages
         depositHeld={depositHeld}
+        balanceDue={Number(booking?.balance_due ?? 0)}
+        notice={returnNotice}
         onSubmit={submitInspection}
         loading={returnVehicle.isPending}
       />

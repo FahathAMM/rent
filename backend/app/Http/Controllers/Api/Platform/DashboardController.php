@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingPricing;
 use App\Models\RentalShop;
+use App\Models\SaleEnquiry;
 use App\Models\Vehicle;
+use App\Models\VehicleSale;
+use App\Models\VehicleSaleDetail;
 use App\Traits\JsonResponse as JsonResponseTrait;
 use Illuminate\Http\JsonResponse;
 
@@ -25,6 +28,7 @@ class DashboardController extends Controller
         return $this->response('Dashboard retrieved', [
             'gmv' => $this->gmv(),
             'bookings' => $this->bookingCounts(),
+            'sales' => $this->sales(),
             'queues' => $this->queues(),
         ]);
     }
@@ -59,6 +63,18 @@ class DashboardController extends Controller
                 + $byStatus->get(Booking::STATUS_CANCELLED_BY_CUSTOMER, 0)
                 + $byStatus->get(Booking::STATUS_CANCELLED_BY_OWNER, 0)
                 + $byStatus->get(Booking::STATUS_CANCELLED_BY_ADMIN, 0),
+        ];
+    }
+
+    /** Sales happen at the shop, so these are what shops recorded, not money the platform has seen. */
+    private function sales(): array
+    {
+        return [
+            'for_sale' => Vehicle::forSale()->where('status', Vehicle::STATUS_PUBLISHED)
+                ->whereHas('saleDetail', fn ($q) => $q->where('sale_status', VehicleSaleDetail::STATUS_AVAILABLE))->count(),
+            'open_enquiries' => SaleEnquiry::open()->count(),
+            'sold' => VehicleSale::count(),
+            'sold_value' => (float) VehicleSale::sum('sale_price'),
         ];
     }
 

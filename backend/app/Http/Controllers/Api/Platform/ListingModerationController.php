@@ -22,6 +22,9 @@ class ListingModerationController extends Controller
         $vehicles = Vehicle::query()
             ->with([
                 'category:id,name',
+                'shop:id,name,city,district',
+                'pricing:id,vehicle_id,daily_rate,weekly_rate,monthly_rate,security_deposit,driver_rate_per_day,mileage_allowance_per_day_km',
+                'saleDetail',
                 'brand:id,name',
                 'vehicleModel:id,name',
                 'vehicleVariant:id,name',
@@ -32,6 +35,7 @@ class ListingModerationController extends Controller
                 'images' => fn ($q) => $q->where('is_primary', true)->with('attachment'),
             ])
             ->when($request->moderation_status, fn ($q) => $q->where('moderation_status', $request->moderation_status))
+            ->when($request->listing_type, fn ($q) => $q->where('listing_type', $request->listing_type))
             ->when($request->search, fn ($q) => $q->where('title', 'like', "%{$request->search}%"))
             ->orderByDesc('created_at')
             ->paginate(min((int) $request->get('perPage', 20), 100));
@@ -45,7 +49,7 @@ class ListingModerationController extends Controller
             'category', 'brand:id,name', 'vehicleModel:id,name', 'vehicleVariant:id,name', 'vehicleColour:id,name,hex',
             'shop:id,name,slug,logo,cover_image,city,district,status,verification_status,is_published,owner_user_id',
             'shop.owner:id,name,email,phone',
-            'pricing', 'images.attachment', 'pickupLocations.location:id,name,address,city,district',
+            'pricing', 'saleDetail', 'images.attachment', 'pickupLocations.location:id,name,address,city,district',
             'moderationHistory' => fn ($q) => $q->latest(),
         ])->loadCount(['bookings', 'reviews']);
 

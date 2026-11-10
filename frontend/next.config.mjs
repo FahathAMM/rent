@@ -1,3 +1,7 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.js');
+
 /**
  * The Laravel API this app proxies to. Server-side only (no NEXT_PUBLIC_
  * prefix) since it's read here in next.config.mjs and in the rewrites()
@@ -12,6 +16,27 @@ const backend = new URL(backendUrl);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  poweredByHeader: false,
+  // Basic hardening on every response. SAMEORIGIN (not DENY) so the app can
+  // still show its own PDFs (vouchers, agreements) in an iframe; no other
+  // site may frame it (clickjacking).
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
+          ...(process.env.NODE_ENV === 'production'
+            ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]
+            : []),
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -48,4 +73,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

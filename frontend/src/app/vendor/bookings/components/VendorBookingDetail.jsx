@@ -6,24 +6,17 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  CalendarDays, ArrowRight, Clock, MapPin, User, Phone, Mail, CarFront, ImageOff, Wallet, Receipt, ShieldCheck, ClipboardCheck, History, AlertTriangle, Truck, UserRound, Gauge, Fuel, CheckCircle2, Circle, XCircle, Banknote, Landmark,
+  CalendarDays, ArrowRight, Clock, MapPin, User, Phone, Mail, CarFront, ImageOff, Wallet, Receipt, ShieldCheck, ClipboardCheck, History, AlertTriangle, Truck, UserRound, Gauge, Fuel, XCircle, Banknote, Landmark,
 } from "lucide-react";
 import { cn, formatDateTime } from "@/lib/utils";
 import { isMoneyLine } from "@/lib/statement";
 import { ShopPaymentsCard } from "./ShopPaymentsCard";
+import { PriceBreakdownDialog, breakdownData } from "@/components/shared/PriceBreakdownDialog";
+import { BookingProgress } from "@/components/shared/BookingProgress";
 
 const TRIGGER = "gap-1.5 rounded-lg px-3 py-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none";
 const label = (v) => (v ? String(v).replace(/_/g, " ") : null);
 const imageUrl = (img) => (img?.attachment ? `/storage/${img.attachment.file_path}` : null);
-
-// The happy path a booking walks; cancelled/rejected/expired branch off it.
-const LIFECYCLE = [
-  { key: "pending", label: "Requested", at: "created_at" },
-  { key: "confirmed", label: "Confirmed", at: "confirmed_at" },
-  { key: "active", label: "Handed over", at: "actual_pickup_at" },
-  { key: "completed", label: "Returned", at: "actual_return_at" },
-];
-const ENDED = ["rejected", "expired", "cancelled_by_customer", "cancelled_by_owner", "cancelled_by_admin", "no_show"];
 
 /**
  * The shop's view of one booking — vendor only (the platform has its own
@@ -42,8 +35,6 @@ export function VendorBookingDetail({ booking: b, actions, canEdit, onChanged })
   const history = b.status_histories ?? [];
   const inspections = b.inspections ?? [];
   const damages = b.damages ?? [];
-  const ended = ENDED.includes(b.status);
-  const stage = LIFECYCLE.findIndex((s) => s.key === b.status);
   // Paid to the shop directly (cash / bank transfer), confirmed before money changes hands.
   const isBank = b.payment_method === "bank_transfer";
   // The vendor payload carries amount_paid / balance_due; summing the money lines is only a fallback.
@@ -51,7 +42,6 @@ export function VendorBookingDetail({ booking: b, actions, canEdit, onChanged })
     ? Number(b.amount_paid)
     : (b.payments ?? []).filter((p) => p.status === "succeeded" && isMoneyLine(p)).reduce((sum, p) => sum + Number(p.credit ?? 0) - Number(p.debit ?? 0), 0);
   const balanceDue = b.balance_due != null ? Number(b.balance_due) : Math.max(0, Number(pricing.total_payable ?? 0) - amountPaid);
-  const lifecycle = LIFECYCLE;
 
   const stats = [
     { icon: Receipt, label: "Total payable", value: money(pricing.total_payable) },
@@ -88,6 +78,18 @@ export function VendorBookingDetail({ booking: b, actions, canEdit, onChanged })
             <div className="flex justify-between"><span className="text-muted-foreground">Security deposit</span><span>{money(pricing.security_deposit)}</span></div>
           )}
           <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total payable</span><span>{money(pricing.total_payable)}</span></div>
+          {pricing.breakdown && (
+            <PriceBreakdownDialog
+              format={format}
+              from={b.pickup_at}
+              to={b.return_at}
+              data={breakdownData(pricing.breakdown, b.rental_days, "Total payable")}
+              extraRows={[
+                { label: "Paid to shop", amount: amountPaid },
+                { label: "Balance due", amount: balanceDue, strong: true },
+              ]}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -201,11 +203,11 @@ export function VendorBookingDetail({ booking: b, actions, canEdit, onChanged })
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ icon: Icon, label: l, value, sub }) => (
           <Card key={l} className="rounded-2xl shadow-sm">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
+            <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-10"><Icon className="h-5 w-5" /></div>
               <div className="min-w-0">
-                <p className="truncate text-lg font-semibold leading-tight">{value}</p>
-                <p className="truncate text-xs capitalize text-muted-foreground">{l}{sub ? ` · ${sub}` : ""}</p>
+                <p className="break-words text-base font-semibold leading-tight sm:text-lg">{value}</p>
+                <p className="text-xs capitalize leading-snug text-muted-foreground">{l}{sub ? ` · ${sub}` : ""}</p>
               </div>
             </CardContent>
           </Card>
@@ -235,33 +237,7 @@ export function VendorBookingDetail({ booking: b, actions, canEdit, onChanged })
         <TabsContent value="overview" className="mt-0">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0 space-y-5">
-              <Card className="rounded-2xl shadow-sm">
-                <CardHeader className="pb-3"><CardTitle className="text-base">Progress</CardTitle></CardHeader>
-                <CardContent>
-                  {ended ? (
-                    <div className="flex items-center gap-2 text-sm">
-                      <XCircle className="h-4 w-4 text-destructive" />
-                      <span className="capitalize">{label(b.status)}</span>
-                      {b.cancelled_at && <span className="text-muted-foreground">· {formatDateTime(b.cancelled_at)}</span>}
-                    </div>
-                  ) : (
-                    <ol className="grid gap-3 sm:grid-cols-5">
-                      {lifecycle.map((s, i) => {
-                        const done = i <= stage;
-                        return (
-                          <li key={s.key} className="flex items-start gap-2 sm:flex-col sm:items-center sm:text-center">
-                            {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
-                            <div>
-                              <p className={cn("text-xs font-medium", !done && "text-muted-foreground")}>{s.label}</p>
-                              {done && b[s.at] && <p className="text-[11px] text-muted-foreground">{formatDateTime(b[s.at])}</p>}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  )}
-                </CardContent>
-              </Card>
+              <BookingProgress booking={b} view="shop" />
 
               <Card className="rounded-2xl shadow-sm">
                 <CardHeader className="pb-3"><CardTitle className="text-base">Trip details</CardTitle></CardHeader>
@@ -418,9 +394,9 @@ function TripPoint({ label: l, at, actual, place, align }) {
   return (
     <div className={cn("min-w-0", align === "right" && "text-right")}>
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{l}</p>
-      <p className="truncate text-sm font-semibold">{formatDateTime(at)}</p>
-      {place && <p className="truncate text-xs text-muted-foreground">{place}</p>}
-      {actual && <p className="truncate text-[11px] text-emerald-600">Actual {formatDateTime(actual)}</p>}
+      <p className="text-sm font-semibold leading-snug">{formatDateTime(at)}</p>
+      {place && <p className="break-words text-xs text-muted-foreground">{place}</p>}
+      {actual && <p className="text-[11px] leading-snug text-emerald-600">Actual {formatDateTime(actual)}</p>}
     </div>
   );
 }

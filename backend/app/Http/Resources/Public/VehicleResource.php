@@ -43,7 +43,7 @@ class VehicleResource extends JsonResource
             ] : null),
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
-                'name' => $this->category->name,
+                'name' => $this->category->translate('name'),
                 'slug' => $this->category->slug,
             ]),
             'shop' => $this->whenLoaded('shop', fn () => [
@@ -56,6 +56,8 @@ class VehicleResource extends JsonResource
                 // Only whether - the account itself is shown to the customer on their confirmed booking.
                 'accepts_bank_transfer' => $this->shop->relationLoaded('primaryBankDetail') ? $this->shop->primaryBankDetail !== null : null,
                 'advance_percentage' => $this->shop->advance_percentage,
+                'booking_pickup_time' => $this->shop->booking_pickup_time,
+                'booking_return_time' => $this->shop->booking_return_time,
                 'rating_avg' => $this->shop->rating_avg,
             ]),
             'pricing' => $this->whenLoaded('pricing', fn () => [

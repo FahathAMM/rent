@@ -204,11 +204,7 @@ export default function ServerDataTable({
 
   return (
     <div>
-      {/* <div className="pt-4"> */}
-        {/* ====================== */}
         <div className="space-y-3 px-3 pt-3">
-          {/* Header */}
-
           {/* Search & Filters */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             {/* Left Section (Search + Filters) */}
@@ -412,6 +408,7 @@ export default function ServerDataTable({
               className="h-7 w-7"
               disabled={page === 1}
               onClick={() => setPage(1)}
+              aria-label="First page"
             >
               <ChevronsLeft className="h-3.5 w-3.5" />
             </Button>
@@ -421,6 +418,7 @@ export default function ServerDataTable({
               className="h-7 w-7"
               disabled={page === 1}
               onClick={() => setPage(page - 1)}
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
@@ -450,6 +448,7 @@ export default function ServerDataTable({
               className="h-7 w-7"
               disabled={page === lastPage}
               onClick={() => setPage(page + 1)}
+              aria-label="Next page"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
@@ -459,12 +458,12 @@ export default function ServerDataTable({
               className="h-7 w-7"
               disabled={page === lastPage}
               onClick={() => setPage(lastPage)}
+              aria-label="Last page"
             >
               <ChevronsRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
-      {/* </div> */}
     </div>
   );
 }

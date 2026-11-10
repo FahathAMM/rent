@@ -21,7 +21,7 @@ class AuthController extends Controller
         $result = $this->authService->login($request->validated());
 
         return response()->json([
-            'message' => 'Login successful',
+            'message' => __('Login successful'),
             'data' => [
                 'customer' => new CustomerResource($result['customer']),
                 'token' => $result['token'],
@@ -34,7 +34,7 @@ class AuthController extends Controller
         $result = $this->authService->register($request->validated());
 
         return response()->json([
-            'message' => 'Registered successfully',
+            'message' => __('Registered successfully'),
             'data' => [
                 'customer' => new CustomerResource($result['customer']),
                 'token' => $result['token'],
@@ -48,7 +48,7 @@ class AuthController extends Controller
         $customer = auth('customer')->user();
         $this->authService->logout($customer);
 
-        return response()->json(['message' => 'Logged out successfully']);
+        return response()->json(['message' => __('Logged out successfully')]);
     }
 
     public function me(): JsonResponse
@@ -61,7 +61,7 @@ class AuthController extends Controller
         $customer = $this->authService->updateProfile(auth('customer')->user(), $request);
 
         return response()->json([
-            'message' => 'Profile updated successfully',
+            'message' => __('Profile updated successfully'),
             'data' => new CustomerResource($customer),
         ]);
     }
@@ -74,6 +74,6 @@ class AuthController extends Controller
             $request->new_password
         );
 
-        return response()->json(['message' => 'Password changed successfully']);
+        return response()->json(['message' => __('Password changed successfully')]);
     }
 }

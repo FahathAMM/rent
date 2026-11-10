@@ -22,7 +22,7 @@ class ResolveShopContext
         $user = AuthUser::user();
         abort_if(!$user, 401, 'Unauthenticated.');
 
-        abort_if(!$user->shop_id, 403, 'Your account is not linked to a rental shop.');
+        abort_if(!$user->shop_id, 403, 'Your account is not linked to a shop.');
         abort_if($user->shop?->status === 'suspended', 403, 'This shop has been suspended.');
 
         VendorContext::set($user->shop_id, $user);

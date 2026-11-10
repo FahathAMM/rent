@@ -78,3 +78,6 @@ postman/LankaLane.postman_collection.json
 # Lankalane VPS Deployment Guide.md
 backend/.env.example
 backend/.env.production.example
+# Lankalane VPS Deployment Guide.md
+backend/.env.example
+backend/.env.production.example

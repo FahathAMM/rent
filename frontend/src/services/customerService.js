@@ -29,9 +29,9 @@ export const customerService = {
     getOne: (reference) => customerApi.get(`/bookings/${reference}`),
     summary: () => customerApi.get("/bookings/summary"),
     /** The rental agreement PDF — the shop's terms, signed at handover. */
-    agreement: (reference, download = false) => customerApi.get(`/bookings/${reference}/agreement`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    agreement: (reference, download = false, lang) => customerApi.get(`/bookings/${reference}/agreement`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     /** The booking voucher PDF to show the shop at pickup — fetched as a blob since it needs the customer's token. */
-    voucher: (reference, download = false) => customerApi.get(`/bookings/${reference}/voucher`, { params: download ? { download: 1 } : {}, responseType: "blob" }),
+    voucher: (reference, download = false, lang) => customerApi.get(`/bookings/${reference}/voucher`, { params: { ...(download && { download: 1 }), ...(lang && { lang }) }, responseType: "blob" }),
     create: (data) => customerApi.post("/bookings", data),
     cancel: (reference, reason) => customerApi.post(`/bookings/${reference}/cancel`, { reason }),
     /** FormData: amount, transfer_reference (optional), proof (PDF / image). */
@@ -43,5 +43,30 @@ export const customerService = {
   reviews: {
     getAll: (params) => customerApi.get("/reviews", { params }),
     create: (data) => customerApi.post("/reviews", data),
+  },
+
+  disputes: {
+    getAll: (params) => customerApi.get("/customer/disputes", { params }),
+    getOne: (reference) => customerApi.get(`/customer/disputes/${reference}`),
+    create: (data) => customerApi.post("/customer/disputes", data),
+    addMessage: (reference, message) => customerApi.post(`/customer/disputes/${reference}/messages`, { message }),
+  },
+
+  notifications: {
+    getAll: (params) => customerApi.get("/customer/notifications", { params }),
+    markRead: (id) => customerApi.post(`/customer/notifications/${id}/read`),
+    markAllRead: () => customerApi.post("/customer/notifications/read-all"),
+  },
+
+  /** Conversations with shops about vehicles for sale. */
+  enquiries: {
+    getAll: (params) => customerApi.get("/sales/enquiries", { params }),
+    getOne: (reference) => customerApi.get(`/sales/enquiries/${reference}`),
+    /** { vehicle_slug, body } — adds to the open enquiry on this car if there is one. */
+    create: (data) => customerApi.post("/sales/enquiries", data),
+    reply: (reference, body) => customerApi.post(`/sales/enquiries/${reference}/messages`, { body }),
+    close: (reference) => customerApi.post(`/sales/enquiries/${reference}/close`),
+    /** The buyer's copy of the sale agreement — a blob, since it needs the customer's token. */
+    agreement: (reference) => customerApi.get(`/sales/enquiries/${reference}/agreement`, { responseType: "blob" }),
   },
 };

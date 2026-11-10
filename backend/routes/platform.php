@@ -9,7 +9,9 @@ use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomation
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
 use App\Http\Controllers\Api\Platform\BrandController as PlatformBrandController;
+use App\Http\Controllers\Api\Platform\HelpItemController as PlatformHelpItemController;
 use App\Http\Controllers\Api\Platform\HeroSlideController as PlatformHeroSlideController;
+use App\Http\Controllers\Api\Platform\SupportContactController;
 use App\Http\Controllers\Api\Platform\VehicleColourController;
 use App\Http\Controllers\Api\Platform\VehicleModelController;
 use App\Http\Controllers\Api\Platform\VehicleVariantController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\Api\Platform\DisputeController as PlatformDisputeContro
 use App\Http\Controllers\Api\Platform\ImpersonationController;
 use App\Http\Controllers\Api\Platform\ListingModerationController;
 use App\Http\Controllers\Api\Platform\LogController as PlatformLogController;
+use App\Http\Controllers\Api\Platform\NotificationController as PlatformNotificationController;
 use App\Http\Controllers\Api\Platform\PaymentController as PlatformPaymentController;
 use App\Http\Controllers\Api\Platform\PublicVisitController;
 use App\Http\Controllers\Api\Platform\ReportController as PlatformReportController;
@@ -37,11 +40,16 @@ use Illuminate\Support\Facades\Route;
 // marketplace user's token is rejected by the `platform` guard (see
 // config/auth.php).
 Route::prefix('platform')->group(function () {
-    Route::post('login', [PlatformAuthController::class, 'login']);
+    Route::post('login', [PlatformAuthController::class, 'login'])->middleware('throttle:auth');
 
     Route::middleware('platform.admin')->group(function () {
         Route::post('logout', [PlatformAuthController::class, 'logout']);
         Route::get('me',      [PlatformAuthController::class, 'me']);
+
+        // The admin's own notifications — things waiting for the platform (see PlatformNotifier).
+        Route::get('notifications',            [PlatformNotificationController::class, 'index']);
+        Route::post('notifications/read-all',  [PlatformNotificationController::class, 'markAllRead']);
+        Route::post('notifications/{id}/read', [PlatformNotificationController::class, 'markRead']);
 
         Route::get('audit-logs',  [PlatformAuditLogController::class, 'index']);
         Route::get('dashboard',   [PlatformDashboardController::class, 'index']);
@@ -85,9 +93,11 @@ Route::prefix('platform')->group(function () {
         // Database backups (Spatie Laravel Backup) — /platform/settings.
         Route::get('backups',          [PlatformBackupController::class, 'index']);
         Route::post('backups',         [PlatformBackupController::class, 'store']);
-        Route::get('backups/download', [PlatformBackupController::class, 'download']);
-        Route::post('backups/email',   [PlatformBackupController::class, 'email']);
+        // A backup is the whole database (every customer, payment, KYC
+        // record) — taking a copy out, or sending one anywhere, is Platform Owner only.
         Route::middleware('platform.owner')->group(function () {
+            Route::get('backups/download', [PlatformBackupController::class, 'download']);
+            Route::post('backups/email',   [PlatformBackupController::class, 'email']);
             Route::delete('backups', [PlatformBackupController::class, 'destroy']);
         });
 
@@ -208,6 +218,11 @@ Route::prefix('platform')->group(function () {
         // through POST + _method=PUT, like brands.
         Route::post('hero-slides/reorder', [PlatformHeroSlideController::class, 'reorder']);
         Route::apiResource('hero-slides', PlatformHeroSlideController::class)->except('show')->parameters(['hero-slides' => 'heroSlide']);
+
+        // Help & Support: Stay safe, FAQ, Terms & Conditions and Privacy Policy content, and the Contact us details.
+        Route::post('help-items/reorder', [PlatformHelpItemController::class, 'reorder']);
+        Route::apiResource('help-items', PlatformHelpItemController::class)->except('show')->parameters(['help-items' => 'helpItem']);
+        Route::put('support-contact', [SupportContactController::class, 'update']);
 
         // The rest of the vehicle hierarchy: brand -> model -> variant, plus colours.
         Route::apiResource('vehicle-models', VehicleModelController::class)->except('show')->parameters(['vehicle-models' => 'model']);

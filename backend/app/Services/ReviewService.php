@@ -22,16 +22,16 @@ class ReviewService
     public function create(Customer $user, Booking $booking, array $data): Review
     {
         if ($booking->customer_id !== $user->id) {
-            throw ValidationException::withMessages(['booking' => ['This booking does not belong to you.']]);
+            throw ValidationException::withMessages(['booking' => [__('This booking does not belong to you.')]]);
         }
         if ($booking->status !== Booking::STATUS_COMPLETED) {
-            throw ValidationException::withMessages(['booking' => ['Only a completed booking can be reviewed.']]);
+            throw ValidationException::withMessages(['booking' => [__('Only a completed booking can be reviewed.')]]);
         }
         if ($booking->review_eligible_until && now()->greaterThan($booking->review_eligible_until)) {
-            throw ValidationException::withMessages(['booking' => ['The review window for this booking has closed.']]);
+            throw ValidationException::withMessages(['booking' => [__('The review window for this booking has closed.')]]);
         }
         if (Review::where('booking_id', $booking->id)->exists()) {
-            throw ValidationException::withMessages(['booking' => ['You have already reviewed this booking.']]);
+            throw ValidationException::withMessages(['booking' => [__('You have already reviewed this booking.')]]);
         }
 
         $review = Review::create($data + [
@@ -42,6 +42,14 @@ class ReviewService
             'status' => Review::STATUS_PENDING,
             'is_verified_booking' => true,
         ]);
+
+        PlatformNotifier::notify(
+            'review_submitted',
+            'Review waiting for moderation',
+            "{$review->rating}★ review on booking {$booking->booking_reference}.",
+            '/platform/reviews',
+            ['review_id' => $review->id],
+        );
 
         return $review;
     }

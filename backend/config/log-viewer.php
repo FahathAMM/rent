@@ -118,7 +118,12 @@ return [
 
     'api_middleware' => [
         EnsureFrontendRequestsAreStateful::class,
+        // The API lists, reads, downloads and deletes log files — never leave it open.
+        RestrictLogViewerToOwner::class,
     ],
+
+    // The only account allowed in (see RestrictLogViewerToOwner). Unset = nobody.
+    'owner_email' => env('LOG_VIEWER_OWNER_EMAIL'),
 
     'api_stateful_domains' => env('LOG_VIEWER_API_STATEFUL_DOMAINS') ? explode(',', env('LOG_VIEWER_API_STATEFUL_DOMAINS')) : null,
 

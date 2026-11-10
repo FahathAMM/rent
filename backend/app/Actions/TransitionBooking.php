@@ -308,8 +308,6 @@ class TransitionBooking
             throw ValidationException::withMessages(['status' => ['Only a confirmed booking can be handed over.']]);
         }
 
-        //  throw ValidationException::withMessages(['status' => [$booking->pickup_at]]);
-        
         if (now()->lessThan($booking->pickup_at->copy()->subHours(2))) {
             throw ValidationException::withMessages(['status' => ['Too early for handover — check back closer to the pickup time.']]);
         }
@@ -438,10 +436,11 @@ class TransitionBooking
                 'review_eligible_until' => $now->copy()->addDays(14),
             ]);
 
-            // Returned early: the days after today are free to rebook.
+            // Returned early: today and the days after are free to rebook. Left in place, today's row
+            // would make accepting a same-day booking fail on unique(vehicle_id, date).
             VehicleAvailability::where('vehicle_id', $booking->vehicle_id)
                 ->where('booking_id', $booking->id)
-                ->where('date', '>', $now->toDateString())
+                ->where('date', '>=', $now->toDateString())
                 ->delete();
 
             if ($shopHeldDeposit) {
@@ -490,6 +489,7 @@ class TransitionBooking
      */
     public function previewReschedule(Booking $booking, Carbon $pickupAt, Carbon $returnAt): array
     {
+        $pickupAt = $this->pickupForReschedule($booking, $pickupAt);
         $this->assertReschedulable($booking, $pickupAt, $returnAt);
 
         // The rates the customer was quoted, so moving dates never reprices at today's rates.
@@ -522,19 +522,29 @@ class TransitionBooking
     }
 
     /**
-     * Change a confirmed booking's pickup/return - shop only, before
-     * handover. Same booking, reference and payments: the new dates are
-     * re-checked under the vehicle row lock (04-lifecycles.md
-     * "Concurrency"), the booked days move, the price is recalculated from
-     * the locked rates and payment_status follows what is already paid. If
-     * the customer has now paid more than the new total, refunding the
-     * difference is between the shop and the customer.
+     * Change a booking's dates - shop only. Confirmed: pickup and return.
+     * Active (handed over): the return only, to extend or shorten the rental.
+     * Same booking, reference and payments: the new dates are re-checked
+     * under the vehicle row lock (04-lifecycles.md "Concurrency"), the booked
+     * days move, the price is recalculated from the locked rates and
+     * payment_status follows what is already paid.
+     *
+     * If the customer has now paid more than the new total: before handover,
+     * refunding is between the shop and the customer. After handover the
+     * shop pays it back as part of this change ($refundMethod) - a shop that
+     * keeps the full price just records the return without changing the date.
      */
-    public function reschedule(Booking $booking, int $actorId, Carbon $pickupAt, Carbon $returnAt, ?string $reason = null): Booking
+    public function reschedule(Booking $booking, int $actorId, Carbon $pickupAt, Carbon $returnAt, ?string $reason = null, ?string $refundMethod = null): Booking
     {
+        $pickupAt = $this->pickupForReschedule($booking, $pickupAt);
         $preview = $this->previewReschedule($booking, $pickupAt, $returnAt);
 
-        return DB::transaction(function () use ($booking, $actorId, $pickupAt, $returnAt, $reason, $preview) {
+        $refund = $booking->status === Booking::STATUS_ACTIVE ? $preview['overpaid'] : 0.0;
+        if ($refund > 0 && !in_array($refundMethod, [Booking::METHOD_CASH, Booking::METHOD_BANK_TRANSFER], true)) {
+            throw ValidationException::withMessages(['refund_method' => ['Choose how you paid the difference back to the customer.']]);
+        }
+
+        return DB::transaction(function () use ($booking, $actorId, $pickupAt, $returnAt, $reason, $preview, $refund, $refundMethod) {
             $vehicle = Vehicle::whereKey($booking->vehicle_id)->lockForUpdate()->firstOrFail();
             $this->assertNoOverlap($vehicle->id, $pickupAt, $returnAt, $booking->id);
 
@@ -561,6 +571,7 @@ class TransitionBooking
 
             $pricing = $preview['pricing'];
             $booking->pricing->update([
+                'rate_plan' => $pricing['rate_plan'],
                 'rate_breakdown' => $pricing['rate_breakdown'],
                 'base_amount' => $pricing['base_amount'],
                 'delivery_amount' => $pricing['delivery_amount'],
@@ -568,6 +579,7 @@ class TransitionBooking
                 'subtotal' => $pricing['subtotal'],
                 'tax_amount' => $pricing['tax_amount'],
                 'total_payable' => $pricing['total_payable'],
+                'mileage_allowance_total_km' => $pricing['mileage_allowance_total_km'],
                 'computed_at' => now(),
                 'computed_by' => 'staff',
                 'snapshot_hash' => $pricing['snapshot_hash'],
@@ -579,6 +591,10 @@ class TransitionBooking
                 Payment::postLine($booking, Payment::TYPE_ADJUSTMENT, debit: max(0, $difference), credit: max(0, -$difference), actorId: $actorId);
             }
 
+            if ($refund > 0) {
+                $this->recordCashPayment($booking, 'balance', $refund, paidBack: true, method: $refundMethod === Booking::METHOD_BANK_TRANSFER ? Payment::METHOD_BANK : Payment::METHOD_CASH);
+            }
+
             $this->writeAvailability($vehicle->id, $booking->fresh());
 
             $this->history($booking, $oldRange, $newRange, 'staff', $actorId, $reason, 'dates');
@@ -587,9 +603,12 @@ class TransitionBooking
             }
 
             $money = fn (float $v) => ($booking->pricing->currency ?? 'LKR') . ' ' . number_format($v, 2);
-            $balanceNote = $preview['overpaid'] > 0
-                ? " You have paid {$money($preview['overpaid'])} more than the new total — the shop will sort out the difference."
-                : ($preview['balance_due'] > 0 ? " Balance due: {$money($preview['balance_due'])}." : '');
+            $balanceNote = match (true) {
+                $refund > 0 => " The shop paid you back {$money($refund)}.",
+                $preview['overpaid'] > 0 => " You have paid {$money($preview['overpaid'])} more than the new total — the shop will sort out the difference.",
+                $preview['balance_due'] > 0 => " Balance due: {$money($preview['balance_due'])}.",
+                default => '',
+            };
             $this->notifyCustomer($booking, 'booking_rescheduled', 'Booking dates changed',
                 "The shop changed your booking for {$booking->vehicle->title} to {$newRange}. New total: {$money($preview['total_payable'])}.{$balanceNote}"
                 . ($reason ? " Reason: {$reason}" : ''),
@@ -599,15 +618,23 @@ class TransitionBooking
         });
     }
 
+    /** After handover the pickup has happened, so only the return can move - whatever pickup was sent. */
+    private function pickupForReschedule(Booking $booking, Carbon $pickupAt): Carbon
+    {
+        return $booking->status === Booking::STATUS_ACTIVE ? $booking->pickup_at->copy() : $pickupAt;
+    }
+
     private function assertReschedulable(Booking $booking, Carbon $pickupAt, Carbon $returnAt): void
     {
-        if ($booking->status !== Booking::STATUS_CONFIRMED) {
-            throw ValidationException::withMessages(['status' => ['Only a confirmed booking can have its dates changed — after handover the trip is already under way.']]);
+        $active = $booking->status === Booking::STATUS_ACTIVE;
+
+        if (!$active && $booking->status !== Booking::STATUS_CONFIRMED) {
+            throw ValidationException::withMessages(['status' => ['Only a confirmed or handed-over booking can have its dates changed.']]);
         }
-        if ($returnAt->lessThanOrEqualTo($pickupAt)) {
+        if ($returnAt->lessThanOrEqualTo($active ? ($booking->actual_pickup_at ?? $pickupAt) : $pickupAt)) {
             throw ValidationException::withMessages(['return_at' => ['The return must be after the pickup.']]);
         }
-        if ($pickupAt->isPast()) {
+        if (!$active && $pickupAt->isPast()) {
             throw ValidationException::withMessages(['pickup_at' => ['The new pickup must be in the future.']]);
         }
         if ($booking->pickup_at->equalTo($pickupAt) && $booking->return_at->equalTo($returnAt)) {
@@ -665,13 +692,13 @@ class TransitionBooking
      * initiated_by is the paying customer (FK to customers); the staff member who took it is on the
      * payment_status history row and the handover inspection.
      */
-    /** Cash received from the customer (credit), or handed back to them (debit) when $paidBack. */
-    private function recordCashPayment(Booking $booking, string $type, float $amount, bool $paidBack = false): void
+    /** Money received from the customer (credit), or handed back to them (debit) when $paidBack - cash unless $method says otherwise. */
+    private function recordCashPayment(Booking $booking, string $type, float $amount, bool $paidBack = false, string $method = Payment::METHOD_CASH): void
     {
         $payment = Payment::create([
             'booking_id' => $booking->id,
             'payment_reference' => 'PAY-' . Str::upper(Str::random(10)),
-            'method' => Payment::METHOD_CASH,
+            'method' => $method,
             'type' => $type,
             'credit' => $paidBack ? 0 : $amount,
             'debit' => $paidBack ? $amount : 0,

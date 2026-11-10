@@ -36,16 +36,6 @@ class MenuController extends Controller
     }
 
     /**
-     * Returns flat list of all active menus (for parent-select dropdowns).
-     */
-    public function flat(): JsonResponse
-    {
-        return response()->json([
-            'data' => MenuResource::collection($this->repo->getFlat()),
-        ]);
-    }
-
-    /**
      * Returns the navigation tree for the authenticated user (filtered by
      * permissions), for the requested audience - 'vendor' (default) or
      * 'customer'. The frontend's (account) and (vendor) layouts each pass

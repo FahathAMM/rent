@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Promotion;
 use App\Models\RentalShop;
 use App\Models\Scopes\ShopScope;
+use App\Models\VehicleSaleDetail;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -85,7 +86,7 @@ class PublicShopRepo extends BaseRepository
         // Vehicle-based filters only count publicly visible vehicles, so a
         // shop can't match "SUVs" on the strength of a draft listing.
         if (!empty($filters['category_id'])) {
-            $query->whereExists($this->visibleVehicles()->where('vehicles.category_id', $filters['category_id']));
+            $query->whereExists($this->listedVehicles()->where('vehicles.category_id', $filters['category_id']));
         }
         if (!empty($filters['delivery'])) {
             $query->whereExists($this->visibleVehicles()->whereHas('pricing', fn (Builder $q) => $q->where('delivery_available', true)));
@@ -104,7 +105,7 @@ class PublicShopRepo extends BaseRepository
         return match ($filters['sort'] ?? 'rating') {
             'reviews' => $results->orderByDesc('rental_shops.rating_count')->orderByDesc('rental_shops.rating_avg'),
             'bookings' => $results->orderByDesc('rental_shops.completed_bookings_count')->orderByDesc('rental_shops.rating_avg'),
-            'fleet' => $results->orderByDesc($this->visibleVehicles()->selectRaw('count(*)'))->orderByDesc('rental_shops.rating_avg'),
+            'fleet' => $results->orderByDesc($this->listedVehicles()->selectRaw('count(*)'))->orderByDesc('rental_shops.rating_avg'),
             'newest' => $results->orderByDesc('rental_shops.created_at'),
             'name' => $results->orderBy('rental_shops.name'),
             default => $results->orderByDesc('rental_shops.rating_avg')->orderByDesc('rental_shops.rating_count'),
@@ -119,9 +120,10 @@ class PublicShopRepo extends BaseRepository
     /**
      * Per-shop fleet stats over publicly visible vehicles: how many, the
      * cheapest daily rate, and which categories they cover - for the
-     * directory cards. One grouped query per stat, not one per shop.
+     * directory cards - plus how many cars it has for sale. One grouped
+     * query per stat, not one per shop.
      *
-     * @return Collection<int, array{vehicles_count: int, starting_daily_rate: ?float, categories: array<int, string>}>
+     * @return Collection<int, array{vehicles_count: int, sale_vehicles_count: int, starting_daily_rate: ?float, categories: array<int, string>}>
      */
     public function fleetStats(array $shopIds): Collection
     {
@@ -131,6 +133,12 @@ class PublicShopRepo extends BaseRepository
         $vehicles = app(PublicVehicleRepo::class);
 
         $counts = $vehicles->base()
+            ->whereIn('vehicles.shop_id', $shopIds)
+            ->selectRaw('vehicles.shop_id, count(*) as aggregate')
+            ->groupBy('vehicles.shop_id')
+            ->pluck('aggregate', 'shop_id');
+
+        $saleCounts = app(PublicSaleRepo::class)->base()
             ->whereIn('vehicles.shop_id', $shopIds)
             ->selectRaw('vehicles.shop_id, count(*) as aggregate')
             ->groupBy('vehicles.shop_id')
@@ -146,17 +154,30 @@ class PublicShopRepo extends BaseRepository
         $categories = $vehicles->base()
             ->whereIn('vehicles.shop_id', $shopIds)
             ->join('vehicle_categories', 'vehicle_categories.id', '=', 'vehicles.category_id')
-            ->select('vehicles.shop_id', 'vehicle_categories.name')
+            ->select('vehicles.shop_id', 'vehicle_categories.name', 'vehicle_categories.translations')
             ->distinct()
             ->get()
             ->groupBy('shop_id')
-            ->map(fn (Collection $rows) => $rows->pluck('name')->sort()->values()->all());
+            // In the visitor's language, matching the public category list.
+            ->map(fn (Collection $rows) => $rows
+                ->map(fn ($row) => \App\Models\VehicleCategory::translateRaw($row->translations, 'name', $row->name))
+                ->unique()->sort()->values()->all());
 
         return collect($shopIds)->mapWithKeys(fn (int $id) => [$id => [
             'vehicles_count' => (int) ($counts[$id] ?? 0),
+            'sale_vehicles_count' => (int) ($saleCounts[$id] ?? 0),
             'starting_daily_rate' => isset($minRates[$id]) ? (float) $minRates[$id] : null,
             'categories' => $categories[$id] ?? [],
         ]]);
+    }
+
+    /** A shop's rentals and available cars for sale, for filters and sorts about its whole stock. */
+    private function listedVehicles(): Builder
+    {
+        return app(PublicVehicleRepo::class)->visible()
+            ->whereColumn('vehicles.shop_id', 'rental_shops.id')
+            ->where(fn (Builder $q) => $q->forRent()->orWhere(fn (Builder $s) => $s->forSale()
+                ->whereHas('saleDetail', fn (Builder $d) => $d->where('sale_status', VehicleSaleDetail::STATUS_AVAILABLE))));
     }
 
     /** Publicly visible vehicles of the shop in the outer query (for whereExists / counts). */

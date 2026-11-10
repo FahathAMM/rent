@@ -4,28 +4,32 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
+import { LanguageToggle } from "@/components/public/LanguageSwitcher";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { cn, getInitials } from "@/lib/utils";
 import {
   Menu, X, Home, CarFront, MapPin, Building2, Sparkles, ChevronRight, Store, LogIn, UserPlus,
-  LayoutDashboard, CalendarRange, Heart, Star, UserRound, LogOut,
+  LayoutDashboard, CalendarRange, Heart, Star, UserRound, LogOut, BadgeDollarSign, MessageCircle,
 } from "lucide-react";
 
 const NAV = [
-  { href: "/", label: "Home", hint: "Start here", icon: Home },
-  { href: "/browse", label: "Browse Vehicles", hint: "Cars, vans, bikes & more", icon: CarFront },
-  { href: "/locations", label: "Browse by Location", hint: "Find rentals near you", icon: MapPin },
-  { href: "/shops", label: "Rental Companies", hint: "Verified local shops", icon: Building2 },
-  { href: "/how-it-works", label: "How It Works", hint: "Book in a few steps", icon: Sparkles },
+  { href: "/", key: "home", icon: Home },
+  { href: "/rent", key: "rent", icon: CarFront },
+  { href: "/buy", key: "buy", icon: BadgeDollarSign },
+  { href: "/locations", key: "location", icon: MapPin },
+  { href: "/shops", key: "shops", icon: Building2 },
+  { href: "/how-it-works", key: "howItWorks", icon: Sparkles },
 ];
 
 const ACCOUNT_LINKS = [
-  { href: "/account/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/account/bookings", label: "My Bookings", icon: CalendarRange },
-  { href: "/account/favorites", label: "Favorites", icon: Heart },
-  { href: "/account/reviews", label: "Reviews", icon: Star },
-  { href: "/account/profile", label: "Profile", icon: UserRound },
+  { href: "/account/dashboard", key: "dashboard", icon: LayoutDashboard },
+  { href: "/account/bookings", key: "bookings", icon: CalendarRange },
+  { href: "/account/enquiries", key: "enquiries", icon: MessageCircle },
+  { href: "/account/favorites", key: "favorites", icon: Heart },
+  { href: "/account/reviews", key: "reviews", icon: Star },
+  { href: "/account/profile", key: "profile", icon: UserRound },
 ];
 
 const isActive = (pathname, href) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/"));
@@ -36,6 +40,9 @@ const isActive = (pathname, href) => (href === "/" ? pathname === "/" : pathname
  */
 export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthenticated, onLogout, vendor }) {
   const pathname = usePathname();
+  const t = useTranslations("mobileMenu");
+  const tNav = useTranslations("nav");
+  const tHeader = useTranslations("header");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -55,7 +62,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
 
   return (
     <>
-      <Button variant="outline" size="icon" className="lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open}>
+      <Button variant="outline" size="icon" className="lg:hidden" onClick={() => setOpen(true)} aria-label={t("open")} aria-expanded={open}>
         <Menu className="h-4 w-4" />
       </Button>
 
@@ -71,7 +78,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
         <aside
           role="dialog"
           aria-modal="true"
-          aria-label="Menu"
+          aria-label={t("menu")}
           className={cn(
             "absolute inset-y-0 right-0 flex w-[86%] max-w-sm flex-col bg-background shadow-2xl transition-transform duration-300 ease-out",
             open ? "translate-x-0" : "translate-x-full"
@@ -92,7 +99,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
                 />
                 {brandName}
               </Link>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-full bg-white/15 p-1.5 hover:bg-white/25" aria-label="Close menu">
+              <button type="button" onClick={() => setOpen(false)} className="rounded-full bg-white/15 p-1.5 hover:bg-white/25" aria-label={t("close")}>
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -103,7 +110,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
                   {getInitials(customer?.name) || "U"}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{customer?.name ?? "My Account"}</p>
+                  <p className="truncate font-semibold">{customer?.name ?? tHeader("myAccount")}</p>
                   <p className="truncate text-xs text-white/80">{customer?.email}</p>
                 </div>
               </div>
@@ -112,10 +119,10 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
                 <p className="text-sm text-white/85">{tagline}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Link href="/login" className="flex items-center justify-center gap-1.5 rounded-xl bg-white py-2.5 text-sm font-semibold text-pink-600 shadow-sm">
-                    <LogIn className="h-4 w-4" /> Sign in
+                    <LogIn className="h-4 w-4" /> {tHeader("signIn")}
                   </Link>
                   <Link href="/register" className="flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">
-                    <UserPlus className="h-4 w-4" /> Sign up
+                    <UserPlus className="h-4 w-4" /> {tHeader("signUp")}
                   </Link>
                 </div>
               </div>
@@ -124,9 +131,9 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
 
           <div className="flex-1 overflow-y-auto px-3 py-4">
             {/* ── Main nav ── */}
-            <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Explore</p>
+            <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("explore")}</p>
             <nav className="space-y-1">
-              {NAV.map(({ href, label, hint, icon: Icon }) => {
+              {NAV.map(({ href, key, icon: Icon }) => {
                 const active = isActive(pathname, href);
                 return (
                   <Link
@@ -146,8 +153,8 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
                       <Icon className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className={cn("block text-sm font-medium", active && "text-primary")}>{label}</span>
-                      <span className="block truncate text-[11px] text-muted-foreground">{hint}</span>
+                      <span className={cn("block text-sm font-medium", active && "text-primary")}>{tNav(key)}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{tNav(`hints.${key}`)}</span>
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                   </Link>
@@ -158,9 +165,9 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
             {/* ── Customer account ── */}
             {isAuthenticated && (
               <>
-                <p className="mt-5 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">My account</p>
+                <p className="mt-5 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("myAccount")}</p>
                 <div className="grid grid-cols-2 gap-2 px-1">
-                  {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => (
+                  {ACCOUNT_LINKS.map(({ href, key, icon: Icon }) => (
                     <Link
                       key={href}
                       href={href}
@@ -170,7 +177,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="truncate">{label}</span>
+                      <span className="truncate">{t(`links.${key}`)}</span>
                     </Link>
                   ))}
                 </div>
@@ -186,20 +193,25 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{vendor.label}</span>
-                    <span className="block text-xs text-muted-foreground">Open vendor panel</span>
+                    <span className="block text-xs text-muted-foreground">{t("openVendorPanel")}</span>
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
               ) : (
                 <Link href={vendor.becomeHref ?? "/vendor/register"} className="relative block overflow-hidden rounded-2xl bg-zinc-900 p-4 text-white">
                   <div aria-hidden="true" className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-orange-500 via-pink-500 to-violet-500 opacity-60 blur-2xl" />
-                  <p className="relative flex items-center gap-1.5 text-sm font-semibold"><Store className="h-4 w-4" /> Own a rental business?</p>
-                  <p className="relative mt-1 text-xs text-white/70">List your vehicles and reach customers across Sri Lanka.</p>
+                  <p className="relative flex items-center gap-1.5 text-sm font-semibold"><Store className="h-4 w-4" /> {t("ownBusiness")}</p>
+                  <p className="relative mt-1 text-xs text-white/70">{t("ownBusinessBody")}</p>
                   <span className="relative mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-zinc-900">
-                    Become a Vendor <ChevronRight className="h-3.5 w-3.5" />
+                    {tHeader("becomeVendor")} <ChevronRight className="h-3.5 w-3.5" />
                   </span>
                 </Link>
               )}
+            </div>
+
+            {/* ── Language ── */}
+            <div className="mt-5 px-1">
+              <LanguageToggle />
             </div>
           </div>
 
@@ -208,7 +220,7 @@ export function MobileMenu({ brandName, logoUrl, tagline, customer, isAuthentica
             <span>© {new Date().getFullYear()} {brandName}</span>
             {isAuthenticated && (
               <button type="button" onClick={() => { setOpen(false); onLogout(); }} className="flex items-center gap-1.5 font-medium text-destructive">
-                <LogOut className="h-3.5 w-3.5" /> Log out
+                <LogOut className="h-3.5 w-3.5" /> {tHeader("logout")}
               </button>
             )}
           </div>

@@ -11,14 +11,19 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { toast } from "sonner";
-import { Pencil, Trash2, Home, UploadCloud, DownloadCloud, Archive, Eye } from "lucide-react";
+import { Pencil, Trash2, Home, UploadCloud, DownloadCloud, Archive, Eye, BadgeDollarSign } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { useSubscription } from "@/app/vendor/settings/subscription/components/useSubscription";
+import { MoveToSaleDialog } from "@/app/vendor/sales/components/MoveToSaleDialog";
 
 export default function VehiclesPage() {
   const { can } = useAuthStore();
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selling, setSelling] = useState(null);
+  const { data: subscription } = useSubscription();
+  const canSell = can("vendor-sales-listings-create") && subscription?.features?.includes("sales");
 
   const remove = useMutation({
     mutationFn: vehicleService.delete,
@@ -64,6 +69,7 @@ export default function VehiclesPage() {
   const columns = ({ sortField, sortOrder, handleSort }) => [
     {
       accessorKey: "title",
+      class: "w-[30%]",
       header: () => <SortableHeader label="Vehicle" column="title" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
       cell: (row) => (
         <div>
@@ -81,6 +87,7 @@ export default function VehiclesPage() {
     { accessorKey: "moderation_status", header: "Moderation", cell: (row) => <StatusBadge status={row.moderation_status} /> },
     {
       accessorKey: "booking_count",
+      class: "w-20",
       header: () => <SortableHeader label="Bookings" column="booking_count" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
     },
     {
@@ -100,6 +107,9 @@ export default function VehiclesPage() {
                 <ActionButton onClick={() => unpublish.mutate(row.id)} icon={DownloadCloud} label="Unpublish" className="text-amber-600 border-amber-300 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-400" />
               )}
               <ActionButton onClick={() => archive.mutate(row.id)} icon={Archive} label="Archive" className="text-slate-600 border-slate-300 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-400" />
+              {canSell && (
+                <ActionButton onClick={() => setSelling(row)} icon={BadgeDollarSign} label="Move to sale" className="text-emerald-600 border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400" />
+              )}
             </>
           )}
           {can("vendor-vehicles-list-delete") && (
@@ -130,6 +140,14 @@ export default function VehiclesPage() {
           model="Vehicle"
         />
       </HomePageWrapper>
+
+      {selling && (
+        <MoveToSaleDialog
+          vehicle={selling}
+          onClose={() => setSelling(null)}
+          onMoved={() => { setSelling(null); router.push("/vendor/sales/listings"); }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteTarget}

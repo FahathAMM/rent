@@ -76,7 +76,7 @@ class StaffController extends Controller
         ];
     }
 
-    /** {record, message, status} — ServerDataTable's expected shape, same as Api\LocationController::index(). */
+    /** {record, message, status} — ServerDataTable's expected shape, same as LocationController::index(). */
     public function index(Request $request): JsonResponse
     {
         // Role lives in the roles tables, not a column — "role" sorts owner-first, then by name.

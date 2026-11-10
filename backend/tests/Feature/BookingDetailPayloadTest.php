@@ -75,6 +75,8 @@ class BookingDetailPayloadTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.vehicle.make', 'Toyota')
             ->assertJsonPath('data.pricing.base_amount', '21000.00')
+            ->assertJsonPath('data.pricing.breakdown.base_amount', 21000)
+            ->assertJsonPath('data.pricing.breakdown.rate_plan', 'daily')
             ->assertJsonPath('data.customer_note', 'Arriving by flight')
             ->assertJsonStructure(['data' => ['vehicle' => ['images'], 'customer', 'status_histories', 'inspections', 'damages', 'payments']]);
     }

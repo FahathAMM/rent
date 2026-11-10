@@ -26,7 +26,7 @@ class VehiclePolicy
     public function view(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-view');
+            && ShopGate::allowsCurrent($user, $this->permission($vehicle, 'view'));
     }
 
     public function create(User $user): bool
@@ -37,24 +37,30 @@ class VehiclePolicy
     public function update(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-edit');
+            && ShopGate::allowsCurrent($user, $this->permission($vehicle, 'edit'));
     }
 
     public function delete(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-delete');
+            && ShopGate::allowsCurrent($user, $this->permission($vehicle, 'delete'));
     }
 
     public function publish(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
-            && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-edit');
+            && ShopGate::allowsCurrent($user, $this->permission($vehicle, 'edit'));
     }
 
     public function managePricing(User $user, Vehicle $vehicle): bool
     {
         return $vehicle->shop_id === VendorContext::shopId()
             && ShopGate::allowsCurrent($user, 'vendor-vehicles-list-edit');
+    }
+
+    /** Sale listings have their own permissions, so a sales role can manage a listing's photos too. */
+    private function permission(Vehicle $vehicle, string $action): string
+    {
+        return $vehicle->isForSale() ? "vendor-sales-listings-{$action}" : "vendor-vehicles-list-{$action}";
     }
 }

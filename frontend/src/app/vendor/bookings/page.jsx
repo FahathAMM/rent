@@ -8,6 +8,7 @@ import { SortableHeader } from "@/components/Datatable/SortableHeader";
 import { ActionButton } from "@/components/Datatable/ActionButton";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
@@ -33,10 +34,12 @@ const STATUS_OPTIONS = [
 export default function VendorBookingsPage() {
   const { format } = useCurrencyFormat();
   const [status, setStatus] = useState(ALL_STATUSES);
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
   const columns = ({ sortField, sortOrder, handleSort }) => [
     {
       accessorKey: "booking_reference",
+      class: "w-[30%]",
       header: () => <SortableHeader label="Booking" column="booking_reference" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
       cell: (row) => (
         <Link href={`/vendor/bookings/${row.booking_reference}`} className="block hover:underline">
@@ -59,6 +62,7 @@ export default function VendorBookingsPage() {
     { accessorKey: "total_payable", header: "Total", cell: (row) => format(row.pricing?.total_payable) },
     {
       accessorKey: "actions",
+      class: "w-16",
       header: "",
       cell: (row) => <ActionButton href={`/vendor/bookings/${row.booking_reference}`} icon={Eye} label="Review" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />,
     },
@@ -77,7 +81,11 @@ export default function VendorBookingsPage() {
         breadcrumb={[]}
         defualtSortField="created_at"
         defaultSortOrder="desc"
-        filters={{ status: status === ALL_STATUSES ? undefined : status }}
+        filters={{
+          status: status === ALL_STATUSES ? undefined : status,
+          date_from: dateRange.from || undefined,
+          date_to: dateRange.to || undefined,
+        }}
       >
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -85,6 +93,7 @@ export default function VendorBookingsPage() {
             {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <DateRangePicker placeholder="Pickup date" className="w-full sm:w-60" value={dateRange} onChange={setDateRange} />
       </ServerDataTable>
     </HomePageWrapper>
   );

@@ -17,7 +17,7 @@ class ShopSettings extends Model
         'branch_prefix', 'next_branch_number',
         'owner_response_hours', 'auto_accept_bookings', 'advance_notice_hours',
         'default_min_rental_days', 'default_max_rental_days', 'free_cancellation_hours', 'cancellation_tiers',
-        'agreement_terms', 'invoice_footer',
+        'agreement_terms', 'sale_terms', 'invoice_footer',
     ];
 
     protected $casts = [

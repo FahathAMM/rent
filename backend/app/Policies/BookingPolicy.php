@@ -69,7 +69,7 @@ class BookingPolicy
             && ShopGate::allowsCurrent($user, 'vendor-vehicles-bookings-edit');
     }
 
-    /** Change a confirmed booking's dates - the shop only; the customer asks the shop. */
+    /** Change a confirmed booking's dates, or an active booking's return - the shop only; the customer asks the shop. */
     public function reschedule(User $user, Booking $booking): bool
     {
         return $booking->shop_id === VendorContext::shopId()

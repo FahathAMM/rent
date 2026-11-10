@@ -62,6 +62,7 @@ class BookingResource extends JsonResource
                 'subtotal' => $this->pricing->subtotal,
                 'total_payable' => $this->pricing->total_payable,
                 'security_deposit' => $this->pricing->security_deposit,
+                'breakdown' => $this->pricing->breakdown(),
             ] : null),
             'security_deposit' => $this->whenLoaded('securityDeposit'),
             // The booking's statement, oldest first: charge, adjustments and money lines with the running balance.
@@ -84,6 +85,8 @@ class BookingResource extends JsonResource
             'confirmed_at' => $this->confirmed_at?->toISOString(),
             'completed_at' => $this->completed_at?->toISOString(),
             'cancelled_at' => $this->cancelled_at?->toISOString(),
+            // When a cancelled / rejected / expired booking ended (the Progress card's last step).
+            'ended_at' => ($this->cancelled_at ?? $this->rejected_at ?? $this->expired_at)?->toISOString(),
             'rejection_reason' => $this->rejection_reason,
             'cancellation_reason' => $this->cancellation_reason,
             'customer_note' => $this->customer_note,

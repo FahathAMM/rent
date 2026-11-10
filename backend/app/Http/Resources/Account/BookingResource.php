@@ -85,10 +85,17 @@ class BookingResource extends JsonResource
                 'tax_amount' => $this->pricing->tax_amount,
                 'security_deposit' => $this->pricing->security_deposit,
                 'total_payable' => $this->pricing->total_payable,
+                'breakdown' => $this->pricing->breakdown(),
             ]),
             'customer_note' => $this->customer_note,
             'cancellation_reason' => $this->cancellation_reason,
             'review_eligible_until' => $this->review_eligible_until?->toISOString(),
+            // Progress steps on the booking page: when each one happened, and when the shop must reply.
+            'owner_response_deadline_at' => $this->owner_response_deadline_at?->toISOString(),
+            'confirmed_at' => $this->confirmed_at?->toISOString(),
+            'actual_pickup_at' => $this->actual_pickup_at?->toISOString(),
+            'actual_return_at' => $this->actual_return_at?->toISOString(),
+            'ended_at' => ($this->cancelled_at ?? $this->rejected_at ?? $this->expired_at)?->toISOString(),
             // The shop moved the dates: from/to are the old and new "pickup → return" ranges (display timezone).
             'date_changes' => $this->whenLoaded('dateChanges', fn () => $this->dateChanges->map(fn ($h) => [
                 'from' => $h->from_value,

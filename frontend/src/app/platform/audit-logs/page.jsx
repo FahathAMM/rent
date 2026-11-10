@@ -67,6 +67,11 @@ export default function PlatformAuditLogsPage() {
             <p className="font-medium">{row.user.name}</p>
             <p className="text-[10px] text-muted-foreground">{row.user.email}</p>
           </div>
+        ) : row.customer ? (
+          <div>
+            <p className="font-medium">{row.customer.name}</p>
+            <p className="text-[10px] text-muted-foreground">Customer · {row.customer.email}</p>
+          </div>
         ) : row.system_admin ? (
           <div>
             <p className="font-medium">{row.system_admin.name}</p>
@@ -161,7 +166,7 @@ export default function PlatformAuditLogsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {detail?.user?.name ?? detail?.system_admin?.name ?? "System"} {detail?.action?.replace("_", " ")}d {detail?.form}
+              {detail?.user?.name ?? detail?.customer?.name ?? detail?.system_admin?.name ?? "System"} {detail?.action?.replace("_", " ")}d {detail?.form}
               {detail?.record ? ` "${detail.record}"` : ""}
             </DialogTitle>
           </DialogHeader>

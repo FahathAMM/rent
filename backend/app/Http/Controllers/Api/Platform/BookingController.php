@@ -52,6 +52,11 @@ class BookingController extends Controller
             ->first();
         abort_unless($booking, 404);
 
+        // Same money figures the vendor and customer payloads carry (their BookingResources), so the
+        // page doesn't have to re-derive them from the ledger — that misses deposits handed back at return.
+        $booking->setAttribute('amount_paid', $booking->amountPaid());
+        $booking->setAttribute('balance_due', $booking->balanceDue());
+
         return $this->response('Booking retrieved', $booking);
     }
 

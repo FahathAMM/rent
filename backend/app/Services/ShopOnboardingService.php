@@ -6,6 +6,7 @@ use App\Models\Administration\User;
 use App\Models\Booking;
 use App\Models\Location;
 use App\Models\RentalShop;
+use App\Models\SaleEnquiry;
 use App\Models\ShopSettings;
 use App\Models\SystemAdmin;
 use App\Notifications\MarketplaceNotification;
@@ -30,7 +31,7 @@ class ShopOnboardingService
     {
         if ($user->shop_id) {
             throw ValidationException::withMessages([
-                'name' => ['This account already belongs to a rental shop. Use a separate account to register another shop.'],
+                'name' => ['This account already belongs to a shop. Use a separate account to register another shop.'],
             ]);
         }
 
@@ -81,6 +82,14 @@ class ShopOnboardingService
         }
 
         $shop->update(['verification_status' => RentalShop::VERIFICATION_PENDING]);
+
+        PlatformNotifier::notify(
+            'shop_verification_submitted',
+            'Shop waiting for verification',
+            "{$shop->name} sent its documents for verification.",
+            "/platform/shops/{$shop->id}",
+            ['shop_id' => $shop->id],
+        );
 
         return $shop->fresh();
     }
@@ -157,6 +166,9 @@ class ShopOnboardingService
                 'suspended_reason' => $reason,
             ]);
             $shop->delete();
+
+            // Nobody is left to answer these buyers.
+            SaleEnquiry::where('shop_id', $shop->id)->open()->update(['status' => SaleEnquiry::STATUS_CLOSED, 'closed_reason' => 'The shop has closed']);
 
             AuditService::delete('RentalShop', $shop->id, $shop->name, ['reason' => $reason, 'decided_by_admin_id' => $admin->id]);
         });

@@ -5,9 +5,37 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// The API sends UTC timestamps; everyone sees them in Sri Lanka time
-// regardless of their device's timezone (backend config/app.php timezone).
+// Calendar and datetime values use Sri Lanka time regardless of the device timezone.
 export const APP_TIMEZONE = "Asia/Colombo";
+export const APP_TIMEZONE_OFFSET = "+05:30";
+
+function dateTimePartsInAppTimezone(value = new Date()) {
+  return Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: APP_TIMEZONE,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date(value)).filter(({ type }) => type !== "literal").map(({ type, value: part }) => [type, part]),
+  );
+}
+
+/** Format an instant as YYYY-MM-DDTHH:mm for datetime-local inputs in Sri Lanka time. */
+export function toAppDateTimeInput(value) {
+  if (!value) return "";
+  const p = dateTimePartsInAppTimezone(value);
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/** Interpret a datetime-local value in Sri Lanka time and include its explicit offset for the API. */
+export function fromAppDateTimeInput(value) {
+  return value ? `${value}:00${APP_TIMEZONE_OFFSET}` : null;
+}
+
+/** Today's calendar date in Sri Lanka, for date-only inputs. */
+export function appDateKey(value = new Date()) {
+  const p = dateTimePartsInAppTimezone(value);
+  return `${p.year}-${p.month}-${p.day}`;
+}
 
 export function formatDate(date, options = {}) {
   if (!date) return "—";
@@ -24,11 +52,6 @@ export function formatDateTime(date) {
   return formatDate(date, { hour: "2-digit", minute: "2-digit" });
 }
 
-/**
- * A Date as YYYY-MM-DD in the browser's local timezone — for <input type="date">
- * defaults. Deliberately not `date.toISOString().slice(0, 10)`, which converts to
- * UTC first and rolls back to "yesterday" for any timezone ahead of UTC (e.g. Asia/Dubai).
- */
 export function formatBytes(bytes) {
   if (!bytes) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];

@@ -43,7 +43,7 @@ class SuspendedShopLoginTest extends TestCase
         $response = $this->login()->assertUnprocessable()->assertJsonValidationErrors('email');
 
         $message = $response->json('errors.email.0');
-        $this->assertStringStartsWith('Your rental shop has been suspended. Please contact the ', $message);
+        $this->assertStringStartsWith('Your shop has been suspended. Please contact the ', $message);
         $this->assertStringNotContainsString('Unpaid fees', $message, 'the internal reason is not shown');
     }
 

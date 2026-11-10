@@ -201,7 +201,7 @@ class DemoVehiclePhotoSeeder extends Seeder
 
     private function attach(Vehicle $vehicle, array $photos): void
     {
-        $picked = collect($photos)->shuffle()->take(fake()->numberBetween(...self::PHOTOS_PER_VEHICLE))->values();
+        $picked = collect($photos)->shuffle()->take(random_int(...self::PHOTOS_PER_VEHICLE))->values();
         $disk = Storage::disk('public');
 
         foreach ($picked as $i => $path) {

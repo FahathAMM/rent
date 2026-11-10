@@ -107,7 +107,7 @@ export function ShopSubscriptionCard({ shopId }) {
             </div>
             {current.state !== "unpaid" && (
               <p className="text-xs text-muted-foreground">
-                Vehicles {current.usage.vehicles}/{unlimited(current.plan.max_vehicles)} · Staff {current.usage.staff}/{unlimited(current.plan.max_staff)} · Locations {current.usage.locations}/{unlimited(current.plan.max_locations)}
+                Vehicles {current.usage.vehicles}/{unlimited(current.plan.max_vehicles)} · For sale {current.usage.sale_listings}/{unlimited(current.plan.max_sale_listings)} · Staff {current.usage.staff}/{unlimited(current.plan.max_staff)} · Locations {current.usage.locations}/{unlimited(current.plan.max_locations)}
               </p>
             )}
             {data.history?.length > 0 && (

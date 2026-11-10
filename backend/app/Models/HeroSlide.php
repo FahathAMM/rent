@@ -3,12 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Concerns\HasTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 /** A home page hero slide (image + headline), managed from /platform/hero-slides. Platform-wide, not shop-owned. */
 class HeroSlide extends Model
 {
+    use HasTranslations;
+
+    /** Columns with other-language text in `translations` (see HasTranslations). */
+    protected array $translatable = ['title', 'subtitle', 'link_label'];
+
     protected $fillable = ['title', 'subtitle', 'image', 'link_url', 'link_label', 'sort_order', 'is_active'];
 
     protected $casts = [

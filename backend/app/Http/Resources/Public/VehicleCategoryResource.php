@@ -10,11 +10,11 @@ class VehicleCategoryResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'name' => $this->translate('name'),
             'slug' => $this->slug,
             'icon' => $this->icon,
-            'description' => $this->description,
-            'image' => $this->image,
+            'description' => $this->translate('description'),
+            'vehicles_count' => $this->vehicles_count,
         ];
     }
 }

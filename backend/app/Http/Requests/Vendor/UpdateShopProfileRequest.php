@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Vendor;
 
+use App\Http\Requests\Concerns\NormalizesWebsite;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateShopProfileRequest extends FormRequest
 {
+    use NormalizesWebsite;
+
     public function authorize(): bool { return true; }
 
     public function rules(): array
@@ -17,13 +20,15 @@ class UpdateShopProfileRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'whatsapp' => ['nullable', 'string', 'max:30'],
-            'website' => ['nullable', 'string', 'max:255'],
+            'website' => $this->websiteRules(),
             'address_line_1' => ['nullable', 'string', 'max:255'],
             'address_line_2' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'district' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'operating_hours' => ['nullable', 'array'],
+            'booking_pickup_time' => ['sometimes', 'required', 'date_format:H:i'],
+            'booking_return_time' => ['sometimes', 'required', 'date_format:H:i'],
             'policies' => ['nullable', 'array', 'max:20'],
             'policies.*.title' => ['required', 'string', 'max:120'],
             'policies.*.body' => ['required', 'string', 'max:5000'],

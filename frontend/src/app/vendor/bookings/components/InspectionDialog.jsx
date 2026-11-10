@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TextInput, NumberInput, TextareaInput, CheckboxInput, ValidationError } from "@/components/forms/FormField";
 import { SelectInput } from "@/components/forms/SelectInput";
 import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
-import { Banknote, Loader2, Plus, ScrollText, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, Banknote, Loader2, Plus, ScrollText, ShieldCheck, Trash2 } from "lucide-react";
 import { SignaturePad } from "./SignaturePad";
 
 const FUEL_LEVELS = [
@@ -34,8 +34,10 @@ const emptyDamage = { area: "", description: "", severity: "minor", estimated_co
  *
  * cashDue (handover): cash the shop must take before the keys go out — staff confirm it.
  * depositHeld (return): a cash deposit the shop holds — staff record what they keep, if anything.
+ * balanceDue (return): still owed, e.g. after an extension — a warning only, the return is never blocked.
+ * notice (return): a reminder shown at the top, e.g. that the rental is late.
  */
-export function InspectionDialog({ open, onOpenChange, title, allowDamages = false, onSubmit, loading, cashDue = null, depositHeld = null, terms = null }) {
+export function InspectionDialog({ open, onOpenChange, title, allowDamages = false, onSubmit, loading, cashDue = null, depositHeld = null, balanceDue = 0, notice = null, terms = null }) {
   const { format } = useCurrencyFormat();
   const [form, setForm] = useState({
     odometer_reading: "", fuel_level: "", notes: "", customer_present: true,
@@ -88,6 +90,16 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <ValidationError errors={errors} />
+          {notice && (
+            <p className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {notice}
+            </p>
+          )}
+          {balanceDue > 0 && (
+            <p className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <Banknote className="mt-0.5 h-4 w-4 shrink-0" /> {format(balanceDue)} is still due. Collect it with Record payment — you can also do that after the return.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <NumberInput label="Odometer Reading (km)" value={form.odometer_reading} onChange={fi("odometer_reading")} error={errors.odometer_reading?.[0]} />
             <SelectInput label="Fuel Level" value={form.fuel_level} onChange={f("fuel_level")} options={FUEL_LEVELS} error={errors.fuel_level?.[0]} />
@@ -118,7 +130,7 @@ export function InspectionDialog({ open, onOpenChange, title, allowDamages = fal
           {depositHeld > 0 && (
             <div className="space-y-2 rounded-lg border p-3">
               <p className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="h-4 w-4" /> Security deposit held: {format(depositHeld)}</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <NumberInput label="Amount kept (deduction)" value={form.deposit_deduction} onChange={fi("deposit_deduction")} error={errors.deposit_deduction?.[0]} />
                 <TextInput label="Reason" value={form.deposit_deduction_reason} onChange={fi("deposit_deduction_reason")} disabled={!deduction} error={errors.deposit_deduction_reason?.[0]} />
               </div>

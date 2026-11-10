@@ -25,6 +25,6 @@ class InquiryController extends Controller
             $request->safe()->except('vehicle_slug'),
         );
 
-        return response()->json(['message' => 'Your message has been sent to the owner'], 201);
+        return response()->json(['message' => __('Your message has been sent to the owner')], 201);
     }
 }
