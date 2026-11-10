@@ -181,11 +181,11 @@ function RentVehiclesPageContent() {
     queryFn: () => publicService.categories().then((r) => r.data.data),
   });
 
-  // Only brands someone is actually renting out — an empty filter option helps nobody.
+  // Every active brand — the ones someone is renting out first, so they aren't hidden behind "Show more".
   const { data: brands } = useQuery({
     queryKey: ["public-brands"],
     queryFn: () => publicService.brands().then((r) => r.data.data),
-    select: (all) => all.filter((b) => b.vehicles_count > 0),
+    select: (all) => [...all].sort((a, b) => Number(b.vehicles_count > 0) - Number(a.vehicles_count > 0)),
   });
 
   const brandId = params.get("brand_id");

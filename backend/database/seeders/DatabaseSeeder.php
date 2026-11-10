@@ -9,11 +9,8 @@ use Illuminate\Database\Seeder;
  * db:seed` creates the real infra (menu/roles/permissions, platform admin
  * account, default platform branding, vehicle catalogue, platform settings,
  * locations) and the F2-VIP Rental shop with its 10 vehicles and 100
- * bookings. Vehicle
- * photos (DemoVehiclePhotoSeeder) need network access on first run, so
- * they are run separately:
- *
- *   php artisan db:seed --class=DemoVehiclePhotoSeeder
+ * bookings, with real photos for those vehicles (downloaded from Wikimedia
+ * Commons on the first run — see F2VipRentalShopSeeder).
  */
 class DatabaseSeeder extends Seeder
 {

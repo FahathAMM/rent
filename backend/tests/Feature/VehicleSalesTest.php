@@ -256,7 +256,7 @@ class VehicleSalesTest extends TestCase
         $this->assertTrue($sorted->json('data.0.is_featured'));
     }
 
-    public function test_the_buy_page_filters_offer_only_what_is_for_sale(): void
+    public function test_the_buy_page_filters_offer_every_brand_and_only_what_is_for_sale(): void
     {
         $unused = VehicleBrand::create(['name' => 'Rental Only', 'slug' => 'rental-only', 'is_active' => true]);
         $this->rentalCar(['brand_id' => $unused->id]);
@@ -266,7 +266,9 @@ class VehicleSalesTest extends TestCase
         $this->saleCar(['brand_id' => $unused->id], ['sale_status' => VehicleSaleDetail::STATUS_SOLD]);
 
         $options = $this->asGuest()->getJson("/api/public/buy/filters?brand_id={$this->brand->id}")->assertOk();
-        $this->assertSame(['Toyota'], $options->json('data.brands.*.name'));
+        // Every active brand is offered; the ones with cars for sale come first, with their count.
+        $this->assertSame(['Toyota', 'Rental Only'], $options->json('data.brands.*.name'));
+        $this->assertSame([2, 0], $options->json('data.brands.*.vehicles_count'));
         $this->assertSame(['Aqua'], $options->json('data.models.*.name'));
         $this->assertSame([['city' => 'Kandy', 'district' => 'Kandy', 'vehicle_count' => 2]], $options->json('data.locations'));
 
