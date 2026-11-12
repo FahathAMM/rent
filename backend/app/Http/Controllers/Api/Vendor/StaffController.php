@@ -137,6 +137,14 @@ class StaffController extends Controller
         $this->assertStaffOfThisShop($staff);
         abort_if($staff->isShopOwner(), 422, "The shop owner's role cannot be changed.");
 
+        // A member with staff-edit rights must not promote themselves to a stronger role.
+        abort_if(
+            (int) $staff->id === (int) VendorContext::member()?->id
+                && (int) $request->validated('role_id') !== (int) $staff->memberRole()?->id,
+            422,
+            'You cannot change your own role.'
+        );
+
         $trackedFields = ['name', 'phone', 'employee_id', 'joining_date', 'emergency_contact'];
         $old = $staff->only($trackedFields) + ['role' => $staff->shopRoleLabel()];
 

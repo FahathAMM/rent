@@ -169,7 +169,8 @@ class BookingController extends Controller
         $booking = CustomerBookingQuery::find(auth('customer')->id(), $reference);
         abort_unless($booking, 404);
 
-        $booking = $this->transitions->cancelByCustomer($booking, auth('customer')->id(), $request->get('reason'));
+        $reason = $request->validate(['reason' => ['nullable', 'string', 'max:1000']])['reason'] ?? null;
+        $booking = $this->transitions->cancelByCustomer($booking, auth('customer')->id(), $reason);
 
         AuditService::edit('Booking', $booking->id, $booking->booking_reference, null, ['status' => 'cancelled_by_customer']);
 

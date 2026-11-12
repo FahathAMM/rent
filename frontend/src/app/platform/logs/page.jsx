@@ -122,7 +122,7 @@ export default function PlatformLogsPage() {
     },
     {
       accessorKey: "actions",
-      header: "",
+      header: "Actions",
       cell: (row) => <ActionButton onClick={() => setDetail(row)} icon={Maximize2} label="View entry" />,
     },
   ];

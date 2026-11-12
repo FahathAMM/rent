@@ -17,6 +17,7 @@ import { TextInput, ValidationError } from "@/components/forms/FormField";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Home, Loader2, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 const emptyForm = { name: "", slug: "", sort_order: 0, is_active: true };
 
@@ -137,11 +138,11 @@ export default function PlatformBrandsPage() {
     { accessorKey: "sort_order", header: "Order" },
     { accessorKey: "is_active", header: "Status", cell: (row) => <StatusBadge status={row.is_active} /> },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
-        <div className="flex gap-1.5">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteTarget(row)}><Trash2 className="h-4 w-4" /></Button>
+        <div className="flex gap-1">
+          <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
+          <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
         </div>
       ),
     },

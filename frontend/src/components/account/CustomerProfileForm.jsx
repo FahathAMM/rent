@@ -59,6 +59,12 @@ export function CustomerProfileForm() {
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
 
+  // A new mobile number is only saved once the code texted to it is entered.
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const phoneChanged = !!form.phone.trim() && form.phone.trim() !== (customer?.phone ?? "");
+
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", new_password_confirmation: "" });
   const [passwordErrors, setPasswordErrors] = useState({});
   const [changingPassword, setChangingPassword] = useState(false);
@@ -74,6 +80,23 @@ export function CustomerProfileForm() {
     setAvatarFile(null);
     setAvatarPreview(customer?.avatar ?? null);
     setErrors({});
+    setOtp("");
+    setOtpSent(false);
+  };
+
+  const handleSendOtp = async () => {
+    setErrors({});
+    setSendingOtp(true);
+    try {
+      await customerService.sendOtp(form.phone);
+      setOtpSent(true);
+      toast.success("Code sent to your new mobile number");
+    } catch (err) {
+      const message = err.networkError ?? err.response?.data?.message ?? "Could not send the code";
+      setErrors(err.response?.data?.errors ?? { phone: [message] });
+    } finally {
+      setSendingOtp(false);
+    }
   };
 
   const handleAvatarChange = (e) => {
@@ -91,10 +114,13 @@ export function CustomerProfileForm() {
       fd.append("name", form.name);
       fd.append("email", form.email);
       if (form.phone) fd.append("phone", form.phone);
+      if (phoneChanged && otp) fd.append("otp", otp);
       if (avatarFile) fd.append("avatar", avatarFile);
       const res = await customerService.updateProfile(fd);
       updateCustomer(res.data.data);
       setAvatarFile(null);
+      setOtp("");
+      setOtpSent(false);
       toast.success("Profile updated successfully");
     } catch (err) {
       setErrors(err.response?.data?.errors ?? {});
@@ -176,9 +202,38 @@ export function CustomerProfileForm() {
                   {errors.email && <p className="text-xs text-destructive mt-1">{errors.email[0]}</p>}
                 </DetailRow>
                 <DetailRow label="Contact No">
-                  <input className={inputClass} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+                  <div className="flex gap-2">
+                    <input
+                      className={inputClass}
+                      value={form.phone}
+                      onChange={(e) => { setForm((f) => ({ ...f, phone: e.target.value })); setOtp(""); setOtpSent(false); }}
+                    />
+                    {phoneChanged && (
+                      <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={handleSendOtp} disabled={sendingOtp}>
+                        {sendingOtp ? "Sending..." : otpSent ? "Resend code" : "Send code"}
+                      </Button>
+                    )}
+                  </div>
                   {errors.phone && <p className="text-xs text-destructive mt-1">{errors.phone[0]}</p>}
+                  {phoneChanged && !errors.phone && (
+                    <p className="text-xs text-muted-foreground mt-1">We&apos;ll text a code to the new number to confirm it&apos;s yours.</p>
+                  )}
                 </DetailRow>
+                {phoneChanged && otpSent && (
+                  <DetailRow label="Verification Code" required>
+                    <input
+                      className={inputClass}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="6-digit code"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
+                    />
+                    {errors.otp && <p className="text-xs text-destructive mt-1">{errors.otp[0]}</p>}
+                  </DetailRow>
+                )}
+                {phoneChanged && !otpSent && errors.otp && <p className="text-xs text-destructive">{errors.otp[0]}</p>}
               </SectionCard>
 
               <SectionCard title="Photo">
@@ -213,7 +268,7 @@ export function CustomerProfileForm() {
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <Button type="button" variant="outline" onClick={resetForm} disabled={saving}>Cancel</Button>
-                <Button type="button" onClick={handleSave} disabled={saving || !form.name.trim()}>
+                <Button type="button" onClick={handleSave} disabled={saving || !form.name.trim() || (phoneChanged && otp.length !== 6)}>
                   <Save className="h-4 w-4" />{saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>

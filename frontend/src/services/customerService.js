@@ -9,6 +9,7 @@ import customerApi from "@/lib/customerAxios";
 export const customerService = {
   login: (credentials) => customerApi.post("/customer/login", credentials),
   register: (data) => customerApi.post("/customer/register", data),
+  sendOtp: (phone) => customerApi.post("/customer/send-otp", { phone }),
   logout: () => customerApi.post("/customer/logout"),
   me: () => customerApi.get("/customer/me"),
   updateProfile: (data) => {

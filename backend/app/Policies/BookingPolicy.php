@@ -22,12 +22,11 @@ class BookingPolicy
         return ShopGate::allowsCurrent($user, 'vendor-vehicles-bookings-view');
     }
 
+    // No customer_id shortcut here: bookings.customer_id points at the `customers` table while this
+    // $user is a vendor `users` row — comparing the two ids would let a staff member whose id happens
+    // to equal the customer's view or cancel a booking without the bookings permission.
     public function view(User $user, Booking $booking): bool
     {
-        if ($booking->customer_id === $user->id) {
-            return true;
-        }
-
         return $booking->shop_id === VendorContext::shopId()
             && ShopGate::allowsCurrent($user, 'vendor-vehicles-bookings-view');
     }
@@ -41,10 +40,6 @@ class BookingPolicy
 
     public function cancel(User $user, Booking $booking): bool
     {
-        if ($booking->customer_id === $user->id) {
-            return true;
-        }
-
         return $booking->shop_id === VendorContext::shopId()
             && ShopGate::allowsCurrent($user, 'vendor-vehicles-bookings-edit');
     }

@@ -60,7 +60,7 @@ export default function PlatformListingsPage() {
     { accessorKey: "is_featured", header: "Featured", cell: (row) => row.is_featured ? <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> : "—" },
     { accessorKey: "created_at", header: "Submitted", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
         <div className="flex items-center justify-end gap-1.5">
           <WhatsAppTableActionButton vehicle={row} />

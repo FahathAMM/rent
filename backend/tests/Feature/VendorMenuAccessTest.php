@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\OwnerBankDetail;
 use App\Models\RentalShop;
 use App\Models\Review;
+use App\Models\Role;
 use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use App\Models\VehicleInquiry;
@@ -205,6 +206,29 @@ class VendorMenuAccessTest extends TestCase
     {
         $this->as($this->staff(['vendor-vehicles-list-view']))->getJson('/api/audit-logs')->assertForbidden();
         $this->as($this->owner)->getJson('/api/audit-logs')->assertOk();
+        $this->assertFalse(Role::isAssignableToShopRole('vendor-audit-logs-view'));
+        $this->assertNotContains('/vendor/audit-logs', $this->routesFor($this->staff(['vendor-vehicles-list-view'])));
+        $this->assertContains('/vendor/audit-logs', $this->routesFor($this->owner));
+    }
+
+    public function test_staff_and_customer_actions_show_on_their_shops_audit_log_only(): void
+    {
+        // Shop staff: tagged with the shop they act for.
+        $this->as($this->owner)->postJson('/api/locations', ['name' => 'Own Branch', 'branch_code' => 'BR-1'])->assertCreated();
+        $this->as($this->otherOwner)->postJson('/api/locations', ['name' => 'Other Branch', 'branch_code' => 'BR-1'])->assertCreated();
+
+        // Customer: tagged with the shop of the booking.
+        $booking = $this->makeBooking($this->vehicle, 'BKG-AUD-001', Booking::STATUS_PENDING);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->customer->createToken('c')->plainTextToken)->withHeader('Accept', 'application/json')
+            ->postJson("/api/bookings/{$booking->booking_reference}/cancel", ['reason' => 'Plans changed'])->assertOk();
+
+        $rows = collect($this->as($this->owner)->getJson('/api/audit-logs')->assertOk()->json('record.data'));
+        $this->assertEqualsCanonicalizing(['Own Branch', 'BKG-AUD-001'], $rows->pluck('record')->all());
+        $this->assertSame($this->customer->name, $rows->firstWhere('record', 'BKG-AUD-001')['customer']['name']);
+
+        $other = collect($this->as($this->otherOwner)->getJson('/api/audit-logs')->assertOk()->json('record.data'));
+        $this->assertSame(['Other Branch'], $other->pluck('record')->all());
     }
 
     public function test_the_menu_layout_keeps_the_existing_permissions(): void
@@ -227,7 +251,7 @@ class VendorMenuAccessTest extends TestCase
             'Payments Received', 'Security Deposits', 'Expenses', 'Cancellations', 'Upcoming Schedule', 'Damage', 'Customers',
             'Enquiry Conversion', 'Unsold Stock', 'Listing Views', 'Promotions', 'Reviews', 'Response Time',
         ], $names('Reports'));
-        $this->assertSame(['Shop Profile', 'Locations', 'Terms & Conditions', 'Staff', 'Roles & Permissions', 'Subscription'], $names('Settings'));
+        $this->assertSame(['Shop Profile', 'Locations', 'Terms & Conditions', 'Staff', 'Roles & Permissions', 'Subscription', 'Audit Logs'], $names('Settings'));
 
         $staff = $this->staff(['vendor-vehicles-bookings-view']);
         $this->assertContains('/vendor/bookings', $this->routesFor($staff));

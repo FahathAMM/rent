@@ -36,7 +36,7 @@ export default function PlatformShopsPage() {
     { accessorKey: "verification_status", header: "Verification", cell: (row) => <StatusBadge status={row.verification_status} /> },
     { accessorKey: "created_at", header: "Registered", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => <ActionButton href={`/platform/shops/${row.id}`} icon={Eye} label="Review" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />,
     },
   ];

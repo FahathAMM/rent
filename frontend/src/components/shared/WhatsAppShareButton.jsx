@@ -76,7 +76,7 @@ const cleanLabel = (val) => {
 /**
  * Builds comprehensive formatted text for WhatsApp channel / status / group post with ALL vehicle details
  */
-export function buildDetailedVehicleWhatsAppText(vehicle) {
+export function buildDetailedVehicleWhatsAppText(vehicle, mode = "detailed") {
   if (!vehicle) return "";
 
   const title =
@@ -194,8 +194,8 @@ export function buildDetailedVehicleWhatsAppText(vehicle) {
       seats ? `• Seating Capacity: *${seats}*` : null,
       engine ? `• Engine: *${engine}*` : null,
       ``,
-      featuresList ? `⭐ *KEY FEATURES:*\n• ${featuresList}` : null,
-      featuresList ? `` : null,
+      featuresList.length > 0 ? `⭐ *KEY FEATURES:*\n${featuresList.map((f) => `• ${f}`).join("\n")}` : null,
+      featuresList.length > 0 ? `` : null,
       `🏢 *SHOP:*`,
       `• Shop: *${shopName}* ${isVerified ? "🛡️ (Verified Partner)" : ""}`,
       location ? `• Location: *${location}*` : null,

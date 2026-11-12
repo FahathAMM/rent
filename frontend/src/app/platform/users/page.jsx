@@ -18,8 +18,22 @@ import { SelectInput } from "@/components/forms/SelectInput";
 import { Pencil, Trash2, Home } from "lucide-react";
 import { getInitials, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
-const defaultForm = { name: "", email: "", password: "", role: "platform_admin", status: "active" };
+// Must match SystemAdmin::ROLE_* and the admin_role rule in Store/UpdateSystemAdminRequest.
+const ROLE_OPTIONS = [
+  { value: "platform_owner", label: "Platform Owner" },
+  { value: "admin", label: "Admin" },
+  { value: "finance", label: "Finance" },
+  { value: "moderator", label: "Moderator" },
+  { value: "support", label: "Support" },
+];
+const roleLabel = (role) => ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role ?? "—";
+
+const STATUS_OPTIONS = [{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }];
+
+// `status` is a select-friendly string; it is sent to the API as the is_active boolean.
+const defaultForm = { name: "", email: "", password: "", admin_role: "admin", status: "active" };
 
 export default function PlatformUsersPage() {
   const currentAdmin = usePlatformAuthStore((s) => s.admin);
@@ -55,15 +69,23 @@ export default function PlatformUsersPage() {
   const f = (k) => (val) => setForm((p) => ({ ...p, [k]: val }));
 
   const openCreate = () => { setEditing(null); setForm(defaultForm); setErrors({}); setOpen(true); };
-  const openEdit = (admin) => { setEditing(admin); setForm({ name: admin.name, email: admin.email, password: "", role: admin.role, status: admin.status }); setErrors({}); setOpen(true); };
+  const openEdit = (admin) => {
+    setEditing(admin);
+    setForm({ name: admin.name, email: admin.email, password: "", admin_role: admin.admin_role, status: admin.is_active ? "active" : "inactive" });
+    setErrors({});
+    setOpen(true);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrors({});
-    const data = { ...form };
-    if (editing && !data.password) delete data.password;
-    if (editing) update.mutate({ id: editing.id, data });
-    else create.mutate(data);
+    const { status, ...data } = form;
+    if (editing) {
+      if (!data.password) delete data.password;
+      update.mutate({ id: editing.id, data: { ...data, is_active: status === "active" } });
+    } else {
+      create.mutate(data);
+    }
   };
 
   const columns = () => [
@@ -76,16 +98,16 @@ export default function PlatformUsersPage() {
         </div>
       ),
     },
-    { accessorKey: "role", header: "Role", cell: (row) => <Badge variant={row.admin_role === "platform_owner" ? "default" : "secondary"} className="capitalize">{row.admin_role?.replace("_", " ")}</Badge> },
-    { accessorKey: "status", header: "Status", cell: (row) => <Badge variant={row.status === "active" ? "success" : "secondary"} className="capitalize">{row.status}</Badge> },
+    { accessorKey: "admin_role", header: "Role", cell: (row) => <Badge variant={row.admin_role === "platform_owner" ? "default" : "secondary"}>{roleLabel(row.admin_role)}</Badge> },
+    { accessorKey: "is_active", header: "Status", cell: (row) => <Badge variant={row.is_active ? "success" : "secondary"}>{row.is_active ? "Active" : "Inactive"}</Badge> },
     { accessorKey: "last_login_at", header: "Last Login", cell: (row) => row.last_login_at ? formatDateTime(row.last_login_at) : "Never" },
     ...(isOwner ? [{
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
         <div className="flex gap-1">
-          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}><Pencil className="h-3.5 w-3.5" /></Button>
+          <ActionButton onClick={() => openEdit(row)} icon={Pencil} label="Edit admin" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
           {row.id !== currentAdmin?.id && (
-            <Button variant="outline" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget(row)}><Trash2 className="h-3.5 w-3.5" /></Button>
+            <ActionButton onClick={() => setDeleteTarget(row)} icon={Trash2} label="Delete admin" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
       ),
@@ -123,8 +145,8 @@ export default function PlatformUsersPage() {
             <TextInput label="Email" type="email" value={form.email} onChange={fi("email")} error={errors.email?.[0]} required />
             <PasswordInput label={editing ? "New Password (leave blank to keep current)" : "Password"} value={form.password} onChange={fi("password")} error={errors.password?.[0]} required={!editing} />
             <div className="grid grid-cols-2 gap-3">
-              <SelectInput label="Role" value={form.role} onChange={f("role")} options={[{ value: "platform_owner", label: "Platform Owner" }, { value: "platform_admin", label: "Platform Admin" }]} />
-              {editing && <SelectInput label="Status" value={form.status} onChange={f("status")} options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />}
+              <SelectInput label="Role" required value={form.admin_role} onChange={f("admin_role")} options={ROLE_OPTIONS} error={errors.admin_role?.[0]} />
+              {editing && <SelectInput label="Status" value={form.status} onChange={f("status")} options={STATUS_OPTIONS} error={errors.is_active?.[0]} />}
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

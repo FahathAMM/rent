@@ -69,7 +69,7 @@ class AuditLogController extends Controller
         $dir = $request->get('sort_direction') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $dir);
 
-        $logs = $query->paginate((int) $request->get('perPage', 20));
+        $logs = $query->paginate(min(max((int) $request->get('perPage', 20), 1), 100));
         $logs->through(fn (AuditLog $log) => (new PlatformAuditLogResource($log))->resolve());
 
         return response()->json([

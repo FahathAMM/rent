@@ -200,4 +200,29 @@ class VendorStaffTest extends TestCase
         $this->assertFalse($staff->hasRole($this->staffRole));
         $this->assertSame(0, $staff->tokens()->count());
     }
+
+    /** Staff-edit rights let a member manage colleagues, never promote themselves. */
+    public function test_a_staff_member_with_staff_rights_cannot_change_their_own_role(): void
+    {
+        $hrRole = $this->shopRole($this->shop->id, 'HR', ['vendor-dashboard-view', 'vendor-staff-view', 'vendor-staff-edit']);
+
+        $this->addStaff(['email' => 'hr@example.com', 'role_id' => $hrRole->id])->assertCreated();
+        $this->addStaff(['email' => 'colleague@example.com', 'role_id' => $this->staffRole->id])->assertCreated();
+        $hr = User::where('email', 'hr@example.com')->firstOrFail();
+        $colleague = User::where('email', 'colleague@example.com')->firstOrFail();
+
+        // Promoting themselves to Manager is refused and changes nothing.
+        $this->as($hr)->putJson("/api/vendor/staff/{$hr->id}", ['name' => 'HR Person', 'role_id' => $this->managerRole->id])
+            ->assertStatus(422);
+        $this->assertTrue($hr->fresh()->hasRole($hrRole));
+        $this->assertFalse($hr->fresh()->checkPermissionTo('vendor-vehicles-list-create'));
+
+        // Editing their own details while keeping their role is fine.
+        $this->as($hr)->putJson("/api/vendor/staff/{$hr->id}", ['name' => 'HR Person', 'role_id' => $hrRole->id])
+            ->assertOk()->assertJsonPath('data.user.name', 'HR Person');
+
+        // And they can still change a colleague's role.
+        $this->as($hr)->putJson("/api/vendor/staff/{$colleague->id}", ['role_id' => $this->managerRole->id])
+            ->assertOk()->assertJsonPath('data.role_label', 'Manager');
+    }
 }

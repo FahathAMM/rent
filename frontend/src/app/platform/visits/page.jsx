@@ -6,24 +6,43 @@ import platformApi from "@/lib/platformAxios";
 import { platformService } from "@/services/platformService";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { SortableHeader } from "@/components/Datatable/SortableHeader";
+import { FilterSelect } from "@/components/Datatable/FilterSelect";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { DateRangePicker } from "@/components/forms/DateRangePicker";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ActionButton } from "@/components/Datatable/ActionButton";
 import { Activity, CalendarDays, CalendarRange, Eye, Home, TrendingUp, Users } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
-/** Public site visits — every public page someone opened (one row per visit). */
+// Public site visits (guests/customers) and vendor app visits (owners/staff) share one log.
+const TYPE_OPTIONS = [
+  { value: "public_visit", label: "Public site" },
+  { value: "vendor_visit", label: "Vendor app" },
+];
+
+/** Who made the visit: the customer, the vendor member (with their shop), or a guest. */
+function visitor(row) {
+  if (row.type === "vendor_visit") {
+    return row.user_id
+      ? { name: row.user_name, id: row.user_id, meta: row.shop_name ?? null }
+      : null;
+  }
+  return row.customer_id ? { name: row.customer_name, id: row.customer_id, meta: null } : null;
+}
+
+/** Page visits — every public page or vendor app page someone opened (one row per visit). */
 export default function PlatformVisitsPage() {
+  const [type, setType] = useState("");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [topPagesOpen, setTopPagesOpen] = useState(false);
   const [viewVisit, setViewVisit] = useState(null);
 
   const { data: summary } = useQuery({
-    queryKey: ["platform-visits-summary"],
-    queryFn: () => platformService.visits.summary().then((r) => r.data.data),
+    queryKey: ["platform-visits-summary", type],
+    queryFn: () => platformService.visits.summary({ type: type || undefined }).then((r) => r.data.data),
   });
 
   const columns = ({ sortField, sortOrder, handleSort }) => [
@@ -31,6 +50,15 @@ export default function PlatformVisitsPage() {
       accessorKey: "created_at",
       header: () => <SortableHeader label="Date & Time" column="created_at" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
       cell: (row) => <span className="whitespace-nowrap text-xs">{formatDateTime(row.created_at)}</span>,
+    },
+    {
+      accessorKey: "type",
+      header: () => <SortableHeader label="Source" column="type" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />,
+      cell: (row) => (
+        <Badge variant={row.type === "vendor_visit" ? "info" : "secondary"} className="whitespace-nowrap">
+          {row.type === "vendor_visit" ? "Vendor app" : "Public site"}
+        </Badge>
+      ),
     },
     {
       accessorKey: "path",
@@ -42,17 +70,23 @@ export default function PlatformVisitsPage() {
       ),
     },
     {
-      accessorKey: "customer_name",
-      header: "Customer",
-      cell: (row) =>
-        row.customer_id ? (
-          <span className="whitespace-nowrap text-xs">
-            {row.customer_name}
-            <span className="ml-1 text-muted-foreground">#{row.customer_id}</span>
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">Guest</span>
-        ),
+      accessorKey: "visitor",
+      header: "Visitor",
+      cell: (row) => {
+        const who = visitor(row);
+        if (!who) return <span className="text-xs text-muted-foreground">Guest</span>;
+        return (
+          <div className="whitespace-nowrap text-xs">
+            <span>
+              {who.name}
+              <span className="ml-1 text-muted-foreground">#{who.id}</span>
+            </span>
+            <p className="text-[10px] text-muted-foreground">
+              {row.type === "vendor_visit" ? `Vendor${who.meta ? ` · ${who.meta}` : ""}` : "Customer"}
+            </p>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "country",
@@ -83,8 +117,15 @@ export default function PlatformVisitsPage() {
 
   const breadcrumbItems = [
     { label: "Dashboard", href: "/platform/dashboard", icon: <Home className="size-4" /> },
-    { label: "Public Visits" },
+    { label: "Visits" },
   ];
+
+  const viewWho = viewVisit ? visitor(viewVisit) : null;
+
+  // Top pages split by source (public site / vendor app); just the filtered one when Source is set.
+  const topPageGroups = TYPE_OPTIONS
+    .filter((o) => !type || o.value === type)
+    .map((o) => ({ ...o, pages: summary?.top_pages_by_type?.[o.value] ?? [] }));
 
   return (
     <HomePageWrapper breadcrumb={breadcrumbItems}>
@@ -102,8 +143,13 @@ export default function PlatformVisitsPage() {
         breadcrumb={[]}
         defualtSortField="created_at"
         defaultSortOrder="desc"
-        filters={{ date_from: dateRange.from || undefined, date_to: dateRange.to || undefined }}
+        filters={{
+          type: type || undefined,
+          date_from: dateRange.from || undefined,
+          date_to: dateRange.to || undefined,
+        }}
       >
+        <FilterSelect value={type} onChange={setType} options={TYPE_OPTIONS} allLabel="All visits" className="sm:w-36" />
         <DateRangePicker placeholder="Date range" className="w-full sm:w-60" value={dateRange} onChange={setDateRange} />
         <Button
           type="button"
@@ -111,7 +157,7 @@ export default function PlatformVisitsPage() {
           size="sm"
           className="h-8 w-full text-xs sm:w-auto"
           onClick={() => setTopPagesOpen(true)}
-          disabled={!summary?.top_pages?.length}
+          disabled={!topPageGroups.some((g) => g.pages.length)}
         >
           <TrendingUp className="size-3.5" />
           Top pages
@@ -119,29 +165,43 @@ export default function PlatformVisitsPage() {
       </ServerDataTable>
 
       <Dialog open={topPagesOpen} onOpenChange={setTopPagesOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={topPageGroups.length > 1 ? "max-w-3xl" : "max-w-lg"}>
           <DialogHeader>
             <DialogTitle>Top pages (last 30 days)</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto rounded-md border">
-            <table className="w-full table-fixed text-sm">
-              <thead className="sticky top-0 bg-muted">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold">Page</th>
-                  <th className="w-20 px-3 py-2 text-right text-xs font-semibold">Visits</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary?.top_pages?.map((p) => (
-                  <tr key={p.path ?? "-"} className="border-t">
-                    <td className="truncate px-3 py-2 font-mono text-xs" title={p.path ?? ""}>
-                      {p.path ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs font-semibold">{p.visits}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex max-h-[65vh] flex-col gap-4 overflow-y-auto sm:flex-row sm:items-start">
+            {topPageGroups.map(({ value, label, pages }) => (
+              <section key={value} className="min-w-0 flex-1">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <Badge variant={value === "vendor_visit" ? "info" : "secondary"}>{label}</Badge>
+                  <span className="text-[11px] text-muted-foreground">
+                    {pages.length ? `Top ${pages.length}` : "No visits"}
+                  </span>
+                </div>
+                {pages.length > 0 && (
+                  <div className="rounded-md border">
+                    <table className="w-full table-fixed text-sm">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold">Page</th>
+                          <th className="w-20 px-3 py-2 text-right text-xs font-semibold">Visits</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pages.map((p) => (
+                          <tr key={p.path ?? "-"} className="border-t">
+                            <td className="truncate px-3 py-2 font-mono text-xs" title={p.path ?? ""}>
+                              {p.path ?? "—"}
+                            </td>
+                            <td className="px-3 py-2 text-right text-xs font-semibold">{p.visits}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
@@ -154,11 +214,16 @@ export default function PlatformVisitsPage() {
           {viewVisit && (
             <dl className="divide-y rounded-md border text-sm">
               <DetailRow label="Date & Time" value={formatDateTime(viewVisit.created_at)} />
+              <DetailRow label="Source" value={viewVisit.type === "vendor_visit" ? "Vendor app" : "Public site"} />
               <DetailRow label="Page" value={viewVisit.path} mono />
-              <DetailRow
-                label="Customer"
-                value={viewVisit.customer_id ? `${viewVisit.customer_name ?? "—"} #${viewVisit.customer_id}` : "Guest"}
-              />
+              {viewVisit.type === "vendor_visit" ? (
+                <>
+                  <DetailRow label="Vendor user" value={viewWho ? `${viewWho.name ?? "—"} #${viewWho.id}` : "Guest"} />
+                  <DetailRow label="Shop" value={viewVisit.shop_id ? `${viewVisit.shop_name ?? "—"} #${viewVisit.shop_id}` : viewVisit.shop_name} />
+                </>
+              ) : (
+                <DetailRow label="Customer" value={viewWho ? `${viewWho.name ?? "—"} #${viewWho.id}` : "Guest"} />
+              )}
               <DetailRow label="City" value={viewVisit.city} />
               <DetailRow label="Country" value={viewVisit.country} />
               <DetailRow label="Timezone" value={viewVisit.timezone} />

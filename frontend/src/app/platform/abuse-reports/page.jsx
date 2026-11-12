@@ -14,9 +14,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { TextInput, TextareaInput } from "@/components/forms/FormField";
-import { Home, Loader2 } from "lucide-react";
+import { Home, Loader2, Gavel } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 const STATUS_OPTIONS = [
   { value: "new", label: "New" },
@@ -84,8 +85,8 @@ export default function AbuseReportsPage() {
     { accessorKey: "status", header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
     { accessorKey: "created_at", header: "Submitted", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
-      accessorKey: "actions", header: "",
-      cell: (row) => <Button size="sm" className="h-6 px-2 text-xs" onClick={() => setActing(row)}>Action</Button>,
+      accessorKey: "actions", header: "Actions",
+      cell: (row) => <ActionButton onClick={() => setActing(row)} icon={Gavel} label="Take action" className="text-amber-600 border-amber-300 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-400" />,
     },
   ];
 

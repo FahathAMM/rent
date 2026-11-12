@@ -14,8 +14,9 @@ class UpdatePlatformDetailRequest extends FormRequest
         return [
             'name'       => 'required|string|max:255',
             'tagline'    => 'nullable|string|max:255',
-            'logo'       => 'sometimes|nullable|image|max:2048',
-            'login_logo' => 'sometimes|nullable|image|max:2048',
+            // Raster formats only — an SVG can carry scripts and /storage is served on the app's own origin.
+            'logo'       => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'login_logo' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'login_eyebrow'     => 'nullable|string|max:255',
             'login_heading'     => 'nullable|string|max:255',
             'login_description' => 'nullable|string|max:500',

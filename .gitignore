@@ -81,3 +81,10 @@ backend/.env.production.example
 # Lankalane VPS Deployment Guide.md
 backend/.env.example
 backend/.env.production.example
+docs/LankaLane-App-Explained-Tamil.pdf
+docs/marketing-tamil.md
+images/**
+docs/**
+# Lankalane VPS Deployment Guide.md
+frontend/package-lock.json
+backend/.env.example

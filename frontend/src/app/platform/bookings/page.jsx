@@ -39,7 +39,7 @@ export default function PlatformBookingsPage() {
     { accessorKey: "has_open_dispute", header: "Dispute", cell: (row) => row.has_open_dispute ? <StatusBadge status="flagged" /> : "—" },
     { accessorKey: "created_at", header: "Created", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => <ActionButton href={`/platform/bookings/${row.booking_reference}`} icon={Eye} label="View" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />,
     },
   ];

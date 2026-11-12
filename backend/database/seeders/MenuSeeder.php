@@ -189,6 +189,9 @@ class MenuSeeder extends Seeder
                 ['key' => 'roles', 'slug' => 'roles', 'name' => 'Roles & Permissions', 'route_name' => '/vendor/roles', 'icon' => 'KeyRound', 'sort_order' => 5, 'actions' => ['view', 'edit']],
                 // The shop's plan & paying for it — shop owner only (Role::OWNER_ONLY_PREFIXES).
                 ['key' => 'subscription', 'slug' => 'subscription', 'name' => 'Subscription', 'route_name' => '/vendor/settings/subscription', 'icon' => 'Crown', 'sort_order' => 6, 'actions' => ['view', 'create']],
+                // Who did what in the shop — shop owner only (Role::OWNER_ONLY_PREFIXES); slug kept so the
+                // permission is "vendor-audit-logs-view" (Administration\AuditLogController).
+                ['key' => 'audit_logs', 'slug' => 'audit-logs', 'name' => 'Audit Logs', 'route_name' => '/vendor/audit-logs', 'icon' => 'History', 'sort_order' => 7, 'actions' => ['view']],
             ],
         ],
     ];

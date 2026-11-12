@@ -24,6 +24,7 @@ export const platformService = {
   },
 
   customers: {
+    getOne: (id) => platformApi.get(`/platform/customers/${id}`),
     suspend: (id, reason) => platformApi.post(`/platform/customers/${id}/suspend`, { reason }),
     ban: (id, reason) => platformApi.post(`/platform/customers/${id}/ban`, { reason }),
     activate: (id) => platformApi.post(`/platform/customers/${id}/activate`),
@@ -97,6 +98,16 @@ export const platformService = {
     end: (id, reason) => platformApi.post(`/platform/promotions/${id}/end`, { reason }),
     proof: (id) => platformApi.get(`/platform/promotions/${id}/proof`, { responseType: "blob" }),
     grant: (shopId, data) => platformApi.post(`/platform/shops/${shopId}/promotions`, data),
+  },
+
+  /** The platform's own books — Platform Owner only. The transactions and expenses lists load via ServerDataTable. */
+  accounts: {
+    // params: { from?, to? } as "YYYY-MM-DD" — omitted means this year so far.
+    summary: (params) => platformApi.get("/platform/accounts/summary", { params }),
+    exportTransactions: (params) => platformApi.get("/platform/accounts/transactions/export", { params, responseType: "blob" }),
+    createExpense: (data) => platformApi.post("/platform/accounts/expenses", data),
+    updateExpense: (id, data) => platformApi.put(`/platform/accounts/expenses/${id}`, data),
+    deleteExpense: (id) => platformApi.delete(`/platform/accounts/expenses/${id}`),
   },
 
   // ── Catalogue ───────────────────────────────────────────────────────────
@@ -223,8 +234,9 @@ export const platformService = {
     clear: (file) => platformApi.delete("/platform/logs", { params: { file } }),
   },
 
-  /** Public site visits — the list itself loads through ServerDataTable (/platform/visits). */
+  /** Public site and vendor app visits — the list itself loads through ServerDataTable (/platform/visits). */
   visits: {
-    summary: () => platformApi.get("/platform/visits/summary"),
+    // params: { type?: "public_visit" | "vendor_visit" } — omitted means every visit.
+    summary: (params) => platformApi.get("/platform/visits/summary", { params }),
   },
 };

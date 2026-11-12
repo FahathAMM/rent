@@ -649,6 +649,32 @@ class VehicleSalesTest extends TestCase
         $this->assertSame('Sold to another buyer', $enquiries[$loser]->closed_reason);
     }
 
+    public function test_the_sold_page_summarises_filters_and_sorts_the_shops_sales(): void
+    {
+        $older = $this->saleCar();
+        $newer = $this->saleCar();
+        $this->as($this->owner)->postJson("/api/vendor/sales/listings/{$older->id}/sell", $this->saleData(['sale_price' => 4000000, 'payment_method' => 'cash']))->assertCreated();
+        $this->as($this->owner)->postJson("/api/vendor/sales/listings/{$newer->id}/sell", $this->saleData(['buyer_name' => 'Kamala Silva', 'sale_price' => 6000000, 'payment_method' => 'bank_transfer']))->assertCreated();
+        VehicleSale::withoutGlobalScopes()->where('vehicle_id', $older->id)->update(['sold_at' => now()->subMonths(2)]);
+        // Another shop's sale never leaks into the tiles or the list.
+        $foreign = $this->saleCar(['shop_id' => $this->otherShop->id]);
+        $this->as($this->otherOwner)->postJson("/api/vendor/sales/listings/{$foreign->id}/sell", $this->saleData(['sale_price' => 9000000]))->assertCreated();
+
+        $summary = $this->as($this->owner)->getJson('/api/vendor/sales/sold/summary')->assertOk()->json('data');
+        $this->assertSame(2, $summary['sold_count']);
+        $this->assertEquals(10000000, $summary['sold_value']);
+        $this->assertEquals(5000000, $summary['average_price']);
+        $this->assertSame(1, $summary['sold_this_month']);
+        $this->assertEquals(6000000, $summary['sold_value_this_month']);
+
+        $buyers = fn (string $query) => array_column($this->as($this->owner)->getJson("/api/vendor/sales/sold?{$query}")->assertOk()->json('record.data'), 'buyer_name');
+        $this->assertSame(['Kamala Silva', 'Nimal Perera'], $buyers(''), 'newest sale first by default');
+        $this->assertSame(['Nimal Perera', 'Kamala Silva'], $buyers('sort_field=sale_price&sort_direction=asc'));
+        $this->assertSame(['Kamala Silva'], $buyers('payment_method=bank_transfer'));
+        $this->assertSame(['Nimal Perera'], $buyers('date_to=' . now()->subMonth()->toDateString()));
+        $this->assertSame(['Kamala Silva'], $buyers('date_from=' . now()->startOfMonth()->toDateString()));
+    }
+
     public function test_a_walk_in_sale_needs_no_customer_account(): void
     {
         $car = $this->saleCar();

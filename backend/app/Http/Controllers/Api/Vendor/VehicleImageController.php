@@ -106,6 +106,7 @@ class VehicleImageController extends Controller
 
         $vehicle->images()->update(['is_primary' => false]);
         $image->update(['is_primary' => true]);
+        AuditService::edit('VehicleImage', $image->id, $vehicle->title, null, ['is_primary' => true]);
 
         return $this->response('Primary image updated');
     }
@@ -124,6 +125,7 @@ class VehicleImageController extends Controller
         foreach ($data['image_ids'] as $position => $id) {
             VehicleImage::where('id', $id)->update(['sort_order' => $position]);
         }
+        AuditService::edit('VehicleImage', $vehicle->id, $vehicle->title, null, ['order' => array_values($data['image_ids'])]);
 
         return $this->response('Order updated');
     }

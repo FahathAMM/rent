@@ -60,6 +60,7 @@ export function LoginPanel({ brandName, logoUrl, onSwitchToRegister }) {
         loading={loading}
         onSubmit={handleSubmit}
         onSwitchToRegister={onSwitchToRegister}
+        allowPhone
       />
 
       <DevCredit className="mt-4 pt-3 border-t" />

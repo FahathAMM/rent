@@ -10,7 +10,9 @@ use App\Http\Requests\Customer\UpdateProfileRequest;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
 use App\Services\CustomerAuthService;
+use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
@@ -27,6 +29,20 @@ class AuthController extends Controller
                 'token' => $result['token'],
             ],
         ]);
+    }
+
+    /** Step 1 of registering with a mobile number: text a 6-digit code to it. */
+    public function sendOtp(Request $request): JsonResponse
+    {
+        $request->merge(['phone' => SmsService::formatPhone($request->phone) ?? $request->phone]);
+        $request->validate(
+            ['phone' => ['required', 'regex:/^94\d{9}$/', 'unique:customers,phone']],
+            ['phone.regex' => 'Enter a valid Sri Lankan mobile number.', 'phone.unique' => 'This mobile number is already registered.'],
+        );
+
+        $this->authService->sendOtp($request->phone);
+
+        return response()->json(['message' => __('Code sent to your mobile')]);
     }
 
     public function register(RegisterRequest $request): JsonResponse

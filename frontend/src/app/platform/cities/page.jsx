@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Pencil, Trash2, Plus, Home, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 export default function PlatformCitiesPage() {
   const qc = useQueryClient();
@@ -58,11 +59,9 @@ export default function PlatformCitiesPage() {
     { accessorKey: "name", header: "District", cell: (row) => <span className="font-medium">{row.name}</span> },
     { accessorKey: "cities_count", header: "Cities", cell: (row) => row.cities.length },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEditingDistrictId(row.id); setNewCityName(""); setError(""); }}>
-          <Pencil className="h-3.5 w-3.5" /> Edit
-        </Button>
+        <ActionButton onClick={() => { setEditingDistrictId(row.id); setNewCityName(""); setError(""); }} icon={Pencil} label="Edit cities" className="text-purple-600 border-purple-300 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-400" />
       ),
     },
   ];

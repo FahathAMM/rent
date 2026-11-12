@@ -15,15 +15,16 @@ export function LoginFormFields({
   loading,
   onSubmit,
   onSwitchToRegister,
+  allowPhone = false, // customer login: the "email" field also takes a mobile number
 }) {
   return (
     <>
       <form onSubmit={onSubmit} className="space-y-3">
         <ValidationError errors={errors} />
         <TextInput
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
+          label={allowPhone ? "Email or mobile number" : "Email"}
+          type={allowPhone ? "text" : "email"}
+          placeholder={allowPhone ? "you@example.com or 07X XXX XXXX" : "you@example.com"}
           value={form.email}
           onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
           required

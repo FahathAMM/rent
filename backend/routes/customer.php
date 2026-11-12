@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 // same as routes/platform.php. A vendor/owner/staff token is rejected by
 // the `customer` guard, and vice versa (see config/auth.php).
 Route::prefix('customer')->group(function () {
+    Route::post('send-otp', [CustomerAuthController::class, 'sendOtp'])->middleware('throttle:otp');
     Route::post('register', [CustomerAuthController::class, 'register'])->middleware('throttle:auth');
     Route::post('login',    [CustomerAuthController::class, 'login'])->middleware('throttle:auth');
 

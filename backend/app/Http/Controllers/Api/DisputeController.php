@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dispute\AddDisputeMessageRequest;
 use App\Http\Requests\Dispute\StoreDisputeRequest;
+use App\Models\Dispute;
 use App\Queries\CustomerDisputeQuery;
 use App\Services\AuditService;
 use App\Services\AuthUser;
@@ -73,6 +74,8 @@ class DisputeController extends Controller
 
         $side = CustomerDisputeQuery::resolveSide(AuthUser::id(), $dispute->booking);
         abort_unless($side !== null, 404);
+        // Same rule as the customer side: a finished dispute takes no more messages.
+        abort_if(in_array($dispute->status, [Dispute::STATUS_RESOLVED, Dispute::STATUS_CLOSED], true), 422, 'This dispute is closed.');
 
         $message = $this->service->addMessage(
             $dispute,
@@ -81,6 +84,8 @@ class DisputeController extends Controller
             message: $request->validated('message'),
             posterSide: $side,
         );
+
+        AuditService::edit('Dispute', $dispute->id, "Dispute for {$dispute->booking->booking_reference}", null, ['message' => 'posted', 'side' => $side]);
 
         return $this->response('Message posted', $message, 201);
     }

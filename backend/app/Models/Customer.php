@@ -27,7 +27,7 @@ class Customer extends Authenticatable
     public const STATUS_BANNED = 'banned';
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'phone_country', 'avatar',
+        'name', 'email', 'password', 'phone', 'phone_country', 'phone_verified_at', 'avatar',
         'date_of_birth', 'address', 'status', 'suspended_reason', 'suspended_at',
         'last_login_at', 'registration_source', 'terms_accepted_at',
     ];

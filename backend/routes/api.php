@@ -46,8 +46,9 @@ Route::prefix('auth')->middleware('throttle:auth')->group(function () {
 // before auth.
 Route::get('platform-details', [PlatformDetailController::class, 'show']);
 
-// Simple traffic logging (public page visits, link clicks) — one log file
-// per day in storage/logs/public_visit/, no database table.
+// Simple traffic logging (public page visits, vendor app page visits, link
+// clicks) — one log file per day in storage/logs/public_visit/; page visits
+// also go to the public_visits table for /platform/visits.
 Route::post('visits', [VisitLogController::class, 'track'])->middleware('throttle:60,1');
 
 // The public marketplace catalogue (search, vehicle detail, shop profile,
@@ -247,6 +248,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('enquiries/{enquiry:reference}/close', [VendorSaleEnquiryController::class, 'close']);
 
                 Route::get('sold', [VendorVehicleSaleController::class, 'index']);
+                Route::get('sold/summary', [VendorVehicleSaleController::class, 'summary']);
                 Route::get('sold/{sale:reference}', [VendorVehicleSaleController::class, 'show']);
                 Route::get('sold/{sale:reference}/agreement', [VendorVehicleSaleController::class, 'agreement']);
 

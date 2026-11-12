@@ -101,7 +101,7 @@ export default function PlatformAuditLogsPage() {
     },
     {
       accessorKey: "actions",
-      header: "",
+      header: "Actions",
       cell: (row) => (
         <ActionButton onClick={() => setDetail(row)} icon={Eye} label="View details" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />
       ),

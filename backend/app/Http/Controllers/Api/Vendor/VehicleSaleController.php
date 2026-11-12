@@ -24,22 +24,51 @@ class VehicleSaleController extends Controller
 
     public function __construct(private SaleAgreementService $agreements)
     {
-        $this->middleware('can:vendor-sales-sold-view')->only(['index', 'show', 'agreement']);
+        $this->middleware('can:vendor-sales-sold-view')->only(['index', 'summary', 'show', 'agreement']);
         $this->middleware('can:vendor-sales-sold-create')->only('store');
         $this->middleware('can:vendor-sales-terms-edit')->only('updateTerms');
     }
 
+    /** Filters: search, payment_method, date_from / date_to (sold on). Sorts: sold_at (default, newest first), sale_price, buyer_name. */
     public function index(Request $request): JsonResponse
     {
-        $sales = VehicleSale::with('vehicle:id,title,year')
+        $sortable = ['sold_at', 'sale_price', 'buyer_name'];
+        $sort = in_array($request->sort_field, $sortable, true) ? $request->sort_field : 'sold_at';
+        $dir = $request->sort_direction === 'asc' ? 'asc' : 'desc';
+
+        $sales = VehicleSale::with('vehicle:id,title,make,model,year')
             ->when($request->search, fn ($q) => $q->where(fn ($s) => $s
                 ->where('reference', 'like', "%{$request->search}%")
                 ->orWhere('buyer_name', 'like', "%{$request->search}%")
                 ->orWhereHas('vehicle', fn ($v) => $v->where('title', 'like', "%{$request->search}%"))))
-            ->orderByDesc('sold_at')
+            ->when($request->payment_method, fn ($q, $method) => $q->where('payment_method', $method))
+            ->when($request->date_from, fn ($q, $from) => $q->whereDate('sold_at', '>=', $from))
+            ->when($request->date_to, fn ($q, $to) => $q->whereDate('sold_at', '<=', $to))
+            ->orderBy($sort, $dir)
+            ->orderByDesc('id')
             ->paginate(min((int) $request->get('perPage', 20), 100));
 
         return response()->json(['record' => $sales, 'message' => 'Sales retrieved', 'status' => true]);
+    }
+
+    /** The tiles above the sold list: how many cars the shop has sold and for how much, all time and this month. */
+    public function summary(): JsonResponse
+    {
+        $all = VehicleSale::query()
+            ->selectRaw('COUNT(*) AS sold_count, COALESCE(SUM(sale_price), 0) AS sold_value, COALESCE(AVG(sale_price), 0) AS average_price')
+            ->first();
+        $month = VehicleSale::query()
+            ->where('sold_at', '>=', now()->startOfMonth())
+            ->selectRaw('COUNT(*) AS sold_count, COALESCE(SUM(sale_price), 0) AS sold_value')
+            ->first();
+
+        return $this->response('Sales summary retrieved', [
+            'sold_count' => (int) $all->sold_count,
+            'sold_value' => round((float) $all->sold_value, 2),
+            'average_price' => round((float) $all->average_price, 2),
+            'sold_this_month' => (int) $month->sold_count,
+            'sold_value_this_month' => round((float) $month->sold_value, 2),
+        ]);
     }
 
     /** One sale, with the buyer's NIC — so reading it is audited, like a shop's verification documents. */
@@ -47,7 +76,9 @@ class VehicleSaleController extends Controller
     {
         AuditService::view('VehicleSale', $sale->id, $sale->reference);
 
-        return $this->response('Sale retrieved', $sale->load(['vehicle', 'recordedBy:id,name'])->makeVisible('buyer_nic'));
+        $sale->load(['vehicle.saleDetail', 'recordedBy:id,name', 'customer:id,name,email', 'enquiry:id,reference']);
+
+        return $this->response('Sale retrieved', $sale->makeVisible('buyer_nic'));
     }
 
     public function store(RecordVehicleSaleRequest $request, Vehicle $vehicle, RecordVehicleSale $record): JsonResponse

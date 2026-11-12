@@ -78,7 +78,11 @@ class SaleListingController extends Controller
         $this->assertSale($vehicle);
         $this->authorize('publish', $vehicle);
 
-        return $this->response('Listing published', new VehicleResource($this->service->publish($vehicle)));
+        $from = $vehicle->status;
+        $vehicle = $this->service->publish($vehicle);
+        AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, ['status' => $from], ['status' => $vehicle->status, 'sale_status' => $vehicle->saleDetail?->sale_status]);
+
+        return $this->response('Listing published', new VehicleResource($vehicle));
     }
 
     public function withdraw(Vehicle $vehicle): JsonResponse
@@ -86,7 +90,11 @@ class SaleListingController extends Controller
         $this->assertSale($vehicle);
         $this->authorize('update', $vehicle);
 
-        return $this->response('Listing withdrawn', new VehicleResource($this->service->withdraw($vehicle)));
+        $from = $vehicle->status;
+        $vehicle = $this->service->withdraw($vehicle);
+        AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, ['status' => $from], ['status' => $vehicle->status, 'sale_status' => $vehicle->saleDetail?->sale_status]);
+
+        return $this->response('Listing withdrawn', new VehicleResource($vehicle));
     }
 
     public function switchToRent(Vehicle $vehicle): JsonResponse

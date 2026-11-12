@@ -9,9 +9,9 @@ import { useCurrencyFormat } from "@/hooks/useCurrencyFormat";
 import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { FilterSelect } from "@/components/Datatable/FilterSelect";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
-import { Button } from "@/components/ui/button";
 import { cn, formatDateTime, openBlob } from "@/lib/utils";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Waiting to check" },
@@ -100,18 +100,18 @@ export function RequestsTab({ status, onStatusChange, statsKey }) {
       ),
     },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
-        <div className="flex items-center justify-end gap-1">
-          {row.has_proof && <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => viewProof(row.id)}><FileText className="h-3.5 w-3.5" /> Receipt</Button>}
+        <div className="flex gap-1">
+          {row.has_proof && <ActionButton onClick={() => viewProof(row.id)} icon={FileText} label="View receipt" className="text-blue-600 border-blue-300 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-400" />}
           {row.state === "pending" && (
             <>
-              <Button size="sm" className="h-7 gap-1 bg-emerald-600 px-2 text-xs hover:bg-emerald-700" onClick={() => approve.mutate(row.id)} disabled={approve.isPending}><Check className="h-3.5 w-3.5" /> Approve</Button>
-              <Button size="icon" variant="outline" className="h-7 w-7 border-destructive/40 text-destructive hover:bg-destructive/10" title="Reject" onClick={() => setRejecting(row)}><X className="h-3.5 w-3.5" /></Button>
+              <ActionButton onClick={() => approve.mutate(row.id)} icon={Check} label="Approve" className="text-emerald-600 border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400" disabled={approve.isPending} />
+              <ActionButton onClick={() => setRejecting(row)} icon={X} label="Reject" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
             </>
           )}
           {["live", "scheduled"].includes(row.state) && (
-            <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setEnding(row)}><Square className="h-3 w-3" /> End</Button>
+            <ActionButton onClick={() => setEnding(row)} icon={Square} label="End promotion" className="text-slate-600 border-slate-300 hover:text-slate-700 hover:bg-slate-50 hover:border-slate-400" />
           )}
         </div>
       ),

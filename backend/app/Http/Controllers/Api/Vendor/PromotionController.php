@@ -7,6 +7,7 @@ use App\Models\Promotion;
 use App\Models\PromotionPackage;
 use App\Models\RentalShop;
 use App\Models\Vehicle;
+use App\Services\AuditService;
 use App\Services\AuthUser;
 use App\Services\PromotionService;
 use App\Services\SubscriptionService;
@@ -76,6 +77,10 @@ class PromotionController extends Controller
             RentalShop::findOrFail(VendorContext::shopId()), AuthUser::user(),
             PromotionPackage::findOrFail($data['package_id']), $data, $data['bank_reference'] ?? null, $request->file('proof'),
         );
+
+        AuditService::create('Promotion', $promotion->id, $promotion->reference_no, [
+            'package_id' => $promotion->package_id, 'bank_reference' => $data['bank_reference'] ?? null, 'status' => $promotion->status,
+        ]);
 
         return response()->json([
             'message' => 'Payment sent — the platform will confirm it shortly',

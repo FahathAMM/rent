@@ -14,7 +14,7 @@ import {
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
   CreditCard, MapPin, GalleryHorizontal, ChevronDown, KeyRound, Activity, Crown, Megaphone, ListTree,
-  CircleHelp, Phone, Lock,
+  CircleHelp, Phone, Lock, Wallet,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -29,7 +29,7 @@ const NAV_GROUPS = [
     id: "overview", label: "Overview",
     items: [
       { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/platform/visits", label: "Public Visits", icon: Activity },
+      { href: "/platform/visits", label: "Visits", icon: Activity },
     ],
   },
   {
@@ -69,6 +69,8 @@ const NAV_GROUPS = [
   {
     id: "finance", label: "Finance",
     items: [
+      // The platform's own books — Platform Owner only (the API refuses everyone else).
+      { href: "/platform/accounts", label: "Accounts", icon: Wallet, ownerOnly: true },
       { href: "/platform/payments", label: "Payments", icon: CreditCard },
       { href: "/platform/subscriptions", label: "Subscriptions", icon: Crown },
       { href: "/platform/promotions", label: "Promotions", icon: Megaphone },
@@ -117,6 +119,7 @@ export function PlatformSidebar({ open = false, onClose }) {
   // this first request — RestrictLogViewerToOwner checks it identifies the
   // platform owner, then remembers that in the session for the page's own
   // follow-up AJAX calls.
+  const isOwner = admin?.admin_role === "platform_owner";
   const groups = NAV_GROUPS.map((g) => (g.id !== "system" ? g : {
     ...g,
     items: [
@@ -124,7 +127,7 @@ export function PlatformSidebar({ open = false, onClose }) {
       { href: `/log-viewer?token=${encodeURIComponent(token ?? "")}`, label: "Log Viewer", icon: FileSearch, external: true },
       ...g.items.slice(2),
     ],
-  }));
+  })).map((g) => ({ ...g, items: g.items.filter((item) => !item.ownerOnly || isOwner) }));
 
   // Collapsed groups are a per-browser convenience; the group holding the
   // current page is always shown open regardless.
