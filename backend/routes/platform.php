@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomation
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
 use App\Http\Controllers\Api\Platform\BrandController as PlatformBrandController;
+use App\Http\Controllers\Api\Platform\BusinessReportController as PlatformBusinessReportController;
 use App\Http\Controllers\Api\Platform\HelpItemController as PlatformHelpItemController;
 use App\Http\Controllers\Api\Platform\HeroSlideController as PlatformHeroSlideController;
 use App\Http\Controllers\Api\Platform\SupportContactController;
@@ -254,6 +255,12 @@ Route::prefix('platform')->group(function () {
             Route::put('expenses/{expense}',    [PlatformExpenseController::class, 'update']);
             Route::delete('expenses/{expense}', [PlatformExpenseController::class, 'destroy']);
         });
+
+        // Platform reports (/platform/reports). Open to any admin; the controller keeps the
+        // money reports to the Platform Owner (PlatformReportService::REPORTS 'owner_only').
+        Route::get('reports',                 [PlatformBusinessReportController::class, 'index']);
+        Route::get('reports/{report}',        [PlatformBusinessReportController::class, 'show']);
+        Route::get('reports/{report}/export', [PlatformBusinessReportController::class, 'export']);
 
         // Cross-shop booking oversight — no ShopScope bypass needed (see
         // PlatformBookingController's docblock).

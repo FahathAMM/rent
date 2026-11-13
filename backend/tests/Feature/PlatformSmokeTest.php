@@ -58,6 +58,7 @@ class PlatformSmokeTest extends TestCase
                 ? SubscriptionPayment::value('id')
                 : Payment::value('id'),
             '{promotion}' => fn () => Promotion::value('id'),
+            '{report}' => fn () => 'income-statement',
             '{verification}' => fn () => ShopVerification::value('id'),
         ];
 

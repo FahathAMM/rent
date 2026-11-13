@@ -110,6 +110,14 @@ export const platformService = {
     deleteExpense: (id) => platformApi.delete(`/platform/accounts/expenses/${id}`),
   },
 
+  /** Platform reports, by the slug in PlatformReportService::REPORTS. params are { from?, to? }. Not the abuse reports above. */
+  businessReports: {
+    catalogue: () => platformApi.get("/platform/reports"),
+    get: (report, params) => platformApi.get(`/platform/reports/${report}`, { params }),
+    // format: "pdf" | "csv"
+    export: (report, format, params) => platformApi.get(`/platform/reports/${report}/export`, { params: { ...params, format }, responseType: "blob" }),
+  },
+
   // ── Catalogue ───────────────────────────────────────────────────────────
   /** Vehicle brands. create/update take a FormData (optional logo upload). */
   brands: {

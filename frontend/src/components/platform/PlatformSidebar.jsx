@@ -14,7 +14,7 @@ import {
   Settings, LogOut, ShieldCheck, X, UserCheck, Car, Star,
   FileSearch, ExternalLink, AlertTriangle, Flag, CalendarCheck, Tag, BadgeCheck, Layers, Palette,
   CreditCard, MapPin, GalleryHorizontal, ChevronDown, KeyRound, Activity, Crown, Megaphone, ListTree,
-  CircleHelp, Phone, Lock, Wallet,
+  CircleHelp, Phone, Lock, Wallet, FileBarChart,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -30,6 +30,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/platform/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/platform/visits", label: "Visits", icon: Activity },
+      { href: "/platform/reports", label: "Reports", icon: FileBarChart },
     ],
   },
   {
