@@ -88,3 +88,9 @@ docs/**
 # Lankalane VPS Deployment Guide.md
 frontend/package-lock.json
 backend/.env.example
+deploy/**
+ship.ps1
+.claude/commands/ship.md
+setup-once.ps1
+DEPLOY.bat
+SETUP-ONCE.bat

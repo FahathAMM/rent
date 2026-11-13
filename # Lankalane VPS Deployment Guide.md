@@ -162,6 +162,72 @@ This VPS has limited memory. Avoid repeated builds if the build is being killed 
 5. Restart only `lankalane-frontend`.
 6. Check PM2 logs and hard-refresh the browser.
 
+pm2 status
+pm2 delete 3
+
+============ old ================
+cd /var/www/rent/frontend
+mkdir -p .next/standalone/frontend/.next/static
+cp -a .next/static/. .next/standalone/frontend/.next/static/
+if [ -d public ]; then
+    cp -a public/. .next/standalone/frontend/
+fi
+ls -lah .next/standalone/frontend/.next/static
+pm2 restart lankalane-frontend --update-env
+
+
+
+============ new ================
+
+# First, create another 1 GB swap file:
+sudo fallocate -l 1G /swapfile3
+sudo chmod 600 /swapfile3
+sudo mkswap /swapfile3
+sudo swapon /swapfile3
+
+# Stop the other frontend temporarily:
+pm2 stop mybiz2flow-frontend
+
+NODE_OPTIONS="--max-old-space-size=768" npm run build
+pm2 restart mybiz2flow-frontend
+
+
+cd /var/www/rent/frontend
+mkdir -p .next/standalone/.next/static
+cp -a .next/static/. .next/standalone/.next/static/
+
+if [ -d public ]; then
+    mkdir -p .next/standalone/public
+    cp -a public/. .next/standalone/public/
+fi
+
+ls -lah .next/standalone/.next/static/css/
+pm2 restart lankalane-frontend
+
+frontend/
+└── .next/
+    └── standalone/
+        ├── server.js
+        ├── package.json
+        ├── node_modules/
+        ├── public/
+        └── .next/
+            ├── BUILD_ID
+            └── static/
+                ├── css/
+                ├── chunks/
+                └── media/
+                
+============ end new ==============
+
+
+Check current RAM and swap
+============================
+free -h
+swapon --show
+
+
+
 ### ChunkLoadError or missing images
 
 Check that `.next/standalone/.next/static` contains the generated chunks and `.next/standalone/public` contains public assets. Then inspect browser Network errors and PM2 logs.
