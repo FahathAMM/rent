@@ -1,0 +1,41 @@
+# Deploy — runs whenever main changes (i.e. right after a PR merges).
+# SSHes into the DigitalOcean droplet and runs deploy/deploy.sh there, which
+# pulls main, updates the backend, builds the frontend and health-checks both.
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never kill a deploy half-way; queue the next one
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.DO_PORT || 22 }}
+          command_timeout: 25m
+          script: |
+            set -e
+            cd /var/www/rent
+            git fetch origin main
+            # Run the deploy script from the commit being deployed
+            git show origin/main:deploy/deploy.sh > /tmp/lankalane-deploy.sh
+            bash /tmp/lankalane-deploy.sh
+
+      - name: Public smoke test
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L https://lankalane.fahathamm.com)
+          echo "https://lankalane.fahathamm.com -> $code"
+          [ "$code" -ge 200 ] && [ "$code" -lt 400 ]

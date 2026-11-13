@@ -88,7 +88,8 @@ docs/**
 # Lankalane VPS Deployment Guide.md
 frontend/package-lock.json
 backend/.env.example
-deploy/**
+# Laravel regenerates these on every composer install / deploy — never track them.
+backend/bootstrap/cache/*.php
 ship.ps1
 .claude/commands/ship.md
 setup-once.ps1

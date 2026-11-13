@@ -1,0 +1,33 @@
+# Turns on GitHub auto-merge for PRs into main opened from dev/* branches.
+# The PR then merges by itself (merge commit, so long-lived dev/* branches stay in sync) the moment the required CI checks pass.
+# If a check fails, nothing merges — fix, push again, and it retries.
+#
+# Needs secret AUTOMERGE_TOKEN (a fine-grained PAT with Contents + Pull requests
+# write on this repo). GitHub does not start other workflows for merges made
+# with the built-in GITHUB_TOKEN, so without the PAT the deploy would not fire.
+# PRs opened with ship.ps1 don't depend on this — it enables auto-merge itself.
+name: Auto-merge
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: >-
+      vars.AUTOMERGE_ENABLED == 'true' &&
+      startsWith(github.head_ref, 'dev/') &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        run: gh pr merge "$PR_URL" --auto --merge
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
