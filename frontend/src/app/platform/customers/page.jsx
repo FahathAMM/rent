@@ -8,11 +8,12 @@ import { useState } from "react";
 import { platformService } from "@/services/platformService";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
-import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
-import { Home } from "lucide-react";
+import { Eye, Home, RotateCcw, ShieldAlert, Ban } from "lucide-react";
+import Link from "next/link";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -51,10 +52,10 @@ export default function PlatformCustomersPage() {
     {
       accessorKey: "name", header: "Name",
       cell: (row) => (
-        <div>
-          <p className="text-sm font-medium">{row.name}</p>
-          <p className="text-xs text-muted-foreground">{row.email}</p>
-        </div>
+        <Link href={`/platform/customers/${row.id}`} className="group block">
+          <p className="text-sm font-medium group-hover:text-primary group-hover:underline">{row.name}</p>
+          <p className="text-xs text-muted-foreground">{row.email || row.phone}</p>
+        </Link>
       ),
     },
     { accessorKey: "phone", header: "Phone", cell: (row) => row.phone || "—" },
@@ -62,17 +63,18 @@ export default function PlatformCustomersPage() {
     { accessorKey: "status", header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
     { accessorKey: "created_at", header: "Joined", cell: (row) => formatDateTime(row.created_at) },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex gap-1">
+          <ActionButton href={`/platform/customers/${row.id}`} icon={Eye} label="View customer" className="text-teal-600 border-teal-300 hover:text-teal-700 hover:bg-teal-50 hover:border-teal-400" />
           {row.status !== "active" && (
-            <Button size="sm" onClick={() => activate.mutate(row.id)} disabled={activate.isPending}>Activate</Button>
+            <ActionButton onClick={() => activate.mutate(row.id)} icon={RotateCcw} label="Activate" className="text-emerald-600 border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400" disabled={activate.isPending} />
           )}
           {row.status !== "suspended" && (
-            <Button size="sm" variant="outline" onClick={() => setActionTarget({ user: row, action: "suspend" })}>Suspend</Button>
+            <ActionButton onClick={() => setActionTarget({ user: row, action: "suspend" })} icon={ShieldAlert} label="Suspend" className="text-amber-600 border-amber-300 hover:text-amber-700 hover:bg-amber-50 hover:border-amber-400" />
           )}
           {row.status !== "banned" && (
-            <Button size="sm" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setActionTarget({ user: row, action: "ban" })}>Ban</Button>
+            <ActionButton onClick={() => setActionTarget({ user: row, action: "ban" })} icon={Ban} label="Ban" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
       ),

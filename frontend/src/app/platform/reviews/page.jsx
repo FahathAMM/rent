@@ -9,10 +9,10 @@ import { FilterSelect } from "@/components/Datatable/FilterSelect";
 import { HomePageWrapper } from "@/components/shared/HomePageWrapper";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
-import { Button } from "@/components/ui/button";
-import { Star, Home } from "lucide-react";
+import { Star, Home, Check, X, EyeOff } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
@@ -74,17 +74,17 @@ export default function PlatformReviewsPage() {
     { accessorKey: "status", header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
     { accessorKey: "created_at", header: "Submitted", cell: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span> },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex gap-1">
           {row.status === "pending" && (
             <>
-              <Button size="sm" className="h-6 px-2 text-xs" onClick={() => publish.mutate(row.id)} disabled={publish.isPending}>Publish</Button>
-              <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction({ id: row.id, action: "reject" })}>Reject</Button>
+              <ActionButton onClick={() => publish.mutate(row.id)} icon={Check} label="Publish" className="text-emerald-600 border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400" disabled={publish.isPending} />
+              <ActionButton onClick={() => setReasonAction({ id: row.id, action: "reject" })} icon={X} label="Reject" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
             </>
           )}
           {row.status === "published" && (
-            <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setReasonAction({ id: row.id, action: "hide" })}>Hide</Button>
+            <ActionButton onClick={() => setReasonAction({ id: row.id, action: "hide" })} icon={EyeOff} label="Hide" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
           )}
         </div>
       ),

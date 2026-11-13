@@ -26,7 +26,8 @@ class SystemAdminController extends Controller
     {
         abort_unless(auth('platform')->user()?->isOwner(), 403);
 
-        $admin = SystemAdmin::create($request->validated());
+        // refresh() so DB defaults (e.g. is_active) are in the response, not null.
+        $admin = SystemAdmin::create($request->validated())->refresh();
 
         $this->audit('create', $admin->id, $admin->name);
 
@@ -45,7 +46,20 @@ class SystemAdminController extends Controller
             unset($data['password']);
         }
 
+        // The owner can't lock themselves out by deactivating their own account.
+        abort_if(
+            (int) $systemAdmin->id === (int) auth('platform')->id() && $request->has('is_active') && !$request->boolean('is_active'),
+            422,
+            'You cannot deactivate your own account.'
+        );
+
         $systemAdmin->update($data);
+
+        // A password reset or deactivation signs that admin out everywhere — their
+        // existing tokens must not keep working with the old credentials.
+        if (isset($data['password']) || ($request->has('is_active') && !$request->boolean('is_active'))) {
+            $systemAdmin->tokens()->delete();
+        }
 
         $this->audit('edit', $systemAdmin->id, $systemAdmin->name);
 

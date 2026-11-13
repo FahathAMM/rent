@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useCustomerAuth } from "@/hooks/useCustomerAuth";
+import { customerService } from "@/services/customerService";
 import { safeNextPath } from "@/lib/utils";
 import { BrandLogo } from "@/components/auth/BrandLogo";
 import { RegisterFormFields } from "@/components/auth/RegisterFormFields";
@@ -12,6 +14,7 @@ const EMPTY_FORM = {
   name: "",
   email: "",
   phone: "",
+  otp: "",
   password: "",
   password_confirmation: "",
   terms_accepted: false,
@@ -24,6 +27,24 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+
+  // Registering with a mobile number: text a code to it first.
+  const handleSendOtp = async () => {
+    setErrors({});
+    setSendingOtp(true);
+    try {
+      await customerService.sendOtp(form.phone);
+      setOtpSent(true);
+      toast.success("Code sent to your mobile");
+    } catch (err) {
+      const message = err.networkError ?? err.response?.data?.message ?? "Could not send the code";
+      setErrors(err.response?.data?.errors ?? { phone: [message] });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,6 +86,9 @@ export function RegisterPanel({ brandName, logoUrl, onSwitchToLogin }) {
         loading={loading}
         onSubmit={handleSubmit}
         onSwitchToLogin={onSwitchToLogin}
+        onSendOtp={handleSendOtp}
+        otpSent={otpSent}
+        sendingOtp={sendingOtp}
       />
 
       <DevCredit className="mt-4 pt-3 border-t" />

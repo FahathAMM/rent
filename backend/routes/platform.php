@@ -3,12 +3,15 @@
 use App\Http\Controllers\Api\Administration\MenuController;
 use App\Http\Controllers\Api\Administration\PermissionController;
 use App\Http\Controllers\Api\Administration\RoleController;
+use App\Http\Controllers\Api\Platform\AccountsController as PlatformAccountsController;
 use App\Http\Controllers\Api\Platform\AuditLogController as PlatformAuditLogController;
+use App\Http\Controllers\Api\Platform\PlatformExpenseController;
 use App\Http\Controllers\Api\Platform\AuthController as PlatformAuthController;
 use App\Http\Controllers\Api\Platform\AutomationController as PlatformAutomationController;
 use App\Http\Controllers\Api\Platform\BackupController as PlatformBackupController;
 use App\Http\Controllers\Api\Platform\BookingController as PlatformBookingController;
 use App\Http\Controllers\Api\Platform\BrandController as PlatformBrandController;
+use App\Http\Controllers\Api\Platform\BusinessReportController as PlatformBusinessReportController;
 use App\Http\Controllers\Api\Platform\HelpItemController as PlatformHelpItemController;
 use App\Http\Controllers\Api\Platform\HeroSlideController as PlatformHeroSlideController;
 use App\Http\Controllers\Api\Platform\SupportContactController;
@@ -240,6 +243,24 @@ Route::prefix('platform')->group(function () {
         // written by the shop's booking flow (handover, transfers).
         Route::get('payments',           [PlatformPaymentController::class, 'index']);
         Route::get('payments/{payment}', [PlatformPaymentController::class, 'show']);
+
+        // The platform's own books (/platform/accounts): money in from subscriptions and
+        // promotions, money out from platform_expenses. Platform Owner only, read and write.
+        Route::middleware('platform.owner')->prefix('accounts')->group(function () {
+            Route::get('summary',             [PlatformAccountsController::class, 'summary']);
+            Route::get('transactions',        [PlatformAccountsController::class, 'transactions']);
+            Route::get('transactions/export', [PlatformAccountsController::class, 'export']);
+            Route::get('expenses',              [PlatformExpenseController::class, 'index']);
+            Route::post('expenses',             [PlatformExpenseController::class, 'store']);
+            Route::put('expenses/{expense}',    [PlatformExpenseController::class, 'update']);
+            Route::delete('expenses/{expense}', [PlatformExpenseController::class, 'destroy']);
+        });
+
+        // Platform reports (/platform/reports). Open to any admin; the controller keeps the
+        // money reports to the Platform Owner (PlatformReportService::REPORTS 'owner_only').
+        Route::get('reports',                 [PlatformBusinessReportController::class, 'index']);
+        Route::get('reports/{report}',        [PlatformBusinessReportController::class, 'show']);
+        Route::get('reports/{report}/export', [PlatformBusinessReportController::class, 'export']);
 
         // Cross-shop booking oversight — no ShopScope bypass needed (see
         // PlatformBookingController's docblock).

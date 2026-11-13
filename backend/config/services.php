@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // text.lk SMS gateway — used to send customer phone OTP (App\Services\SmsService).
+    'textlk' => [
+        'enabled' => env('TEXTLK_ENABLED', false),
+        'api_key' => env('TEXTLK_API_KEY'),
+        'sender_id' => env('TEXTLK_SENDER_ID', 'TextLKDemo'),
+        'url' => env('TEXTLK_URL', 'https://app.text.lk/api/v3'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

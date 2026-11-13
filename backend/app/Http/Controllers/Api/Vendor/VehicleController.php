@@ -100,7 +100,9 @@ class VehicleController extends Controller
         $this->repo->assertCanPublish($vehicle);
         app(SubscriptionService::class)->ensureCanPublish($vehicle);
 
+        $from = $vehicle->status;
         $vehicle = $this->repo->publish($vehicle);
+        AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, ['status' => $from], ['status' => $vehicle->status]);
 
         return $this->response('Vehicle published', new VehicleResource($vehicle));
     }
@@ -110,7 +112,9 @@ class VehicleController extends Controller
         $this->assertRental($vehicle);
         $this->authorize('update', $vehicle);
 
+        $from = $vehicle->status;
         $vehicle = $this->repo->unpublish($vehicle);
+        AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, ['status' => $from], ['status' => $vehicle->status]);
 
         return $this->response('Vehicle unpublished', new VehicleResource($vehicle));
     }
@@ -120,7 +124,9 @@ class VehicleController extends Controller
         $this->assertRental($vehicle);
         $this->authorize('delete', $vehicle);
 
+        $from = $vehicle->status;
         $vehicle = $this->repo->archive($vehicle);
+        AuditService::edit('Vehicle', $vehicle->id, $vehicle->title, ['status' => $from], ['status' => $vehicle->status]);
 
         return $this->response('Vehicle archived', new VehicleResource($vehicle));
     }

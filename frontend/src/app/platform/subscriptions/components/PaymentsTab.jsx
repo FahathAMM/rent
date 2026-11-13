@@ -10,10 +10,10 @@ import ServerDataTable from "@/components/Datatable/ServerDataTable";
 import { FilterSelect } from "@/components/Datatable/FilterSelect";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReasonDialog } from "@/components/shared/ReasonDialog";
-import { Button } from "@/components/ui/button";
 import { formatDateTime, getInitials, openBlob } from "@/lib/utils";
 import { SUBSCRIPTION_STATS_KEY } from "./StatsRow";
 import { toast } from "sonner";
+import { ActionButton } from "@/components/Datatable/ActionButton";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Waiting to check" },
@@ -103,14 +103,14 @@ export function PaymentsTab({ status, onStatusChange }) {
       ),
     },
     {
-      accessorKey: "actions", header: "",
+      accessorKey: "actions", header: "Actions",
       cell: (row) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => viewProof(row.id)}><FileText className="h-3.5 w-3.5" /> Receipt</Button>
+        <div className="flex gap-1">
+          <ActionButton onClick={() => viewProof(row.id)} icon={FileText} label="View receipt" className="text-blue-600 border-blue-300 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-400" />
           {row.status === "pending" && (
             <>
-              <Button size="sm" className="h-7 gap-1 bg-emerald-600 px-2 text-xs hover:bg-emerald-700" onClick={() => approve.mutate(row.id)} disabled={approve.isPending}><Check className="h-3.5 w-3.5" /> Approve</Button>
-              <Button size="icon" variant="outline" className="h-7 w-7 border-destructive/40 text-destructive hover:bg-destructive/10" title="Reject" onClick={() => setRejecting(row)}><X className="h-3.5 w-3.5" /></Button>
+              <ActionButton onClick={() => approve.mutate(row.id)} icon={Check} label="Approve" className="text-emerald-600 border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400" disabled={approve.isPending} />
+              <ActionButton onClick={() => setRejecting(row)} icon={X} label="Reject" className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:border-destructive" />
             </>
           )}
         </div>

@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
  */
 class AuditLogController extends Controller
 {
-    /** Not a menu page, so no role can hold this permission: only the shop owner passes (Gate::before). */
+    /** Settings > Audit Logs. Owner-only (Role::OWNER_ONLY_PREFIXES), so only the shop owner passes (Gate::before). */
     public function __construct()
     {
         $this->middleware('can:vendor-audit-logs-view');
@@ -25,7 +25,7 @@ class AuditLogController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = AuditLog::with('user:id,name,email')
+        $query = AuditLog::with(['user:id,name,email', 'customer:id,name,email'])
             ->where('shop_id', VendorContext::shopId())
             ->where('action', '!=', 'view');
 
@@ -34,7 +34,8 @@ class AuditLogController extends Controller
                 $q->where('form', 'like', "%{$search}%")
                   ->orWhere('record', 'like', "%{$search}%")
                   ->orWhere('action', 'like', "%{$search}%")
-                  ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
+                  ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -44,13 +45,19 @@ class AuditLogController extends Controller
         if ($action = $request->get('action')) {
             $query->where('action', $action);
         }
+        if ($from = $request->get('date_from')) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to = $request->get('date_to')) {
+            $query->whereDate('created_at', '<=', $to);
+        }
 
         $sortable = ['form', 'action', 'record_id', 'created_at'];
         $sort = in_array($request->sort_field, $sortable) ? $request->sort_field : 'created_at';
         $dir  = $request->sort_direction === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $dir);
 
-        $logs = $query->paginate($request->get('perPage', 20));
+        $logs = $query->paginate(min(max((int) $request->get('perPage', 20), 1), 100));
 
         return response()->json([
             'record'  => $logs,

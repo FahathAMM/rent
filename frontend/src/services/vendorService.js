@@ -128,6 +128,7 @@ export const vendorService = {
       close: (reference, reason) => api.post(`/vendor/sales/enquiries/${reference}/close`, { reason }),
     },
     sold: {
+      summary: () => api.get("/vendor/sales/sold/summary"),
       getOne: (reference) => api.get(`/vendor/sales/sold/${reference}`),
       agreement: (reference) => api.get(`/vendor/sales/sold/${reference}/agreement`, { responseType: "blob" }),
     },

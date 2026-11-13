@@ -21,7 +21,7 @@ class Role extends SpatieRole
     public const SHOP_OWNER = 'shop-owner';
 
     /** Areas only the owner handles — never part of a role the owner creates. */
-    public const OWNER_ONLY_PREFIXES = ['vendor-staff-', 'vendor-roles-', 'vendor-finance-bank_details-', 'vendor-subscription-', 'vendor-promotions-'];
+    public const OWNER_ONLY_PREFIXES = ['vendor-staff-', 'vendor-roles-', 'vendor-finance-bank_details-', 'vendor-subscription-', 'vendor-promotions-', 'vendor-audit-logs-'];
 
     protected $casts = ['shop_id' => 'integer'];
 

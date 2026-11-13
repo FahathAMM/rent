@@ -47,6 +47,8 @@ class AuthService
 
         $token = $user->createToken('marketplace-token', ['*'], now()->addDays(7))->plainTextToken;
 
+        AuditService::login($user);
+
         return ['user' => $user, 'token' => $token];
     }
 
@@ -75,6 +77,8 @@ class AuthService
         if ($token instanceof PersonalAccessToken) {
             $token->delete();
         }
+
+        AuditService::logout($user);
     }
 
     public function updateProfile(User $user, UpdateProfileRequest $request): User
@@ -89,7 +93,10 @@ class AuthService
             $user->imageUpload('avatars', $user, $request->file('avatar'), 'avatar');
         }
 
+        $old = $user->only(array_keys($data));
         $user->update($data);
+
+        AuditService::edit('Account', $user->id, $user->email, $old, $data);
 
         return $user->fresh();
     }
@@ -107,5 +114,7 @@ class AuthService
         // Sign out every other session — whoever may have had the old password loses access now.
         $current = $user->currentAccessToken();
         $user->tokens()->when($current instanceof PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->id))->delete();
+
+        AuditService::edit('Account', $user->id, $user->email, null, ['password' => 'changed']);
     }
 }

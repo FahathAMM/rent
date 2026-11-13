@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Vendor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Vendor\ReplyInquiryRequest;
 use App\Models\VehicleInquiry;
+use App\Services\AuditService;
 use App\Services\AuthUser;
 use App\Services\InquiryService;
 use App\Support\ShopGate;
@@ -48,6 +49,8 @@ class InquiryController extends Controller
         abort_unless(ShopGate::allowsCurrent(AuthUser::user(), 'vendor-vehicles-inquiries-edit'), 403);
 
         $inquiry = $this->service->reply(AuthUser::user(), $inquiry, $request->validated('reply_message'));
+
+        AuditService::edit('VehicleInquiry', $inquiry->id, "Inquiry #{$inquiry->id}", null, ['reply' => 'sent']);
 
         return $this->response('Reply sent', $inquiry);
     }

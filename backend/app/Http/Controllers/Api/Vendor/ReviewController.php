@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Vendor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Review\ReplyReviewRequest;
 use App\Models\Review;
+use App\Services\AuditService;
 use App\Services\AuthUser;
 use App\Services\ReviewService;
 use App\Support\VendorContext;
@@ -48,6 +49,8 @@ class ReviewController extends Controller
         $this->authorize('reply', $review);
 
         $review = $this->service->reply(AuthUser::user(), $review, $request->validated('reply'));
+
+        AuditService::edit('Review', $review->id, "Review #{$review->id}", null, ['reply' => 'posted']);
 
         return $this->response('Reply posted', $review);
     }

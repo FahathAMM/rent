@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Vendor;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SaleEnquiryResource;
 use App\Models\SaleEnquiry;
+use App\Services\AuditService;
 use App\Services\AuthUser;
 use App\Services\SaleEnquiryService;
 use App\Traits\JsonResponse as JsonResponseTrait;
@@ -59,13 +60,18 @@ class SaleEnquiryController extends Controller
         $body = $request->validate(['body' => ['required', 'string', 'max:5000']])['body'];
         $this->service->shopReply($enquiry, AuthUser::user(), $body);
 
+        AuditService::edit('SaleEnquiry', $enquiry->id, $enquiry->reference, null, ['reply' => 'sent']);
+
         return $this->response('Reply sent', new SaleEnquiryResource($this->loaded($enquiry)));
     }
 
     public function close(Request $request, SaleEnquiry $enquiry): JsonResponse
     {
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:255']])['reason'] ?? null;
-        $this->service->close($enquiry, $reason ?: 'Closed by the shop');
+        $reason = $reason ?: 'Closed by the shop';
+        $this->service->close($enquiry, $reason);
+
+        AuditService::edit('SaleEnquiry', $enquiry->id, $enquiry->reference, null, ['status' => 'closed', 'reason' => $reason]);
 
         return $this->response('Enquiry closed', new SaleEnquiryResource($this->loaded($enquiry)));
     }

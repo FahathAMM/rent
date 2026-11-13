@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\RentalShop;
 use App\Models\SubscriptionPayment;
 use App\Models\SubscriptionPlan;
+use App\Services\AuditService;
 use App\Services\AuthUser;
 use App\Services\SubscriptionService;
 use App\Support\VendorContext;
@@ -61,6 +62,10 @@ class SubscriptionController extends Controller
             RentalShop::findOrFail(VendorContext::shopId()), AuthUser::user(),
             SubscriptionPlan::findOrFail($data['plan_id']), (int) $data['periods'], $data['bank_reference'] ?? null, $request->file('proof'),
         );
+
+        AuditService::create('SubscriptionPayment', $payment->id, $payment->reference_no, [
+            'plan_id' => (int) $data['plan_id'], 'periods' => (int) $data['periods'], 'bank_reference' => $data['bank_reference'] ?? null, 'status' => $payment->status,
+        ]);
 
         return response()->json(['message' => 'Payment sent — the platform will confirm it shortly', 'data' => $this->presentPayment($payment->load('plan:id,name'))], 201);
     }

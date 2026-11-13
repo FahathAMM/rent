@@ -23,6 +23,9 @@ export function RegisterFormFields({
   onSubmit,
   onSwitchToLogin,
   cancelHref, // optional — shows a Cancel button linking here
+  onSendOtp, // customer only — lets them sign up with a mobile number + SMS code
+  otpSent = false,
+  sendingOtp = false,
 }) {
   const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
 
@@ -43,26 +46,55 @@ export function RegisterFormFields({
             className="col-span-2"
           />
           <TextInput
-            label="Email"
+            label={onSendOtp ? "Email (or use your mobile below)" : "Email"}
             type="email"
             placeholder="you@example.com"
             value={form.email}
             onChange={set("email")}
-            required
+            required={!onSendOtp}
             error={errors.email?.[0]}
             inputClassName="h-9 text-sm"
             className="col-span-2"
           />
-          <TextInput
-            label="Phone"
-            type="tel"
-            placeholder="07X XXX XXXX"
-            value={form.phone}
-            onChange={set("phone")}
-            error={errors.phone?.[0]}
-            inputClassName="h-9 text-sm"
-            className="col-span-2"
-          />
+          <div className="col-span-2 flex items-end gap-2">
+            <TextInput
+              label="Mobile number"
+              type="tel"
+              placeholder="07X XXX XXXX"
+              value={form.phone}
+              onChange={set("phone")}
+              error={errors.phone?.[0]}
+              inputClassName="h-9 text-sm"
+              className="flex-1"
+            />
+            {/* Customer sign-up only: a mobile number is verified with an SMS code. */}
+            {onSendOtp && (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 mb-px"
+                disabled={!form.phone || sendingOtp}
+                onClick={onSendOtp}
+              >
+                {sendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {otpSent ? "Resend code" : "Send code"}
+              </Button>
+            )}
+          </div>
+          {onSendOtp && otpSent && (
+            <TextInput
+              label="Verification code"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="6-digit code"
+              value={form.otp}
+              onChange={set("otp")}
+              required
+              error={errors.otp?.[0]}
+              inputClassName="h-9 text-sm"
+              className="col-span-2"
+            />
+          )}
           <PasswordInput
             label="Password"
             placeholder="••••••••"

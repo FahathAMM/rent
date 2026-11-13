@@ -4,7 +4,9 @@ namespace App\Http\Middleware;
 
 use App\Models\SystemAdmin;
 use Closure;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -55,6 +57,16 @@ class RestrictLogViewerToOwner
             if ($request->hasSession()) {
                 $request->session()->regenerate();
                 $request->session()->put('log_viewer_owner_email', $admin->email);
+
+                // The session now carries the authorization, so drop the bearer token from the
+                // address bar — otherwise it lingers in browser history and every Referer the
+                // viewer page sends. A relative Location so the browser stays on whatever origin it reached us
+                // through (the Next.js proxy), not the backend's own APP_URL.
+                if ($request->isMethod('GET') && $request->query('token')) {
+                    $query = Arr::except($request->query(), 'token');
+
+                    return new RedirectResponse($request->getBaseUrl() . $request->getPathInfo() . ($query ? '?' . http_build_query($query) : ''));
+                }
             }
 
             return $next($request);

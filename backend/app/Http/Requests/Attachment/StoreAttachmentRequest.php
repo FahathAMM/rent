@@ -15,7 +15,8 @@ class StoreAttachmentRequest extends FormRequest
             // Short morph-map aliases only (see AppServiceProvider::boot) — never a raw class name.
             'attachable_type' => ['required', Rule::in(['expense'])],
             'attachable_id'   => 'required|integer',
-            'file'            => 'required|file|max:10240',
+            // Receipts, invoices and scans only — never executable or HTML-like content.
+            'file'            => 'required|file|mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv,txt|max:10240',
             'document_type'   => 'nullable|string|max:100',
         ];
     }

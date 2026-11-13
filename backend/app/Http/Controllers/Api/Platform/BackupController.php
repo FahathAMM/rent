@@ -34,10 +34,20 @@ class BackupController extends Controller
 
     public function store(): JsonResponse
     {
-        Artisan::call('backup:run', [
+        $this->restoreWindowsSystemRoot();
+
+        $exitCode = Artisan::call('backup:run', [
             '--only-db'                => true,
             '--disable-notifications'  => true,
         ]);
+
+        if ($exitCode !== 0) {
+            Log::error('Manual database backup failed', ['output' => Artisan::output()]);
+
+            return response()->json([
+                'message' => 'Database backup failed. Check the server log for details.',
+            ], 500);
+        }
 
         $this->audit('create', 'Database backup');
 
@@ -118,6 +128,28 @@ class BackupController extends Controller
         $this->audit('delete', $filename);
 
         return response()->json(['message' => 'Backup deleted successfully']);
+    }
+
+    /**
+     * Windows only: make sure mysqldump inherits SystemRoot.
+     *
+     * Symfony Process builds the child environment from getenv() ∩ $_SERVER.
+     * Under a web SAPI, $_SERVER holds the .env values but not the OS
+     * variables, so SystemRoot gets dropped — and without it Winsock cannot
+     * initialise, so mysqldump dies with "Can't create TCP/IP socket (10106)".
+     * The same backup works from the CLI/scheduler, where $_SERVER carries
+     * the full environment.
+     */
+    private function restoreWindowsSystemRoot(): void
+    {
+        if (PHP_OS_FAMILY !== 'Windows' || ! empty($_SERVER['SystemRoot']) || ! empty($_SERVER['SYSTEMROOT'])) {
+            return;
+        }
+
+        $systemRoot = getenv('SystemRoot') ?: getenv('windir') ?: 'C:\\Windows';
+
+        $_SERVER['SystemRoot'] = $systemRoot;
+        putenv("SystemRoot={$systemRoot}");
     }
 
     /** Only matches paths already present in the backup destination — prevents path traversal. */

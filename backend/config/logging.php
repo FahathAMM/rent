@@ -76,6 +76,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Every SMS (mobile number + message + sent/failed) — SmsService.
+        // One file per day: storage/logs/sms/sms-<date>.log
+        'sms' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sms/sms.log'),
+            'level' => 'debug',
+            'days' => env('SMS_LOG_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

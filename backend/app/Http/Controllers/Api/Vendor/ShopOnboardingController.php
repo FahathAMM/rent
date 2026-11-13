@@ -77,6 +77,8 @@ class ShopOnboardingController extends Controller
             ['attachment_id' => $attachment->id, 'status' => 'pending', 'reviewed_by' => null, 'reviewed_at' => null, 'rejection_reason' => null]
         );
 
+        AuditService::create('ShopVerification', $verification->id, "{$request->validated('document_type')}: {$attachment->file_name}");
+
         return $this->response('Document uploaded', $verification->load('attachment'), 201);
     }
 
@@ -88,6 +90,8 @@ class ShopOnboardingController extends Controller
             ->firstOrFail();
 
         $shopModel = $this->service->submitForVerification($shopModel);
+
+        AuditService::edit('RentalShop', $shopModel->id, $shopModel->name, null, ['verification_status' => $shopModel->verification_status]);
 
         return $this->response('Shop submitted for verification', $shopModel);
     }

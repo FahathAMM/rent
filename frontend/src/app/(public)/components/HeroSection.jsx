@@ -69,18 +69,18 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, allDi
     <section className="relative isolate overflow-hidden border-b">
       <HeroSlideshow vehicles={featured?.data} platformSlides={heroSlides} onActiveChange={setHeroIndex} />
 
-      <div className="relative mx-auto max-w-6xl px-4 pb-12 pt-5 text-center text-white sm:pb-8 sm:pt-8">
+      <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-4 text-center text-white sm:pb-8 sm:pt-8">
         {/* Fixed-height headline area: every slide (and the default headline) gets the same box,
             with long text clamped to two lines, so the hero never changes height as slides rotate. */}
-        <div className="flex h-[196px] flex-col items-center justify-center sm:h-[212px]">
+        <div className="flex h-[176px] flex-col items-center justify-center sm:h-[212px]">
         {heroSlide ? (
           // Platform-managed slide: its headline replaces the default one and changes with each slide.
           <div key={heroSlide.id} className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-            <h1 className="mx-auto line-clamp-2 max-w-4xl text-3xl font-semibold leading-tight tracking-[-0.02em] text-balance drop-shadow-sm sm:text-4xl">
+            <h1 className="mx-auto line-clamp-2 max-w-4xl text-2xl font-semibold leading-tight tracking-[-0.02em] text-balance drop-shadow-sm sm:text-4xl">
               {heroSlide.title}
             </h1>
             {heroSlide.subtitle && (
-              <p className="mx-auto mt-3 line-clamp-2 max-w-xl text-base text-white/80 text-pretty">{heroSlide.subtitle}</p>
+              <p className="mx-auto mt-2 line-clamp-2 max-w-xl text-sm text-white/80 sm:mt-3 sm:text-base text-pretty">{heroSlide.subtitle}</p>
             )}
             {heroSlide.link_url && (
               <Button asChild size="lg" className="mt-4 rounded-full bg-white px-6 text-foreground shadow-lg hover:bg-white/90">
@@ -94,26 +94,42 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, allDi
           </div>
         ) : (
           <>
-            <h1 className="line-clamp-2 text-3xl font-semibold leading-tight tracking-[-0.02em] text-balance drop-shadow-sm sm:text-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h1 className="line-clamp-2 text-2xl font-semibold leading-tight tracking-[-0.02em] text-balance drop-shadow-sm sm:text-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
               {t.rich("headline", {
                 accent: (chunks) => (
                   <span className="bg-gradient-to-r from-orange-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">{chunks}</span>
                 ),
               })}
             </h1>
-            <p className="mx-auto mt-3 line-clamp-2 max-w-xl text-base text-white/80 text-pretty">
+            <p className="mx-auto mt-2 line-clamp-2 max-w-xl text-sm text-white/80 sm:mt-3 sm:text-base text-pretty">
               {t("subheadline")}
             </p>
           </>
         )}
         </div>
 
-        {/* Search card — Rent / Buy is its first field */}
+        {/* Search card — Rent / Buy is its first field (a segmented toggle up to tablet width, a select on desktop) */}
         <form
           onSubmit={handleSearch}
-          className="mx-auto mt-4 flex max-w-4xl flex-col gap-2 rounded-2xl border border-white/20 bg-card/95 p-2 text-left text-foreground shadow-2xl backdrop-blur-md sm:flex-row sm:items-stretch"
+          className="mx-auto mt-3 flex max-w-xl lg:max-w-4xl flex-col gap-2 rounded-2xl border border-white/20 bg-card/95 p-2.5 text-left text-foreground shadow-2xl backdrop-blur-md lg:mt-4 lg:flex-row lg:items-stretch lg:p-2"
         >
-          <div className="min-w-0 rounded-xl px-1 sm:w-44 sm:shrink-0 sm:border-r sm:border-border/60">
+          <div role="radiogroup" aria-label={t("rentOrBuy")} className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 lg:hidden">
+            {SEARCH_MODES.map(({ id, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={mode === id}
+                onClick={() => setMode(id)}
+                className={`flex h-9 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                  mode === id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" /> {t(id)}
+              </button>
+            ))}
+          </div>
+          <div className="hidden min-w-0 rounded-xl px-1 lg:block lg:w-44 lg:shrink-0 lg:border-r lg:border-border/60">
             <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("lookingTo")}</span>
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger className="h-8 border-0 bg-transparent font-medium shadow-none focus:ring-0" aria-label={t("rentOrBuy")}>
@@ -128,7 +144,7 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, allDi
               </SelectContent>
             </Select>
           </div>
-          <label className="flex min-w-0 items-center gap-2.5 rounded-xl px-3 sm:flex-[1.4] sm:border-r sm:border-border/60">
+          <label className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border/60 px-3 lg:flex-[1.4] lg:rounded-none lg:border-0 lg:border-r">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
               <span className="block pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("what")}</span>
@@ -136,48 +152,52 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, allDi
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={t("keywordPlaceholder")}
-                className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                enterKeyHint="search"
+                className="h-8 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 lg:text-sm"
               />
             </div>
           </label>
-          <div className="min-w-0 rounded-xl px-1 sm:flex-1 sm:border-r sm:border-border/60">
-            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("where")}</span>
-            <Select value={district || "all"} onValueChange={(v) => setDistrict(v === "all" ? "" : v)}>
-              <SelectTrigger className="h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder={t("anyDistrict")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("anyDistrict")}</SelectItem>
-                {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          {/* District + type sit side by side up to tablet width, inline on desktop */}
+          <div className="grid grid-cols-2 gap-2 lg:contents">
+            <div className="min-w-0 rounded-xl border border-border/60 px-1 lg:flex-1 lg:rounded-none lg:border-0 lg:border-r">
+              <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("where")}</span>
+              <Select value={district || "all"} onValueChange={(v) => setDistrict(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 w-full min-w-0 border-0 bg-transparent shadow-none focus:ring-0 [&>span]:truncate">
+                  <SelectValue placeholder={t("anyDistrict")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("anyDistrict")}</SelectItem>
+                  {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-0 rounded-xl border border-border/60 px-1 lg:flex-1 lg:border-0">
+              <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("type")}</span>
+              <Select value={category || "all"} onValueChange={(v) => setCategory(v === "all" ? "" : v)}>
+                <SelectTrigger className="h-8 w-full min-w-0 border-0 bg-transparent shadow-none focus:ring-0 [&>span]:truncate">
+                  <SelectValue placeholder={t("anyVehicle")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("anyVehicle")}</SelectItem>
+                  {categories?.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="min-w-0 rounded-xl px-1 sm:flex-1">
-            <span className="block px-2 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("type")}</span>
-            <Select value={category || "all"} onValueChange={(v) => setCategory(v === "all" ? "" : v)}>
-              <SelectTrigger className="h-8 border-0 bg-transparent shadow-none focus:ring-0">
-                <SelectValue placeholder={t("anyVehicle")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("anyVehicle")}</SelectItem>
-                {categories?.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button type="submit" size="lg" className="min-h-12 shrink-0 rounded-xl sm:h-auto bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 px-5 hover:opacity-90 lg:px-7">
+          <Button type="submit" size="lg" className="min-h-12 w-full shrink-0 rounded-xl text-base font-semibold lg:h-auto lg:w-auto lg:text-sm bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500 px-5 hover:opacity-90 lg:px-7">
             <Search className="mr-2 h-4 w-4" /> {t("search")}
           </Button>
         </form>
 
         {/* Popular category shortcuts */}
         {categories?.length > 0 && (
-          <div className="mx-auto mt-4 flex max-w-4xl flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="text-white/70">{t("popular")}</span>
+          <div className="-mx-4 mt-3 flex items-center gap-2 overflow-x-auto px-4 text-sm [scrollbar-width:none] sm:mx-auto sm:mt-4 sm:max-w-4xl sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+            <span className="shrink-0 text-white/70">{t("popular")}</span>
             {categories.slice(0, 5).map((c) => (
               <Link
                 key={c.id}
                 href={`/${mode}?category_id=${c.id}`}
-                className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                className="shrink-0 whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
               >
                 {c.name}
               </Link>
@@ -185,11 +205,11 @@ export function HeroSection({ featured, saleTotal, heroSlides, categories, allDi
           </div>
         )}
 
-        <div className="mx-auto mt-5 grid max-w-3xl grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
+        <div className="mx-auto mt-4 grid max-w-3xl grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
           {stats.map((s) => <HeroStat key={s.label} {...s} />)}
         </div>
 
-        <div className="mx-auto mt-4 hidden flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/80 sm:flex">
+        <div className="mx-auto mt-4 hidden flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/80 text-balance sm:flex">
           {TRUST_POINTS.map(({ icon: Icon, key }) => (
             <span key={key} className="flex items-center gap-1.5">
               <Icon className="h-4 w-4 text-orange-300" /> {t(`trust.${key}`)}

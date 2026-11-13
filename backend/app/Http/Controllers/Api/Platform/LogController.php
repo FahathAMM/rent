@@ -10,14 +10,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-/** Application log viewer (storage/logs/*.log, plus the daily public_visit/*.log) — /platform/logs. */
+/** Application log viewer (storage/logs/*.log, plus the daily public_visit/*.log and sms/*.log) — /platform/logs. */
 class LogController extends Controller
 {
     /** Only the last 10MB of a file is ever parsed — large log files stay fast to browse. */
     private const MAX_READ_BYTES = 10 * 1024 * 1024;
 
     /** Sub-folders of storage/logs whose files are listed too ('' = storage/logs itself). */
-    private const FOLDERS = ['', 'public_visit'];
+    // '' = storage/logs itself; public_visit = daily visit logs; sms = daily SMS logs (SmsService).
+    private const FOLDERS = ['', 'public_visit', 'sms'];
 
     public function index(): JsonResponse
     {

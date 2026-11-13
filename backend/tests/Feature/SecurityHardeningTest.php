@@ -15,6 +15,8 @@ use App\Models\Vehicle;
 use App\Models\VehicleCategory;
 use App\Models\VehiclePricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -275,5 +277,160 @@ class SecurityHardeningTest extends TestCase
         $this->bearer($staffWith(['vendor-dashboard-view', 'vendor-finance-earnings-view']))->getJson('/api/dashboard')
             ->assertOk()
             ->assertJsonPath('data.can_view_money', true);
+    }
+
+    // ── Uploads (2026-11-11 review) ──────────────────────────────────────
+
+    /**
+     * /storage is proxied onto the app's own origin, where the SPA keeps its bearer tokens in
+     * localStorage — so a scripted SVG served from there is a stored XSS. Every publicly served
+     * image upload must refuse SVG (the `image` rule alone accepts it).
+     */
+    public function test_svg_is_refused_wherever_an_uploaded_image_is_served_publicly(): void
+    {
+        Storage::fake('public');
+        $svg = fn () => UploadedFile::fake()->create('avatar.svg', 4, 'image/svg+xml');
+        $png = fn () => UploadedFile::fake()->image('avatar.png', 64, 64);
+
+        $user = User::factory()->create();
+        $this->bearer($user)->post('/api/auth/profile', ['_method' => 'PUT', 'avatar' => $svg()])
+            ->assertUnprocessable()->assertJsonValidationErrors(['avatar']);
+        $this->bearer($user)->post('/api/auth/profile', ['_method' => 'PUT', 'avatar' => $png()])->assertOk();
+
+        $customer = Customer::factory()->create();
+        $this->bearer($customer)->post('/api/customer/profile', ['_method' => 'PUT', 'avatar' => $svg()])
+            ->assertUnprocessable()->assertJsonValidationErrors(['avatar']);
+
+        $admin = SystemAdmin::factory()->owner()->create();
+        $this->bearer($admin)->post('/api/platform/details', ['name' => 'LankaLane', 'logo' => $svg()])
+            ->assertUnprocessable()->assertJsonValidationErrors(['logo']);
+        $this->bearer($admin)->post('/api/platform/details', ['name' => 'LankaLane', 'login_logo' => $svg()])
+            ->assertUnprocessable()->assertJsonValidationErrors(['login_logo']);
+
+        $this->assertSame([], array_filter(Storage::disk('public')->allFiles(), fn ($f) => str_ends_with($f, '.svg')));
+    }
+
+    public function test_expense_attachments_only_accept_documents_and_images(): void
+    {
+        $this->seed(\Database\Seeders\MenuSeeder::class);
+        Storage::fake('local');
+
+        [$owner, $shop] = $this->shopWithOwner();
+        $expense = Expense::factory()->create([
+            'shop_id' => $shop->id,
+            'expense_category_id' => \App\Models\ExpenseCategory::factory()->create(['shop_id' => $shop->id])->id,
+        ]);
+        $payload = ['attachable_type' => 'expense', 'attachable_id' => $expense->id];
+
+        $this->bearer($owner)->post('/api/attachments', $payload + ['file' => UploadedFile::fake()->create('receipt.html', 2, 'text/html')])
+            ->assertUnprocessable()->assertJsonValidationErrors(['file']);
+        $this->bearer($owner)->post('/api/attachments', $payload + ['file' => UploadedFile::fake()->create('receipt.php', 2, 'application/x-httpd-php')])
+            ->assertUnprocessable()->assertJsonValidationErrors(['file']);
+        $this->bearer($owner)->post('/api/attachments', $payload + ['file' => UploadedFile::fake()->create('receipt.pdf', 2, 'application/pdf')])
+            ->assertCreated();
+    }
+
+    // ── Platform admin accounts ──────────────────────────────────────────
+
+    public function test_resetting_an_admins_password_or_deactivating_them_revokes_their_tokens(): void
+    {
+        $owner = SystemAdmin::factory()->owner()->create();
+        $admin = SystemAdmin::factory()->create(['password' => 'original-pass-1']);
+        $admin->createToken('laptop');
+        $admin->createToken('phone');
+
+        $this->bearer($owner)->putJson("/api/platform/users/{$admin->id}", ['password' => 'brand-new-pass-1'])->assertOk();
+        $this->assertSame(0, $admin->tokens()->count(), 'a password reset must sign the admin out everywhere');
+
+        $admin->createToken('laptop');
+        $this->bearer($owner)->putJson("/api/platform/users/{$admin->id}", ['is_active' => false])->assertOk();
+        $this->assertSame(0, $admin->tokens()->count(), 'deactivation must sign the admin out everywhere');
+
+        // A plain edit keeps their sessions.
+        $admin->update(['is_active' => true]);
+        $admin->createToken('laptop');
+        $this->bearer($owner)->putJson("/api/platform/users/{$admin->id}", ['name' => 'Renamed'])->assertOk();
+        $this->assertSame(1, $admin->tokens()->count());
+
+        // The owner can't lock themselves out.
+        $this->bearer($owner)->putJson("/api/platform/users/{$owner->id}", ['is_active' => false])->assertStatus(422);
+        $this->assertTrue($owner->fresh()->is_active);
+    }
+
+    // ── Log Viewer page ──────────────────────────────────────────────────
+
+    public function test_the_log_viewer_page_moves_the_token_out_of_the_url_once_the_session_is_set(): void
+    {
+        config(['log-viewer.owner_email' => 'owner@example.com']);
+        $owner = SystemAdmin::factory()->create(['email' => 'owner@example.com']);
+
+        $this->get('/log-viewer?token=' . $owner->createToken('t')->plainTextToken)
+            ->assertRedirect('/log-viewer')
+            ->assertSessionHas('log_viewer_owner_email', 'owner@example.com');
+
+        // Somebody else's token never gets a session, let alone a redirect. (The test client keeps
+        // the session between requests, so start this one clean like a fresh browser would.)
+        $this->flushSession();
+        $other = SystemAdmin::factory()->create(['email' => 'other@example.com']);
+        $this->get('/log-viewer?token=' . $other->createToken('t')->plainTextToken)
+            ->assertForbidden()
+            ->assertSessionMissing('log_viewer_owner_email');
+    }
+
+    // ── Customer phone number (2026-11-12 review) ────────────────────────
+
+    /**
+     * A verified phone is a login identity. Changing it must take the OTP sent to the new number —
+     * otherwise a customer could put anyone's number on their own account, still marked verified.
+     */
+    public function test_a_customer_cannot_change_their_phone_without_the_otp_sent_to_it(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '94771111111', 'phone_verified_at' => now()]);
+
+        $this->bearer($customer)->putJson('/api/customer/profile', ['phone' => '0772222222'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['otp']);
+        $this->bearer($customer)->putJson('/api/customer/profile', ['phone' => 'not-a-number', 'otp' => '123456'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['phone']);
+
+        $this->postJson('/api/customer/send-otp', ['phone' => '0772222222'])->assertOk();
+        $this->bearer($customer)->putJson('/api/customer/profile', ['phone' => '0772222222', 'otp' => '000000'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['otp']);
+        $this->assertSame('94771111111', $customer->fresh()->phone);
+
+        $code = Cache::get('customer-otp:94772222222')['code'];
+        $this->bearer($customer)->putJson('/api/customer/profile', ['phone' => '0772222222', 'otp' => $code])->assertOk();
+        $this->assertSame('94772222222', $customer->fresh()->phone);
+        $this->assertNotNull($customer->fresh()->phone_verified_at);
+    }
+
+    public function test_a_customer_cannot_take_a_number_that_is_already_registered(): void
+    {
+        Customer::factory()->create(['phone' => '94773333333', 'phone_verified_at' => now()]);
+        $customer = Customer::factory()->create(['phone' => '94771111111', 'phone_verified_at' => now()]);
+
+        $this->bearer($customer)->putJson('/api/customer/profile', ['phone' => '077 333 3333', 'otp' => '123456'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['phone']);
+        $this->assertSame('94771111111', $customer->fresh()->phone);
+    }
+
+    public function test_saving_the_profile_with_the_same_phone_needs_no_otp(): void
+    {
+        $customer = Customer::factory()->create(['phone' => '94771111111', 'phone_verified_at' => now()]);
+
+        // However it is typed, it is still their own number.
+        $this->bearer($customer)->putJson('/api/customer/profile', ['name' => 'New Name', 'phone' => '0771111111'])->assertOk();
+
+        $this->assertSame('New Name', $customer->fresh()->name);
+        $this->assertSame('94771111111', $customer->fresh()->phone);
+        $this->assertNotNull($customer->fresh()->phone_verified_at);
+    }
+
+    public function test_a_login_that_is_not_a_mobile_number_never_matches_an_account_without_a_phone(): void
+    {
+        // An account that dropped its phone still has phone_verified_at from before.
+        Customer::factory()->create(['email' => 'a@example.com', 'phone' => null, 'phone_verified_at' => now(), 'password' => 'password123']);
+
+        $this->postJson('/api/customer/login', ['email' => 'not-a-number', 'password' => 'password123'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['email']);
     }
 }

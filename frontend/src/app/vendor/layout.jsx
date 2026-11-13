@@ -13,6 +13,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { HeaderClock } from "@/components/layout/HeaderClock";
 import { DashboardFooter } from "@/components/layout/DashboardFooter";
+import { VendorVisitTracker } from "@/components/layout/VendorVisitTracker";
 import { PlanBanner } from "./settings/subscription/components/PlanBanner";
 import { SubscriptionLock, useIsShopOwner } from "./settings/subscription/components/SubscriptionLock";
 import { useSubscription } from "./settings/subscription/components/useSubscription";
@@ -322,7 +323,12 @@ export default function VendorLayout({ children }) {
   if (!_hasHydrated || !isAuthenticated || navLoading) return loading;
 
   if (isOnboardingRoute) {
-    return <div className="min-h-screen bg-slate-50">{children}</div>;
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <VendorVisitTracker />
+        {children}
+      </div>
+    );
   }
 
   if (!shop) return <NoShopView />;
@@ -341,6 +347,7 @@ export default function VendorLayout({ children }) {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      <VendorVisitTracker />
       <Sidebar
         activeModule={activeModule}
         navigation={navigation}
