@@ -1,0 +1,90 @@
+# CI — runs on every pull request into main (and on pushes to dev/* branches).
+# These two jobs are the "review" gate: branch protection on main requires both
+# to pass before a PR can merge (see deploy/README.md).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ['dev/**']
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Laravel tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: pos_db_test # matches phpunit.xml.dist
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, gd, zip, intl, bcmath
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare .env
+        # .env.example is gitignored in this repo, so build a minimal one.
+        run: |
+          printf 'APP_NAME=LankaLane\nAPP_ENV=testing\nAPP_KEY=\n' > .env
+          php artisan key:generate --ansi
+
+      - name: Run tests
+        run: php artisan test
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_URL: /api
+      BACKEND_URL: http://127.0.0.1:8001
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        # package-lock.json is gitignored, so `npm ci` can't be used.
+        run: npm install --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true # report only; flip to blocking once lint is clean
+
+      - name: Build
+        run: npm run build
